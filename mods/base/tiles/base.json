@@ -1,0 +1,38 @@
+{
+    "Grass": {
+        "Name": "grass",
+        "Rune": ".",
+        "Fg": "Lime",
+        "Bg": "Black"
+    },
+    "Brush": {
+        "Name": "brush",
+        "Rune": ",",
+        "Fg": "Lime",
+        "Bg": "Black"
+    },
+    "Tree": {
+        "Name": "tree",
+        "Rune": "*",
+        "Fg": "Green",
+        "Bg": "Black"
+    },
+    "Pavement": {
+        "Name": "pavement",
+        "Rune": " ",
+        "Fg": "White",
+        "Bg": "Gray"
+    },
+    "YellowPavement": {
+        "Name": "yellow pavement",
+        "Rune": "=",
+        "Fg": "Yellow",
+        "Bg": "Gray"
+    },
+    "WhitePavement": {
+        "Name": "white pavement",
+        "Rune": "|",
+        "Fg": "White",
+        "Bg": "Gray"
+    }
+}

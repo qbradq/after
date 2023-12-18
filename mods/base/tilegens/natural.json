@@ -1,0 +1,16 @@
+{
+    "RandomGrass": {
+        "Grass": 11,
+        "Brush": 1
+    },
+    "RandomBrush": {
+        "Grass": 128,
+        "Brush": 16,
+        "Tree": 1
+    },
+    "RandomForest": {
+        "Grass": 6,
+        "Brush": 4,
+        "Tree": 6
+    }
+}
