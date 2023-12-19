@@ -1,7 +1,7 @@
 package termgui
 
 import (
-	"github.com/gdamore/tcell/v2"
+	"github.com/qbradq/after/lib/termui"
 	"github.com/qbradq/after/lib/util"
 )
 
@@ -11,10 +11,10 @@ func drawCursor(sp util.Point, area util.Rect, cursorStyle int) {
 		if !area.Contains(p) {
 			return
 		}
-		r, _, s, _ := screen.GetContent(p.X, p.Y)
-		fg, bg, _ := s.Decompose()
-		ns := tcell.StyleDefault.Background(fg).Foreground(bg)
-		screen.SetContent(p.X, p.Y, r, nil, ns)
+		g := screen.GetCell(p)
+		fg, bg := g.Style.Decompose()
+		g.Style = termui.StyleDefault.Background(fg).Foreground(bg)
+		screen.SetCell(p, g)
 	}
 	switch cursorStyle {
 	case 1:

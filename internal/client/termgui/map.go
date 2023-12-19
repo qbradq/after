@@ -1,7 +1,7 @@
 package termgui
 
 import (
-	"github.com/gdamore/tcell/v2"
+	"github.com/qbradq/after/lib/termui"
 	"github.com/qbradq/after/lib/util"
 )
 
@@ -37,10 +37,13 @@ func drawMap(center util.Point, area util.Rect, cursor util.Point, cursorStyle i
 		for p.X = mtl.X; p.X < mtl.X+area.Width(); p.X++ {
 			sp := util.NewPoint(p.X-mtl.X+area.TL.X, p.Y-mtl.Y+area.TL.Y)
 			t := cityMap.GetTile(p)
-			ns := tcell.StyleDefault.
-				Background(tcell.Color(t.Bg)).
-				Foreground(tcell.Color(t.Fg))
-			screen.SetContent(sp.X, sp.Y, rune(t.Rune[0]), nil, ns)
+			ns := termui.StyleDefault.
+				Background(t.Bg).
+				Foreground(t.Fg)
+			screen.SetCell(sp, termui.Glyph{
+				Rune:  rune(t.Rune[0]),
+				Style: ns,
+			})
 		}
 	}
 	drawCursor(util.Point{

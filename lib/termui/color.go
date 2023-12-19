@@ -1,32 +1,30 @@
-package util
+package termui
 
 import (
 	"fmt"
 	"strings"
-
-	"github.com/gdamore/tcell/v2"
 )
 
 // Color is a wrapper value for tcell.Color.
-type Color tcell.Color
+type Color uint8
 
 const (
-	ColorBlack   = Color(tcell.ColorBlack)
-	ColorMaroon  = Color(tcell.ColorMaroon)
-	ColorGreen   = Color(tcell.ColorGreen)
-	ColorOlive   = Color(tcell.ColorOlive)
-	ColorNavy    = Color(tcell.ColorNavy)
-	ColorPurple  = Color(tcell.ColorPurple)
-	ColorTeal    = Color(tcell.ColorTeal)
-	ColorSilver  = Color(tcell.ColorSilver)
-	ColorGray    = Color(tcell.ColorGray)
-	ColorRed     = Color(tcell.ColorRed)
-	ColorLime    = Color(tcell.ColorLime)
-	ColorYellow  = Color(tcell.ColorYellow)
-	ColorBlue    = Color(tcell.ColorBlue)
-	ColorFuchsia = Color(tcell.ColorFuchsia)
-	ColorAqua    = Color(tcell.ColorAqua)
-	ColorWhite   = Color(tcell.ColorWhite)
+	ColorBlack Color = iota
+	ColorMaroon
+	ColorGreen
+	ColorOlive
+	ColorNavy
+	ColorPurple
+	ColorTeal
+	ColorSilver
+	ColorGray
+	ColorRed
+	ColorLime
+	ColorYellow
+	ColorBlue
+	ColorFuchsia
+	ColorAqua
+	ColorWhite
 )
 
 func (c Color) MarshalJSON() ([]byte, error) {

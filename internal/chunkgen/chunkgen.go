@@ -3,6 +3,7 @@ package chunkgen
 import (
 	"github.com/qbradq/after/internal/game"
 	"github.com/qbradq/after/internal/tilegen"
+	"github.com/qbradq/after/lib/termui"
 	"github.com/qbradq/after/lib/util"
 )
 
@@ -17,8 +18,8 @@ var ChunkGens = map[string]*ChunkGen{
 		Width:   1,
 		Height:  1,
 		Minimap: []string{"."},
-		Fg:      util.ColorLime,
-		Bg:      util.ColorBlack,
+		Fg:      termui.ColorLime,
+		Bg:      termui.ColorBlack,
 		Map: []string{
 			"................",
 			"................",
@@ -52,8 +53,8 @@ type ChunkGen struct {
 	Width   int               // Width of the chunk generator in chunks
 	Height  int               // Height of the chunk generator in chunks
 	Minimap []string          // Minimap
-	Fg      util.Color        // Foreground color
-	Bg      util.Color        // Background color
+	Fg      termui.Color      // Foreground color
+	Bg      termui.Color      // Background color
 	Map     []string          // Map of characters that define how to procedurally generate each tile
 	Tiles   map[string]string // Mapping of map characters to tile generators
 }

@@ -1,10 +1,8 @@
 package termgui
 
 import (
-	"os"
-	"os/signal"
+	"log"
 
-	"github.com/gdamore/tcell/v2"
 	"github.com/qbradq/after/internal/citygen"
 	"github.com/qbradq/after/internal/game"
 	"github.com/qbradq/after/internal/mods"
@@ -12,65 +10,27 @@ import (
 	"github.com/qbradq/after/lib/util"
 )
 
-var screen tcell.Screen
+var screen termui.TerminalDriver
 var cityMap *game.CityMap
 
-func init() {
-	var err error
-	// Init tcell screen
-	screen, err = tcell.NewScreen()
-	if err != nil {
-		panic(err)
+func Main(s termui.TerminalDriver) {
+	screen = s
+	if err := screen.Init(); err != nil {
+		log.Fatal(err)
 	}
-	// Trap signals
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	go func() {
-		for range c {
-			gracefulShutdown()
-			os.Exit(0)
-		}
-	}()
-}
-
-func gracefulShutdown() {
-	screen.Fini()
-}
-
-func Main() {
-	screen.Init()
-	defer gracefulShutdown()
+	defer screen.Fini()
 	mainMenu()
-}
-
-func runLoop(fn func(tcell.Event) bool) {
-	var event tcell.Event
-	fn(nil)
-	screen.Show()
-	quit := false
-	for !quit {
-		event = screen.PollEvent()
-		switch event.(type) {
-		case *tcell.EventResize:
-			quit = fn(nil)
-			screen.Sync()
-			continue
-		default:
-		}
-		quit = fn(event)
-		screen.Show()
-	}
 }
 
 func mainMenu() {
 	pos := 0
-	runLoop(func(e tcell.Event) bool {
+	termui.Run(screen, func(e any) error {
 		quit := false
 		w, h := screen.Size()
 		termui.DrawClear(screen)
-		termui.DrawStringCenter(screen, 0, (h/2)-6, w, "After", termui.CurrentTheme.Normal.Foreground(tcell.ColorLime))
-		termui.DrawStringCenter(screen, 0, (h/2)-5, w, "by Norman B. Lancaster qbradq@gmail.com", termui.CurrentTheme.Normal.Foreground(tcell.ColorGreen))
-		termui.BoxList(screen, (w-14)/2, (h/2)-3, 14, 5, "Main Menu", []string{
+		termui.DrawStringCenter(screen, util.NewRectXYWH(0, (h/2)-6, w, 1), "After", termui.CurrentTheme.Normal.Foreground(termui.ColorLime))
+		termui.DrawStringCenter(screen, util.NewRectXYWH(0, (h/2)-5, w, 1), "by Norman B. Lancaster qbradq@gmail.com", termui.CurrentTheme.Normal.Foreground(termui.ColorGreen))
+		termui.BoxList(screen, util.NewRectXYWH((w-14)/2, (h/2)-3, 14, 5), "Main Menu", []string{
 			"New Game",
 			"Continue",
 			"Quit",
@@ -87,17 +47,20 @@ func mainMenu() {
 				quit = true
 			}
 		})
-		return quit
+		if quit {
+			return termui.ErrorQuit
+		}
+		return nil
 	})
 }
 
 func gameMode() {
 	p := util.NewPoint(10*game.ChunkWidth+game.ChunkWidth/2, 15*game.ChunkHeight+game.ChunkHeight/2)
-	runLoop(func(e tcell.Event) bool {
+	termui.Run(screen, func(e any) error {
 		// Respond to input
 		switch ev := e.(type) {
-		case *tcell.EventKey:
-			switch ev.Rune() {
+		case *termui.EventKey:
+			switch ev.Key {
 			case 'u':
 				p.X++
 				p.Y--
@@ -126,9 +89,9 @@ func gameMode() {
 		termui.DrawClear(screen)
 		sw, sh := screen.Size()
 		drawMap(p, util.NewRectWH(sw-56, sh), p, 0)
-		termui.DrawVLine(screen, sw-56, 0, sh, termui.CurrentTheme.Normal)
+		termui.DrawVLine(screen, util.NewPoint(sw-56, 0), sh, termui.CurrentTheme.Normal)
 		drawMinimap(util.NewPoint(p.X/game.ChunkWidth, p.Y/game.ChunkHeight),
 			util.NewRectXYWH(sw-21, 0, 21, 21), 1)
-		return false
+		return nil
 	})
 }

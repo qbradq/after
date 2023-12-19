@@ -1,6 +1,6 @@
 package game
 
-import "github.com/qbradq/after/lib/util"
+import "github.com/qbradq/after/lib/termui"
 
 // TileDefs is the global TileRef-to-*TileDef reference.
 var TileDefs = []*TileDef{
@@ -8,8 +8,8 @@ var TileDefs = []*TileDef{
 		BackRef: 0,
 		Name:    "error",
 		Rune:    "!",
-		Fg:      util.ColorWhite,
-		Bg:      util.ColorRed,
+		Fg:      termui.ColorWhite,
+		Bg:      termui.ColorRed,
 	},
 }
 
@@ -24,9 +24,9 @@ type TileRef uint16
 
 // TileDef represents all of the data associated with a single tile.
 type TileDef struct {
-	BackRef TileRef    // The TileRef that indexes this TileDef within TileDefs, used to accelerate saving
-	Name    string     // Descriptive name of the tile
-	Rune    string     // Map display rune
-	Fg      util.Color // Foreground display color
-	Bg      util.Color // Background display color
+	BackRef TileRef      // The TileRef that indexes this TileDef within TileDefs, used to accelerate saving
+	Name    string       // Descriptive name of the tile
+	Rune    string       // Map display rune
+	Fg      termui.Color // Foreground display color
+	Bg      termui.Color // Background display color
 }

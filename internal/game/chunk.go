@@ -1,6 +1,9 @@
 package game
 
-import "github.com/qbradq/after/lib/util"
+import (
+	"github.com/qbradq/after/lib/termui"
+	"github.com/qbradq/after/lib/util"
+)
 
 const (
 	ChunkWidth  int = 16 // Width of a chunk in tiles
@@ -26,16 +29,16 @@ const (
 // Chunk represents the smallest unit of city planning and contains the tiles,
 // items and actors within its bounds.
 type Chunk struct {
-	Generator         ChunkGen    // The chunk generator responsible for procedural generation
-	ChunkGenOffset    util.Point  // Offset from the top-left corner of the chunk generator
-	Facing            util.Facing // Facing of the chunk during generation
-	Name              string      // Descriptive name of the chunk
-	MinimapRune       string      // Rune to display on the minimap
-	MinimapForeground util.Color  // Foreground color of the rune on the minimap
-	MinimapBackground util.Color  // Background color of the rune on the minimap
-	Flags             ChunkFlags  // Flags
-	Tiles             []*TileDef  // Tile matrix
-	Loaded            bool        // If true Load() has been called and Unload() has not
+	Generator         ChunkGen     // The chunk generator responsible for procedural generation
+	ChunkGenOffset    util.Point   // Offset from the top-left corner of the chunk generator
+	Facing            util.Facing  // Facing of the chunk during generation
+	Name              string       // Descriptive name of the chunk
+	MinimapRune       string       // Rune to display on the minimap
+	MinimapForeground termui.Color // Foreground color of the rune on the minimap
+	MinimapBackground termui.Color // Background color of the rune on the minimap
+	Flags             ChunkFlags   // Flags
+	Tiles             []*TileDef   // Tile matrix
+	Loaded            bool         // If true Load() has been called and Unload() has not
 }
 
 // NewChunk allocates and returns a new Chunk struct. Note that this struct does
@@ -45,8 +48,8 @@ func NewChunk() *Chunk {
 	c := &Chunk{
 		Name:              "an error",
 		MinimapRune:       ".",
-		MinimapForeground: util.ColorWhite,
-		MinimapBackground: util.ColorBlack,
+		MinimapForeground: termui.ColorWhite,
+		MinimapBackground: termui.ColorBlack,
 	}
 	return c
 }

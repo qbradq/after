@@ -1,107 +1,121 @@
 package termui
 
 import (
-	"github.com/gdamore/tcell/v2"
+	"github.com/qbradq/after/lib/util"
 )
 
 // DrawClear clears the screen.
-func DrawClear(s tcell.Screen) {
+func DrawClear(s TerminalDriver) {
 	w, h := s.Size()
-	DrawFill(s, 0, 0, w, h, ' ', CurrentTheme.Normal)
+	DrawFill(s, util.NewRectWH(w, h), Glyph{Rune: ' ', Style: CurrentTheme.Normal})
 }
 
 // DrawFill fills a region of the screen.
-func DrawFill(s tcell.Screen, x, y, w, h int, r rune, style tcell.Style) {
-	if x < 0 {
-		x += w
-		x = 0
-	}
-	if y < 0 {
-		y += h
-		y = 0
-	}
-	for iy := 0; iy < h; iy++ {
-		for ix := 0; ix < w; ix++ {
-			s.SetContent(x+ix, y+iy, r, nil, style)
+func DrawFill(s TerminalDriver, b util.Rect, g Glyph) {
+	var p util.Point
+	for p.Y = b.TL.Y; p.Y <= b.BR.Y; p.Y++ {
+		for p.X = b.TL.X; p.X <= b.BR.X; p.X++ {
+			s.SetCell(p, g)
 		}
 	}
-}
-
-// DrawRune draws a single rune.
-func DrawRune(s tcell.Screen, x, y int, r rune, style tcell.Style) {
-	s.SetContent(x, y, r, nil, style)
 }
 
 // DrawStringLeft draws a string left-justified.
-func DrawStringLeft(s tcell.Screen, x, y, w int, t string, style tcell.Style) {
+func DrawStringLeft(s TerminalDriver, b util.Rect, t string, style Style) {
+	p := b.TL
 	for i, r := range t {
-		if i >= w {
+		if i >= b.Width() {
 			break
 		}
-		s.SetContent(x+i, y, r, nil, style)
+		s.SetCell(p, Glyph{
+			Rune:  r,
+			Style: style,
+		})
+		p.X++
 	}
 }
 
 // DrawStringRight draws a string right-justified.
-func DrawStringRight(b tcell.Screen, x, y, w int, s string, style tcell.Style) {
-	sx := x + (w - len(s))
+func DrawStringRight(s TerminalDriver, b util.Rect, text string, style Style) {
+	sx := b.TL.X + (b.Width() - len(text))
 	si := 0
-	if sx < x {
-		si += x - sx
-		sx = x
+	if sx < b.TL.X {
+		si += b.TL.X - sx
+		sx = b.TL.X
 	}
-	ex := x + w
-	for _, r := range s {
-		if sx > ex || si >= len(s) {
+	for _, r := range text {
+		if sx > b.BR.X || si >= len(text) {
 			break
 		}
-		b.SetContent(sx, y, r, nil, style)
+		s.SetCell(util.Point{
+			X: sx,
+			Y: b.TL.Y,
+		}, Glyph{
+			Rune:  r,
+			Style: style,
+		})
 		sx++
 		si++
 	}
 }
 
 // DrawStringCenter draws a string centered.
-func DrawStringCenter(b tcell.Screen, x, y, w int, s string, style tcell.Style) {
-	sx := (x + (w / 2)) - (len(s) / 2)
+func DrawStringCenter(s TerminalDriver, b util.Rect, text string, style Style) {
+	sx := (b.TL.X + (b.Width() / 2)) - (len(text) / 2)
 	si := 0
-	if sx < x {
-		si += x - sx
-		sx = x
+	if sx < b.TL.X {
+		si += b.TL.X - sx
+		sx = b.TL.X
 	}
-	ex := x + w
-	for _, r := range s {
-		if sx > ex || si >= len(s) {
+	ex := b.BR.X
+	for _, r := range text {
+		if sx > ex || si >= len(text) {
 			break
 		}
-		b.SetContent(sx, y, r, nil, style)
+		s.SetCell(util.Point{
+			X: sx,
+			Y: b.TL.Y,
+		}, Glyph{
+			Rune:  r,
+			Style: style,
+		})
 		sx++
 		si++
 	}
 }
 
 // DrawHLine draws a horizontal line.
-func DrawHLine(b tcell.Screen, x, y, w int, style tcell.Style) {
+func DrawHLine(s TerminalDriver, p util.Point, w int, style Style) {
+	g := Glyph{
+		Rune:  '=',
+		Style: style,
+	}
 	for i := 0; i < w; i++ {
-		b.SetContent(x+i, y, '═', nil, style)
+		s.SetCell(p, g)
+		p.X++
 	}
 }
 
 // DrawVLine draws a vertical line.
-func DrawVLine(b tcell.Screen, x, y, h int, style tcell.Style) {
+func DrawVLine(s TerminalDriver, p util.Point, h int, style Style) {
+	g := Glyph{
+		Rune:  '|',
+		Style: style,
+	}
 	for i := 0; i < h; i++ {
-		b.SetContent(x, y+i, '║', nil, style)
+		s.SetCell(p, g)
+		p.Y++
 	}
 }
 
 // DrawBox draws a box.
-func DrawBox(b tcell.Screen, x, y, w, h int, style tcell.Style) {
-	DrawHLine(b, x+1, y, w-2, style)
-	DrawHLine(b, x+1, y+h-1, w-2, style)
-	DrawVLine(b, x, y+1, h-2, style)
-	DrawVLine(b, x+w-1, y+1, h-2, style)
-	b.SetContent(x, y, '╔', nil, style)
-	b.SetContent(x+w-1, y, '╗', nil, style)
-	b.SetContent(x, y+h-1, '╚', nil, style)
-	b.SetContent(x+w-1, y+h-1, '╝', nil, style)
+func DrawBox(s TerminalDriver, b util.Rect, style Style) {
+	DrawHLine(s, util.NewPoint(b.TL.X+1, b.TL.Y), b.Width()-2, style)
+	DrawHLine(s, util.NewPoint(b.TL.X+1, b.TL.Y+b.Height()-1), b.Width()-2, style)
+	DrawVLine(s, util.NewPoint(b.TL.X, b.TL.Y+1), b.Height()-2, style)
+	DrawVLine(s, util.NewPoint(b.TL.X+b.Width()-1, b.TL.Y+1), b.Height()-2, style)
+	s.SetCell(b.TL, Glyph{Rune: '+', Style: style})
+	s.SetCell(util.NewPoint(b.BR.X, b.TL.Y), Glyph{Rune: '+', Style: style})
+	s.SetCell(util.NewPoint(b.TL.X, b.BR.Y), Glyph{Rune: '+', Style: style})
+	s.SetCell(b.BR, Glyph{Rune: '+', Style: style})
 }
