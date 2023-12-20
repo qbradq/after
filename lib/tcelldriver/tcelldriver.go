@@ -1,9 +1,6 @@
 package tcelldriver
 
 import (
-	"os"
-	"os/signal"
-
 	"github.com/gdamore/tcell/v2"
 	"github.com/qbradq/after/lib/termui"
 	"github.com/qbradq/after/lib/util"
@@ -65,15 +62,6 @@ func (d *Driver) Init() error {
 		return err
 	}
 	d.s.Clear()
-	// Trap signals
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	go func() {
-		for range c {
-			d.Fini()
-			os.Exit(0)
-		}
-	}()
 	return nil
 }
 
@@ -117,6 +105,8 @@ func (d *Driver) PollEvent() any {
 				return &termui.EventKey{Key: ev.Rune()}
 			case tcell.KeyEnter:
 				return &termui.EventKey{Key: '\n'}
+			case tcell.KeyEsc:
+				return &termui.EventKey{Key: '\033'}
 			}
 		case *tcell.EventResize:
 			w, h := ev.Size()

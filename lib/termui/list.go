@@ -4,52 +4,76 @@ import (
 	"github.com/qbradq/after/lib/util"
 )
 
-// List implements a potentially scrolled vertical list of strings for selection
-// The callback function is called on selection.
-func List(s TerminalDriver, b util.Rect, list []string, state *int,
-	e any, fn func(n int)) {
+// List implements a mode that presents a scrollable list to the user.
+type List struct {
+	Bounds    util.Rect                       // Bounds of the rect on screen
+	CursorPos int                             // Current cursor position
+	Boxed     bool                            // If true a box is drawn around the list
+	Title     string                          // Title for the box, if any
+	Items     []string                        // Items of the list
+	Selected  func(TerminalDriver, int) error // The function that is called if the user selects an item
+}
+
+// HandleInput implements the Mode interface.
+func (m *List) HandleInput(s TerminalDriver, e any) error {
 	// State sanitation
-	if *state < 0 {
-		*state = 0
+	if m.CursorPos < 0 {
+		m.CursorPos = 0
 	}
-	if *state >= len(list) {
-		*state = len(list) - 1
+	if m.CursorPos >= len(m.Items) {
+		m.CursorPos = len(m.Items) - 1
 	}
 	// State change in response to input
 	switch ev := e.(type) {
 	case *EventKey:
 		switch ev.Key {
 		case 'k':
-			*state--
-			if *state < 0 {
-				*state += len(list)
+			m.CursorPos--
+			if m.CursorPos < 0 {
+				m.CursorPos += len(m.Items)
 			}
 		case 'j':
-			*state++
-			if *state >= len(list) {
-				*state -= len(list)
+			m.CursorPos++
+			if m.CursorPos >= len(m.Items) {
+				m.CursorPos -= len(m.Items)
 			}
 		case ' ':
 			fallthrough
 		case '\n':
-			fn(*state)
+			return m.Selected(s, m.CursorPos)
+		case '\033':
+			return ErrorQuit
 		}
+	}
+	return nil
+}
+
+// Draw implements the Mode interface.
+func (m *List) Draw(s TerminalDriver) {
+	b := m.Bounds
+	if m.Boxed {
+		DrawBox(s, b, CurrentTheme.Normal)
+		DrawStringCenter(s, b, m.Title, CurrentTheme.Normal)
+		b.TL.X++
+		b.TL.Y++
+		b.BR.X--
+		b.BR.Y--
 	}
 	// Drawing
 	DrawFill(s, b, Glyph{Rune: ' ', Style: CurrentTheme.Normal})
 	si := 0
-	if *state > b.Height()/2 {
-		si += *state - b.Height()/2
+	if m.CursorPos > b.Height()/2 {
+		si += m.CursorPos - b.Height()/2
 	}
-	if si+b.Height() > len(list) {
-		si = len(list) - b.Height()
+	if si+b.Height() > len(m.Items) {
+		si = len(m.Items) - b.Height()
 	}
 	if si < 0 {
 		si = 0
 	}
-	for i := si; i < si+b.Height() && i < len(list); i++ {
-		text := list[i]
-		if i == *state {
+	for i := si; i < si+b.Height() && i < len(m.Items); i++ {
+		text := m.Items[i]
+		if i == m.CursorPos {
 			DrawFill(s, util.NewRectXYWH(b.TL.X, b.TL.Y+i-si, b.Width(), 1), Glyph{
 				Rune:  ' ',
 				Style: CurrentTheme.Highlight,
@@ -61,16 +85,4 @@ func List(s TerminalDriver, b util.Rect, list []string, state *int,
 				text, CurrentTheme.Normal)
 		}
 	}
-}
-
-// BoxList is like List but with a surrounding title box.
-func BoxList(s TerminalDriver, b util.Rect, title string, list []string,
-	state *int, e any, fn func(n int)) {
-	DrawBox(s, b, CurrentTheme.Normal)
-	DrawStringCenter(s, b, title, CurrentTheme.Normal)
-	b.TL.X++
-	b.TL.Y++
-	b.BR.X--
-	b.BR.Y--
-	List(s, b, list, state, e, fn)
 }

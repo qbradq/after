@@ -6,82 +6,109 @@ import (
 	"github.com/qbradq/after/lib/util"
 )
 
-func minimapTopLeft(center util.Point, area util.Rect) util.Point {
+// Minimap implements a termui.Mode that displays the minimap
+type Minimap struct {
+	CityMap     *game.CityMap // The city we are displaying
+	Bounds      util.Rect     // Bounds of the minimap display on screen
+	Center      util.Point    // Current centerpoint of the display
+	DrawInfo    bool          // If true draws a box containing info near the cursor
+	CursorStyle int           // Cursor style
+}
+
+func (m *Minimap) topLeft() util.Point {
 	// Calculate top-left corner
-	ret := util.NewPoint(center.X-area.Width()/2,
-		center.Y-area.Height()/2)
+	ret := util.NewPoint(m.Center.X-m.Bounds.Width()/2,
+		m.Center.Y-m.Bounds.Height()/2)
 	if ret.X < 0 {
 		ret.X = 0
 	}
-	if ret.X >= game.CityMapWidth-area.Width() {
-		ret.X = (game.CityMapWidth - area.Width()) - 1
+	if ret.X >= game.CityMapWidth-m.Bounds.Width() {
+		ret.X = (game.CityMapWidth - m.Bounds.Width()) - 1
 	}
 	if ret.Y < 0 {
 		ret.Y = 0
 	}
-	if ret.Y >= game.CityMapHeight-area.Height() {
-		ret.Y = (game.CityMapHeight - area.Height()) - 1
+	if ret.Y >= game.CityMapHeight-m.Bounds.Height() {
+		ret.Y = (game.CityMapHeight - m.Bounds.Height()) - 1
 	}
 	return ret
 }
 
-func minimapPointToScreen(p util.Point, area util.Rect) util.Point {
-	tl := minimapTopLeft(p, area)
+func (m *Minimap) pointToScreen(p util.Point) util.Point {
+	tl := m.topLeft()
 	return util.NewPoint(p.X-tl.X, p.Y-tl.Y)
 }
 
-func minimapMapMode(center util.Point) {
-	p := center
-	termui.Run(screen, func(e any) error {
-		// State update
-		switch ev := e.(type) {
-		case *termui.EventKey:
-			switch ev.Key {
-			case 'u':
-				p.X++
-				p.Y--
-			case 'y':
-				p.X--
-				p.Y--
-			case 'n':
-				p.X++
-				p.Y++
-			case 'b':
-				p.X--
-				p.Y++
-			case 'l':
-				p.X++
-			case 'h':
-				p.X--
-			case 'j':
-				p.Y++
-			case 'k':
-				p.Y--
-			case '\033':
-				return termui.ErrorQuit
-			}
+// HandleEvent implements the termui.Mode interface.
+func (m *Minimap) HandleEvent(s termui.TerminalDriver, e any) error {
+	// State update
+	switch ev := e.(type) {
+	case *termui.EventKey:
+		switch ev.Key {
+		case 'u':
+			m.Center.X++
+			m.Center.Y--
+		case 'y':
+			m.Center.X--
+			m.Center.Y--
+		case 'n':
+			m.Center.X++
+			m.Center.Y++
+		case 'b':
+			m.Center.X--
+			m.Center.Y++
+		case 'l':
+			m.Center.X++
+		case 'h':
+			m.Center.X--
+		case 'j':
+			m.Center.Y++
+		case 'k':
+			m.Center.Y--
+		case '\033':
+			return termui.ErrorQuit
 		}
-		// Bound focal point
-		if p.X < 0 {
-			p.X = 0
+	}
+	// Bound focal point
+	if m.Center.X < 0 {
+		m.Center.X = 0
+	}
+	if m.Center.X >= game.CityMapWidth {
+		m.Center.X = game.CityMapWidth - 1
+	}
+	if m.Center.Y < 0 {
+		m.Center.Y = 0
+	}
+	if m.Center.Y >= game.CityMapHeight {
+		m.Center.Y = game.CityMapHeight - 1
+	}
+	return nil
+}
+
+// Draw implements the termui.Mode interface.
+func (m *Minimap) Draw(s termui.TerminalDriver) {
+	// Render the minimap and cursor
+	mmtl := m.topLeft()
+	for iy := 0; iy < m.Bounds.Height(); iy++ {
+		for ix := 0; ix < m.Bounds.Width(); ix++ {
+			c := m.CityMap.GetChunkFromMapPoint(util.Point{X: ix + mmtl.X, Y: iy + mmtl.Y})
+			s.SetCell(util.NewPoint(ix+m.Bounds.TL.X, iy+m.Bounds.TL.Y), termui.Glyph{
+				Rune: rune(c.MinimapRune[0]),
+				Style: termui.StyleDefault.
+					Background(c.MinimapBackground).
+					Foreground(c.MinimapForeground),
+			})
 		}
-		if p.X >= game.CityMapWidth {
-			p.X = game.CityMapWidth - 1
-		}
-		if p.Y < 0 {
-			p.Y = 0
-		}
-		if p.Y >= game.CityMapHeight {
-			p.Y = game.CityMapHeight - 1
-		}
-		// Map sampling
-		c := cityMap.GetChunkFromMapPoint(p)
-		// Drawing
-		sw, sh := screen.Size()
-		termui.DrawClear(screen)
-		drawMinimap(p, util.NewRectWH(sw, sh), 2)
-		sp := minimapPointToScreen(p, util.NewRectWH(sw, sh))
-		if sp.X > sw/2 {
+	}
+	drawCursor(s, util.Point{
+		X: (m.Center.X - mmtl.X) + m.Bounds.TL.X,
+		Y: (m.Center.Y - mmtl.Y) + m.Bounds.TL.Y,
+	}, m.Bounds, m.CursorStyle)
+	// Draw the nameplate if requested
+	if m.DrawInfo {
+		c := m.CityMap.GetChunkFromMapPoint(m.Center)
+		sp := m.pointToScreen(m.Center)
+		if sp.X > m.Bounds.Width()/2 {
 			sp.X -= 2 + len(c.Name)
 		} else {
 			sp.X += 2
@@ -90,30 +117,10 @@ func minimapMapMode(center util.Point) {
 		if sp.Y < 0 {
 			sp.Y = 0
 		}
-		if sp.Y > sh-3 {
-			sp.Y = sh - 3
+		if sp.Y > m.Bounds.Height()-3 {
+			sp.Y = m.Bounds.Height() - 3
 		}
-		termui.DrawBox(screen, util.NewRectXYWH(sp.X, sp.Y, len(c.Name)+2, 3), termui.CurrentTheme.Normal)
-		termui.DrawStringLeft(screen, util.NewRectXYWH(sp.X+1, sp.Y+1, len(c.Name), 1), c.Name, termui.CurrentTheme.Normal)
-		return nil
-	})
-}
-
-func drawMinimap(center util.Point, area util.Rect, cursorStyle int) {
-	mmtl := minimapTopLeft(center, area)
-	for iy := 0; iy < area.Height(); iy++ {
-		for ix := 0; ix < area.Width(); ix++ {
-			c := cityMap.GetChunkFromMapPoint(util.Point{X: ix + mmtl.X, Y: iy + mmtl.Y})
-			screen.SetCell(util.NewPoint(ix+area.TL.X, iy+area.TL.Y), termui.Glyph{
-				Rune: rune(c.MinimapRune[0]),
-				Style: termui.StyleDefault.
-					Background(c.MinimapBackground).
-					Foreground(c.MinimapForeground),
-			})
-		}
+		termui.DrawBox(s, util.NewRectXYWH(sp.X, sp.Y, len(c.Name)+2, 3), termui.CurrentTheme.Normal)
+		termui.DrawStringLeft(s, util.NewRectXYWH(sp.X+1, sp.Y+1, len(c.Name), 1), c.Name, termui.CurrentTheme.Normal)
 	}
-	drawCursor(util.Point{
-		X: (center.X - mmtl.X) + area.TL.X,
-		Y: (center.Y - mmtl.Y) + area.TL.Y,
-	}, area, cursorStyle)
 }

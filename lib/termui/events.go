@@ -2,6 +2,8 @@ package termui
 
 import "github.com/qbradq/after/lib/util"
 
+type EventQuit struct{}
+
 type EventKey struct {
 	Key rune
 }

@@ -2,6 +2,7 @@ package termui
 
 import (
 	"errors"
+	"log"
 
 	"github.com/qbradq/after/lib/util"
 )
@@ -20,41 +21,47 @@ type TerminalDriver interface {
 	SetCell(util.Point, Glyph)
 	// GetCell returns the glyph at the given point on the screen.
 	GetCell(util.Point) Glyph
+	// PollEvent returns the next event.
+	PollEvent() any
 	// Size returns the size of the screen.
 	Size() (int, int)
-	// PollEvent returns the next input or system event.
-	PollEvent() any
 	// Sync must redraw the entire terminal display.
 	Sync()
 	// Show must redraw the dirty areas of the terminal display.
 	Show()
 }
 
-// Mode is a function that accepts the next input event and then re-draws the
-// screen. If error is non-null the runner will exit the mode. See Run().
-type Mode func(any) error
+// Mode is the interface all objects implementing a game mode must implement.
+type Mode interface {
+	// HandleEvent is responsible for updating the mode's state in response to
+	// events. If ErrorQuit is returned the mode is exited. Any other error is
+	// treated as fatal.
+	HandleEvent(TerminalDriver, any) error
+	// Draw is responsible for drawing the mode to the terminal driver.
+	Draw(TerminalDriver)
+}
 
-// Run runs the given mode function.
-func Run(s TerminalDriver, fn Mode) {
-	var event any
-	if err := fn(nil); err != nil {
-		return
-	}
+// RunMode runs the given mode.
+func RunMode(s TerminalDriver, m Mode) {
+	m.Draw(s)
 	s.Show()
 	for {
-		event = s.PollEvent()
-		switch event.(type) {
-		case *EventResize:
-			if err := fn(event); err != nil {
-				return
-			}
-			s.Sync()
-			continue
-		default:
-		}
-		if err := fn(event); err != nil {
+		e := s.PollEvent()
+		switch e.(type) {
+		case *EventQuit:
 			return
+		case *EventResize:
+			m.Draw(s)
+			s.Sync()
+		default:
+			if err := m.HandleEvent(s, e); err != nil {
+				if errors.Is(err, ErrorQuit) {
+					return
+				}
+				log.Fatal(err)
+			}
+			m.Draw(s)
+			s.Show()
 		}
-		s.Show()
 	}
 }

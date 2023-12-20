@@ -10,7 +10,8 @@
             "request": "launch",
             "mode": "debug",
             "console": "externalTerminal",
-            "program": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "program": "${workspaceFolder}/cmd/termgui"
         }
     ]
 }
