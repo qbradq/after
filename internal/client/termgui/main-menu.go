@@ -44,6 +44,14 @@ func NewMainMenu() *MainMenu {
 
 // HandleEvent implements the termui.Mode interface.
 func (m *MainMenu) HandleEvent(s termui.TerminalDriver, e any) error {
+	switch ev := e.(type) {
+	case *termui.EventKey:
+		if ev.Key == '\033' {
+			return termui.ErrorQuit
+		}
+	case *termui.EventQuit:
+		return termui.ErrorQuit
+	}
 	return m.list.HandleInput(s, e)
 }
 

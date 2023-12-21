@@ -2,6 +2,7 @@ package termui
 
 import (
 	"fmt"
+	"image/color"
 	"strings"
 )
 
@@ -26,6 +27,26 @@ const (
 	ColorAqua
 	ColorWhite
 )
+
+// Built-in palette
+var Palette = []color.Color{
+	color.RGBA{R: 0, G: 0, B: 0, A: 255},
+	color.RGBA{R: 170, G: 0, B: 0, A: 255},
+	color.RGBA{R: 0, G: 170, B: 0, A: 255},
+	color.RGBA{R: 170, G: 85, B: 0, A: 255},
+	color.RGBA{R: 0, G: 0, B: 170, A: 255},
+	color.RGBA{R: 170, G: 0, B: 170, A: 255},
+	color.RGBA{R: 0, G: 170, B: 170, A: 255},
+	color.RGBA{R: 170, G: 170, B: 170, A: 255},
+	color.RGBA{R: 85, G: 85, B: 85, A: 255},
+	color.RGBA{R: 255, G: 85, B: 85, A: 255},
+	color.RGBA{R: 85, G: 255, B: 85, A: 255},
+	color.RGBA{R: 255, G: 255, B: 85, A: 255},
+	color.RGBA{R: 85, G: 85, B: 255, A: 255},
+	color.RGBA{R: 255, G: 85, B: 255, A: 255},
+	color.RGBA{R: 85, G: 255, B: 255, A: 255},
+	color.RGBA{R: 255, G: 255, B: 255, A: 255},
+}
 
 func (c Color) MarshalJSON() ([]byte, error) {
 	switch c {

@@ -21,14 +21,14 @@ func (m *MapMode) topLeft() util.Point {
 	if ret.X < 0 {
 		ret.X = 0
 	}
-	if ret.X >= m.CityMap.Bounds.Width()-m.Bounds.Width() {
-		ret.X = (m.CityMap.Bounds.Width() - m.Bounds.Width()) - 1
+	if ret.X >= m.CityMap.Bounds.Width()*game.ChunkWidth-m.Bounds.Width() {
+		ret.X = (m.CityMap.Bounds.Width()*game.ChunkWidth - m.Bounds.Width()) - 1
 	}
 	if ret.Y < 0 {
 		ret.Y = 0
 	}
-	if ret.Y >= m.CityMap.Bounds.Height()-m.Bounds.Height() {
-		ret.Y = (m.CityMap.Bounds.Height() - m.Bounds.Height()) - 1
+	if ret.Y >= m.CityMap.Bounds.Height()*game.ChunkHeight-m.Bounds.Height() {
+		ret.Y = (m.CityMap.Bounds.Height()*game.ChunkHeight - m.Bounds.Height()) - 1
 	}
 	return ret
 }
@@ -67,6 +67,8 @@ func (m *MapMode) HandleEvent(s termui.TerminalDriver, e any) error {
 				DrawInfo:    true,
 			})
 		}
+	case *termui.EventQuit:
+		return termui.ErrorQuit
 	}
 	return nil
 }

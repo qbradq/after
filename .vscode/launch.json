@@ -11,7 +11,7 @@
             "mode": "debug",
             "console": "externalTerminal",
             "cwd": "${workspaceFolder}",
-            "program": "${workspaceFolder}/cmd/termgui"
+            "program": "${workspaceFolder}/cmd/ebitenterm",
         }
     ]
 }

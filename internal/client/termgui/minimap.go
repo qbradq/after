@@ -68,6 +68,8 @@ func (m *Minimap) HandleEvent(s termui.TerminalDriver, e any) error {
 		case '\033':
 			return termui.ErrorQuit
 		}
+	case *termui.EventQuit:
+		return termui.ErrorQuit
 	}
 	// Bound focal point
 	if m.Center.X < 0 {

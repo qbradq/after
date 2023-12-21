@@ -17,11 +17,13 @@ func interstate() *game.CityMap {
 	m := game.NewCityMap()
 	var p util.Point
 	// Lay down the base forest and clearing land pattern
+	nox := util.RandomF(0, 1024)
+	noy := util.RandomF(0, 1024)
 	for p.Y = 0; p.Y < m.Bounds.Height(); p.Y++ {
 		for p.X = 0; p.X < m.Bounds.Width(); p.X++ {
 			n := simplexnoise.Noise2(
-				float64(p.X)/32,
-				float64(p.Y)/32,
+				float64(p.X)/32+nox,
+				float64(p.Y)/32+noy,
 			)
 			f := util.Facing(util.Random(0, 4))
 			if n > 0.25 {

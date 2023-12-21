@@ -17,6 +17,12 @@ func Random(min, max int) int {
 	return rng.Intn(max-min) + min
 }
 
+// RandomF returns a random floating point value in the half-open range
+// [min-max).
+func RandomF(min, max float64) float64 {
+	return rng.Float64()*(max-min) + min
+}
+
 // RandomBool returns a random boolean value.
 func RandomBool() bool {
 	return rng.Intn(2) != 0

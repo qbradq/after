@@ -30,6 +30,14 @@ func NewGameMode(m *game.CityMap, c util.Point) *GameMode {
 
 // HandleEvent implements the termui.Mode interface.
 func (m *GameMode) HandleEvent(s termui.TerminalDriver, e any) error {
+	switch ev := e.(type) {
+	case *termui.EventKey:
+		if ev.Key == '\033' {
+			return termui.ErrorQuit
+		}
+	case *termui.EventQuit:
+		return termui.ErrorQuit
+	}
 	return m.MapMode.HandleEvent(s, e)
 }
 
@@ -37,11 +45,12 @@ func (m *GameMode) HandleEvent(s termui.TerminalDriver, e any) error {
 func (m *GameMode) Draw(s termui.TerminalDriver) {
 	termui.DrawClear(s)
 	sw, sh := s.Size()
-	m.MapMode.Bounds = util.NewRectXYWH(0, 0, sw-56, sh)
+	m.MapMode.Bounds = util.NewRectXYWH(0, 0, sw-39, sh)
 	m.MapMode.CursorStyle = 0
 	m.MapMode.Draw(s)
-	termui.DrawVLine(s, util.NewPoint(sw-56, 0), sh, termui.CurrentTheme.Normal)
-	m.Minimap.Bounds = util.NewRectXYWH(sw-21, 0, 21, 21)
+	termui.DrawVLine(s, util.NewPoint(sw-39, 0), sh, termui.CurrentTheme.Normal)
+	m.Minimap.Bounds = util.NewRectXYWH(sw-22, 0, 21, 21)
 	m.Minimap.Center = util.NewPoint(m.MapMode.Center.X/game.ChunkWidth, m.MapMode.Center.Y/game.ChunkHeight)
 	m.Minimap.Draw(s)
+	// termui.DrawBox(s, util.NewRectXYWH(sw-38, 0, 16, 21), termui.CurrentTheme.Normal)
 }
