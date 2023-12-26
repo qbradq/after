@@ -1,6 +1,8 @@
 package termgui
 
 import (
+	"time"
+
 	"github.com/qbradq/after/internal/citygen"
 	"github.com/qbradq/after/internal/game"
 	"github.com/qbradq/after/internal/mods"
@@ -13,8 +15,10 @@ type MainMenu struct {
 	list termui.List // Main menu item list
 }
 
+var debugMods = []string{"Base"}
+
 // NewMainMenu returns a new MainMenu object.
-func NewMainMenu() *MainMenu {
+func NewMainMenu(s termui.TerminalDriver) *MainMenu {
 	return &MainMenu{
 		list: termui.List{
 			Boxed: true,
@@ -27,12 +31,19 @@ func NewMainMenu() *MainMenu {
 			Selected: func(s termui.TerminalDriver, n int) error {
 				switch n {
 				case 0:
-					if err := mods.LoadModByID("Base"); err != nil {
+					if err := mods.LoadMods(debugMods); err != nil {
+						panic(err)
+					}
+					if err := game.NewSave("debug-"+time.Now().Format(time.DateTime), debugMods); err != nil {
 						panic(err)
 					}
 					m := citygen.CityGens["Interstate Town"]()
-					termui.RunMode(s, NewGameMode(m, util.NewPoint(10*game.ChunkWidth+game.ChunkWidth/2, 15*game.ChunkHeight+game.ChunkHeight/2)))
+					m.SaveCityPlan()
+					termui.RunMode(s, NewGameMode(m, util.NewPoint(0*game.ChunkWidth+game.ChunkWidth/2, 0*game.ChunkHeight+game.ChunkHeight/2)))
+					game.CloseSave()
 				case 1:
+					game.LoadSaveInfo()
+					termui.RunMode(s, NewLoadMenu(s))
 				case 2:
 					return termui.ErrorQuit
 				}
@@ -61,6 +72,6 @@ func (m *MainMenu) Draw(s termui.TerminalDriver) {
 	termui.DrawClear(s)
 	termui.DrawStringCenter(s, util.NewRectXYWH(0, (h/2)-6, w, 1), "After", termui.CurrentTheme.Normal.Foreground(termui.ColorLime))
 	termui.DrawStringCenter(s, util.NewRectXYWH(0, (h/2)-5, w, 1), "by Norman B. Lancaster qbradq@gmail.com", termui.CurrentTheme.Normal.Foreground(termui.ColorGreen))
-	m.list.Bounds = util.NewRectXYWH((w-14)/2, (h/2)-3, 14, 5)
+	m.list.Bounds = util.NewRectWH(w, h).CenterRect(14, 5)
 	m.list.Draw(s)
 }

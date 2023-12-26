@@ -1,20 +1,35 @@
 package game
 
 import (
+	"bytes"
+	"errors"
+	"fmt"
+	"io"
+	"sort"
+	"time"
+
+	"github.com/dgraph-io/badger/v4"
+	"github.com/kelindar/bitmap"
 	"github.com/qbradq/after/lib/util"
 )
 
 const (
-	CityMapWidth  int = 660 // Width of a city map in chunks
-	CityMapHeight int = 660 // Height of a city map in chunks
+	CityMapWidth              int = 660 // Width of a city map in chunks
+	CityMapHeight             int = 660 // Height of a city map in chunks
+	maxInMemoryChunks         int = 200 // Max chunks to keep in hot memory
+	purgeInMemoryChunksTarget int = 100 // Number of chunks to keep in hot memory after purging least-recently used chunks
 )
 
 // CityMap represents the entire world of the game in terms of which chunks go
 // where.
 type CityMap struct {
-	Bounds     util.Rect // Bounds of the city map in chunks
-	TileBounds util.Rect // Bounds of the city map in tiles
-	Chunks     []*Chunk  // The chunks of the map
+	Bounds              util.Rect     // Bounds of the city map in chunks
+	TileBounds          util.Rect     // Bounds of the city map in tiles
+	Chunks              []*Chunk      // The chunks of the map
+	InMemoryChunks      bitmap.Bitmap // Bitmap of all chunks loaded into memory
+	InMemoryChunksCount int           // Running count of in-memory chunks to avoid excessive calls to bitmap.Count()
+	ChunksGenerated     bitmap.Bitmap // Bitmap of all chunks that have been generated
+	cgDirty             bool          // ChunksGenerated has been altered since the last call to SaveBitmaps
 }
 
 // NewCityMap allocates and returns a new CityMap structure.
@@ -28,6 +43,74 @@ func NewCityMap() *CityMap {
 		m.Chunks[i] = NewChunk()
 	}
 	return m
+}
+
+// SaveCityPlan saves the city plan in the current save database.
+func (m *CityMap) SaveCityPlan() {
+	var buf = bytes.NewBuffer(nil)
+	m.Write(buf)
+	save.Update(func(txn *badger.Txn) error {
+		if err := txn.Set([]byte("CityPlan"), buf.Bytes()); err != nil {
+			panic(err)
+		}
+		return nil
+	})
+	// Force-generate empty bitmap sets
+	m.cgDirty = true
+	m.SaveBitmaps()
+}
+
+// LoadCityPlan loads the city plan from the current save database.
+func (m *CityMap) LoadCityPlan() {
+	var buf []byte
+	if err := save.View(func(txn *badger.Txn) error {
+		item, err := txn.Get([]byte("CityPlan"))
+		if err != nil {
+			return err
+		}
+		buf, err = item.ValueCopy(buf)
+		if err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		panic(err)
+	}
+	r := bytes.NewBuffer(buf)
+	m.Read(r)
+	m.LoadBitmaps()
+}
+
+// Write writes the city-level map information to the writer.
+func (m *CityMap) Write(w io.Writer) {
+	// Build dictionary of chunk generator IDs
+	dict := util.NewDictionary()
+	for _, c := range m.Chunks {
+		dict.Put(c.Generator.GetID())
+	}
+	// Write the file
+	util.PutUint32(w, 0) // Version
+	util.PutDictionary(w, dict)
+	for _, c := range m.Chunks {
+		util.PutUint16(w, dict.Get(c.Generator.GetID()))
+		util.PutPoint(w, c.ChunkGenOffset)
+		util.PutByte(w, byte(c.Facing))
+		util.PutByte(w, byte(c.Flags))
+	}
+}
+
+// Read reads the city-level map information from the buffer.
+func (m *CityMap) Read(r io.Reader) {
+	_ = util.GetUint32(r) // Version
+	dict := util.GetDictionary(r)
+	for _, c := range m.Chunks {
+		s := dict.Lookup(util.GetUint16(r))
+		c.Generator = GetChunkGen(s)
+		c.ChunkGenOffset = util.GetPoint(r)
+		c.Facing = util.Facing(util.GetByte(r))
+		c.Flags = ChunkFlags(util.GetByte(r))
+		c.Generator.AssignStaticInfo(c)
+	}
 }
 
 // GetChunkFromMapPoint returns the chunk definition at the given map location
@@ -59,9 +142,10 @@ func (m *CityMap) GetTile(p util.Point) *TileDef {
 	return t
 }
 
-// Load ensures that all chunks in the area given in absolute tile coordinates
-// have been generated and are loaded into memory.
-func (m *CityMap) Load(area util.Rect) {
+// EnsureLoaded ensures that all chunks in the area given in absolute tile
+// coordinates have been generated and are loaded into memory.
+func (m *CityMap) EnsureLoaded(area util.Rect) {
+	// Calculate bounding area of the rect in terms of chunks and bound it.
 	r := util.Rect{
 		TL: util.Point{
 			X: area.TL.X / ChunkWidth,
@@ -84,10 +168,181 @@ func (m *CityMap) Load(area util.Rect) {
 	if r.BR.Y >= CityMapHeight {
 		r.BR.Y = CityMapHeight - 1
 	}
+	// Load all chunks within the area
 	var p util.Point
+	now := time.Now()
 	for p.Y = r.TL.Y; p.Y <= r.BR.Y; p.Y++ {
 		for p.X = r.TL.X; p.X <= r.BR.X; p.X++ {
-			m.Chunks[p.Y*CityMapWidth+p.X].Load()
+			r := chunkRefForPoint(p)
+			c := m.Chunks[r]
+			c.Loaded = now
+			// Bail if we are already loaded
+			if c.Tiles != nil {
+				continue
+			}
+			// There is no possibility of error after this point so go ahead
+			// and mark the chunk as in-memory
+			m.InMemoryChunks.Set(r)
+			m.InMemoryChunksCount++
+			// Allocate memory
+			c.Tiles = make([]*TileDef, ChunkWidth*ChunkHeight)
+			// Generate the chunk if this has never happened before
+			if !m.ChunksGenerated.Contains(r) {
+				m.ChunksGenerated.Set(r)
+				m.cgDirty = true
+				c.Generator.Generate(c)
+				continue
+			}
+			// Otherwise load the chunk into memory from the save database
+			var buf []byte
+			if err := save.View(func(txn *badger.Txn) error {
+				item, err := txn.Get([]byte(fmt.Sprintf("Chunk-%d", r)))
+				if err != nil {
+					return err
+				}
+				buf, err = item.ValueCopy(buf)
+				return err
+			}); err != nil {
+				panic(err)
+			}
+			c.Read(bytes.NewBuffer(buf))
 		}
 	}
+	// After we load chunks we need to make sure to purge old chunks so we don't
+	// fill all available RAM with chunk data.
+	m.purgeOldChunks()
+}
+
+// purgeOldChunks purges chunks in least-recently-used first order down to the
+// target number if the number of chunks in the memory cache is greater than the
+// maximum.
+func (m *CityMap) purgeOldChunks() {
+	// Short-circuit condition
+	if m.InMemoryChunksCount <= maxInMemoryChunks {
+		return
+	}
+	// Sort the chunks by time last updated
+	cRefs := make([]uint32, 0, m.InMemoryChunksCount)
+	m.InMemoryChunks.Range(func(x uint32) {
+		cRefs = append(cRefs, x)
+	})
+	sort.Slice(cRefs, func(i, j int) bool {
+		return cRefs[i] < cRefs[j]
+	})
+	// Persist and unload the oldest chunks until we reach the purge target
+	bufs := map[uint32][]byte{}
+	for _, cr := range cRefs[:maxInMemoryChunks-purgeInMemoryChunksTarget] {
+		w := bytes.NewBuffer(nil)
+		c := m.Chunks[cr]
+		c.Write(w)
+		bufs[cr] = w.Bytes()
+		c.Unload()
+		m.InMemoryChunks.Remove(cr)
+		m.InMemoryChunksCount--
+	}
+	// Save all unloaded chunks to the database in batched transactions
+	txn := save.NewTransaction(true)
+	for k, v := range bufs {
+		name := []byte(fmt.Sprintf("Chunk-%d", k))
+		if err := txn.Set(name, v); errors.Is(err, badger.ErrTxnTooBig) {
+			if err := txn.Commit(); err != nil {
+				panic(err)
+			}
+			txn.Discard()
+			txn = save.NewTransaction(true)
+			if err := txn.Set(name, v); err != nil {
+				panic(err)
+			}
+		}
+	}
+	if err := txn.Commit(); err != nil {
+		panic(err)
+	}
+	txn.Discard()
+	// If any chunks updated the tile cross references we need to save them
+	if crossReferencesDirty {
+		SaveTileRefs()
+	}
+	m.SaveBitmaps()
+}
+
+// saveAllChunks saves all in-memory chunks to the current save database without
+// freeing memory.
+func (m *CityMap) saveAllChunks() {
+	// Accumulate all data
+	bufs := map[uint32][]byte{}
+	m.InMemoryChunks.Range(func(x uint32) {
+		w := bytes.NewBuffer(nil)
+		c := m.Chunks[x]
+		c.Write(w)
+		bufs[x] = w.Bytes()
+	})
+	// Write to database in batched transactions
+	txn := save.NewTransaction(true)
+	for r, v := range bufs {
+		name := []byte(fmt.Sprintf("Chunk-%d", r))
+		if err := txn.Set(name, v); errors.Is(err, badger.ErrTxnTooBig) {
+			if err := txn.Commit(); err != nil {
+				panic(err)
+			}
+			txn.Discard()
+			txn = save.NewTransaction(true)
+			if err := txn.Set(name, v); err != nil {
+				panic(err)
+			}
+		}
+	}
+	if err := txn.Commit(); err != nil {
+		panic(err)
+	}
+	txn.Discard()
+	// If any chunks updated the tile cross references we need to save them
+	if crossReferencesDirty {
+		SaveTileRefs()
+	}
+	m.SaveBitmaps()
+}
+
+// SaveBitmaps saves all persistent bitmaps.
+func (m *CityMap) SaveBitmaps() {
+	if !m.cgDirty {
+		return
+	}
+	w := bytes.NewBuffer(nil)
+	util.PutUint32(w, 0) // Version
+	m.ChunksGenerated.WriteTo(w)
+	if err := save.Update(func(txn *badger.Txn) error {
+		return txn.Set([]byte("CityMap.ChunksGenerated"), w.Bytes())
+	}); err != nil {
+		panic(err)
+	}
+	m.cgDirty = false
+}
+
+// LoadBitmaps loads all persistent bitmaps.
+func (m *CityMap) LoadBitmaps() {
+	var buf []byte
+	if err := save.View(func(txn *badger.Txn) error {
+		item, err := txn.Get([]byte("CityMap.ChunksGenerated"))
+		if err != nil {
+			return err
+		}
+		buf, err = item.ValueCopy(buf)
+		return err
+	}); err != nil {
+		panic(err)
+	}
+	r := bytes.NewBuffer(buf)
+	_ = util.GetUint32(r) // Version
+	m.ChunksGenerated.ReadFrom(r)
+}
+
+// FullSave commits the entire working set to the current save database without
+// freeing memory.
+func (m *CityMap) FullSave() {
+	m.saveAllChunks()
+}
+
+func chunkRefForPoint(p util.Point) uint32 {
+	return uint32(p.Y*CityMapWidth + p.X)
 }

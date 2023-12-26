@@ -21,5 +21,5 @@ func main() {
 			os.Exit(0)
 		}
 	}()
-	termui.RunMode(s, termgui.NewMainMenu())
+	termui.RunMode(s, termgui.NewMainMenu(s))
 }

@@ -22,3 +22,6 @@ go.work
 
 # Performance profiles
 *.pprof
+
+# Save databases
+/saves

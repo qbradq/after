@@ -29,7 +29,7 @@ func main() {
 			panic(err)
 		}
 		pprof.StartCPUProfile(pf)
-		termui.RunMode(s, termgui.NewMainMenu())
+		termui.RunMode(s, termgui.NewMainMenu(s))
 		pprof.StopCPUProfile()
 		pf.Close()
 		s.Fini()

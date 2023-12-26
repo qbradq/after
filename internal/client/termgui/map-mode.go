@@ -76,7 +76,7 @@ func (m *MapMode) HandleEvent(s termui.TerminalDriver, e any) error {
 // Draw implements the termui.Mode interface.
 func (m *MapMode) Draw(s termui.TerminalDriver) {
 	mtl := m.topLeft()
-	m.CityMap.Load(util.NewRectXYWH(mtl.X, mtl.Y, m.Bounds.Width(), m.Bounds.Height()))
+	m.CityMap.EnsureLoaded(util.NewRectXYWH(mtl.X, mtl.Y, m.Bounds.Width(), m.Bounds.Height()))
 	var p util.Point
 	for p.Y = mtl.Y; p.Y < mtl.Y+m.Bounds.Height(); p.Y++ {
 		for p.X = mtl.X; p.X < mtl.X+m.Bounds.Width(); p.X++ {

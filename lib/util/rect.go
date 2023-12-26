@@ -55,3 +55,14 @@ func (r Rect) Height() int { return (r.BR.Y - r.TL.Y) + 1 }
 func (r Rect) Contains(p Point) bool {
 	return p.X >= r.TL.X && p.X <= r.BR.X && p.Y >= r.TL.Y && p.Y <= r.BR.Y
 }
+
+// CenterRect returns the center a rect from the center of this rect with the
+// given dimensions.
+func (r Rect) CenterRect(w, h int) Rect {
+	return NewRectXYWH(
+		r.TL.X+(r.Width()-w)/2,
+		r.TL.Y+(r.Height()-h)/2,
+		w,
+		h,
+	)
+}

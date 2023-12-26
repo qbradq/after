@@ -7,42 +7,14 @@ import (
 	"github.com/qbradq/after/lib/util"
 )
 
-// Global chunk generators index
-var ChunkGens = map[string]*ChunkGen{
-	// The global default chunk generator that does basically nothing. This is
-	// used as a fall-back for when we are first generating the city map but
-	// should not be seen in-game.
-	"Default": {
-		ID:      "Default",
-		Name:    "an error",
-		Width:   1,
-		Height:  1,
-		Minimap: []string{"."},
-		Fg:      termui.ColorLime,
-		Bg:      termui.ColorBlack,
-		Map: []string{
-			"................",
-			"................",
-			"................",
-			"................",
-			"................",
-			"................",
-			"................",
-			"................",
-			"................",
-			"................",
-			"................",
-			"................",
-			"................",
-			"................",
-			"................",
-			"................",
-		},
-		Tiles: map[string]string{
-			".": "Default",
-		},
-	},
+func init() {
+	game.GetChunkGen = func(s string) game.ChunkGen {
+		return ChunkGens[s]
+	}
 }
+
+// Global chunk generators index
+var ChunkGens = map[string]*ChunkGen{}
 
 // ChunkGen defines what the chunk looks like on the city map and controls tile,
 // item and actor placements. Note that the zero value is *not sane*. Only get
@@ -57,6 +29,17 @@ type ChunkGen struct {
 	Bg      termui.Color      // Background color
 	Map     []string          // Map of characters that define how to procedurally generate each tile
 	Tiles   map[string]string // Mapping of map characters to tile generators
+}
+
+// GetID returns the unique identifier of the generator.
+func (g *ChunkGen) GetID() string { return g.ID }
+
+// AssignStaticInfo inserts all the static chunk info.
+func (g *ChunkGen) AssignStaticInfo(c *game.Chunk) {
+	c.Name = g.Name
+	c.MinimapForeground = g.Fg
+	c.MinimapBackground = g.Bg
+	c.MinimapRune = string(g.Minimap[c.ChunkGenOffset.Y][c.ChunkGenOffset.X])
 }
 
 // Generate handles all of the procedural generation for the chunk.

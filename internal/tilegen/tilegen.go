@@ -12,9 +12,7 @@ import (
 type TileGen []game.TileRef
 
 // TileGens is the mapping of generator names to objects.
-var TileGens = map[string]*TileGen{
-	"Error": {0},
-}
+var TileGens = map[string]*TileGen{}
 
 func (g *TileGen) UnmarshalJSON(in []byte) error {
 	var src = map[string]int{}

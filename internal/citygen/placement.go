@@ -78,10 +78,7 @@ func place(m *game.CityMap, g *chunkgen.ChunkGen, p util.Point, f util.Facing) b
 			c.ChunkGenOffset = cgo
 			c.Facing = f
 			c.Generator = g
-			c.Name = g.Name
-			c.MinimapForeground = g.Fg
-			c.MinimapBackground = g.Bg
-			c.MinimapRune = string(g.Minimap[cgo.Y][cgo.X])
+			g.AssignStaticInfo(c)
 			c.Flags |= game.ChunkFlagsOccupied
 		}
 	}
@@ -98,9 +95,6 @@ func set(m *game.CityMap, p util.Point, g *chunkgen.ChunkGen, f util.Facing) {
 	c.ChunkGenOffset = util.Point{}
 	c.Facing = f
 	c.Generator = g
-	c.Name = g.Name
-	c.MinimapForeground = g.Fg
-	c.MinimapBackground = g.Bg
-	c.MinimapRune = string(g.Minimap[0][0])
+	g.AssignStaticInfo(c)
 	c.Flags &= ^game.ChunkFlagsOccupied
 }

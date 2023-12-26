@@ -1,6 +1,9 @@
 package game
 
 import (
+	"io"
+	"time"
+
 	"github.com/qbradq/after/lib/termui"
 	"github.com/qbradq/after/lib/util"
 )
@@ -13,17 +16,21 @@ const (
 // ChunkGen is the interface all chunk generators must implement for the game
 // library to interact with them.
 type ChunkGen interface {
-	// Generate handles all procedural generation for the chunk
+	// Generate handles all initial procedural generation for the chunk
 	Generate(*Chunk)
+	// AssignStaticInfo inserts all of the non-procedurally generated bits into
+	// the chunk, such as name and map rune.
+	AssignStaticInfo(*Chunk)
+	// GetID returns the unique ID of the generator.
+	GetID() string
 }
 
 // ChunkFlag encodes various bit flags of a chunk.
 type ChunkFlags uint8
 
 const (
-	ChunkFlagsNone      ChunkFlags = 0b00000000 // No flags enabled
-	ChunkFlagsOccupied  ChunkFlags = 0b00000001 // Chunk was explicitly placed during the city gen process
-	ChunkFlagsGenerated ChunkFlags = 0b00000010 // Chunk has already been generated
+	ChunkFlagsNone     ChunkFlags = 0b00000000 // No flags enabled
+	ChunkFlagsOccupied ChunkFlags = 0b00000001 // Chunk was explicitly placed during the city gen process
 )
 
 // Chunk represents the smallest unit of city planning and contains the tiles,
@@ -38,7 +45,7 @@ type Chunk struct {
 	MinimapBackground termui.Color // Background color of the rune on the minimap
 	Flags             ChunkFlags   // Flags
 	Tiles             []*TileDef   // Tile matrix
-	Loaded            bool         // If true Load() has been called and Unload() has not
+	Loaded            time.Time    // Time this chunk was loaded, the zero value means it is not in memory
 }
 
 // NewChunk allocates and returns a new Chunk struct. Note that this struct does
@@ -47,23 +54,32 @@ type Chunk struct {
 func NewChunk() *Chunk {
 	c := &Chunk{
 		Name:              "an error",
-		MinimapRune:       ".",
+		MinimapRune:       "!",
 		MinimapForeground: termui.ColorWhite,
-		MinimapBackground: termui.ColorBlack,
+		MinimapBackground: termui.ColorRed,
 	}
 	return c
 }
 
-// Load ensures that the chunk is fully loaded from the chunk data and ready to
-// use. This is a cheap operation for chunks that are already loaded.
-func (c *Chunk) Load() {
-	if c.Loaded {
-		return
+// Write writes the chunk to w.
+func (c *Chunk) Write(w io.Writer) {
+	util.PutUint32(w, 0)        // Version
+	for _, t := range c.Tiles { // Tile map
+		util.PutUint16(w, uint16(getTileCrossRef(t.BackRef)))
 	}
+}
+
+// Unload frees chunk-level persistent memory
+func (c *Chunk) Unload() {
+	c.Tiles = nil
+}
+
+// Read allocates memory and reads the chunk from r.
+func (c *Chunk) Read(r io.Reader) {
 	c.Tiles = make([]*TileDef, ChunkWidth*ChunkHeight)
-	if c.Flags&ChunkFlagsGenerated == 0 {
-		c.Generator.Generate(c)
-		c.Flags |= ChunkFlagsGenerated
+	_ = util.GetUint32(r)    // Version
+	for i := range c.Tiles { // Tile map
+		x := tileCrossRef(util.GetUint16(r))
+		c.Tiles[i] = tileCrossRefs[x]
 	}
-	c.Loaded = true
 }
