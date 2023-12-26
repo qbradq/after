@@ -2,10 +2,8 @@ package game
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 
-	"github.com/dgraph-io/badger/v4"
 	"github.com/qbradq/after/lib/termui"
 	"github.com/qbradq/after/lib/util"
 )
@@ -63,40 +61,22 @@ func SaveTileRefs() {
 		util.PutUint16(w, uint16(k))
 		util.PutString(w, v)
 	}
-	// Write to database
-	if err := save.Update(func(txn *badger.Txn) error {
-		txn.Set([]byte("TileRefs"), w.Bytes())
-		return nil
-	}); err != nil {
-		panic(err)
-	}
+	SaveValue("TileRefs", w.Bytes())
 	// Flag as no longer dirty
 	crossReferencesDirty = false
 }
 
 // LoadTileRefs loads tileRefMap and rebuilds tileCrossRefs.
 func LoadTileRefs() {
+	tileRefMap = make(map[tileCrossRef]string)
 	// Read from database
-	var buf []byte
-	if err := save.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte("TileRefs"))
-		if err != nil {
-			return err
-		}
-		buf, err = item.ValueCopy(buf)
-		return err
-	}); err != nil {
-		// No tile reference saved yet, this is a new save
-		if errors.Is(err, badger.ErrKeyNotFound) {
-			return
-		}
-		panic(err)
+	r := LoadValue("TileRefs")
+	if r == nil {
+		// TileRefs have not yet been written - probably a new save
+		return
 	}
-	// Read in the map
-	r := bytes.NewBuffer(buf)
 	_ = util.GetUint32(r) // Version
 	n := int(util.GetUint16(r))
-	tileRefMap = make(map[tileCrossRef]string, n)
 	for i := 0; i < n; i++ {
 		tileRefMap[tileCrossRef(util.GetUint16(r))] = util.GetString(r)
 	}

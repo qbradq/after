@@ -26,7 +26,7 @@ func LoadSaveInfo() error {
 		return err
 	}
 	for _, file := range files {
-		if file.IsDir() {
+		if file.IsDir() || path.Ext(file.Name()) != ".json" {
 			continue
 		}
 		p := path.Join("saves", file.Name())

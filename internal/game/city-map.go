@@ -2,13 +2,11 @@ package game
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"sort"
 	"time"
 
-	"github.com/dgraph-io/badger/v4"
 	"github.com/kelindar/bitmap"
 	"github.com/qbradq/after/lib/util"
 )
@@ -47,36 +45,15 @@ func NewCityMap() *CityMap {
 
 // SaveCityPlan saves the city plan in the current save database.
 func (m *CityMap) SaveCityPlan() {
-	var buf = bytes.NewBuffer(nil)
-	m.Write(buf)
-	save.Update(func(txn *badger.Txn) error {
-		if err := txn.Set([]byte("CityPlan"), buf.Bytes()); err != nil {
-			panic(err)
-		}
-		return nil
-	})
-	// Force-generate empty bitmap sets
-	m.cgDirty = true
-	m.SaveBitmaps()
+	// Write
+	var w = bytes.NewBuffer(nil)
+	m.Write(w)
+	SaveValue("CityMap.Plan", w.Bytes())
 }
 
 // LoadCityPlan loads the city plan from the current save database.
 func (m *CityMap) LoadCityPlan() {
-	var buf []byte
-	if err := save.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte("CityPlan"))
-		if err != nil {
-			return err
-		}
-		buf, err = item.ValueCopy(buf)
-		if err != nil {
-			return err
-		}
-		return nil
-	}); err != nil {
-		panic(err)
-	}
-	r := bytes.NewBuffer(buf)
+	r := LoadValue("CityMap.Plan")
 	m.Read(r)
 	m.LoadBitmaps()
 }
@@ -194,18 +171,9 @@ func (m *CityMap) EnsureLoaded(area util.Rect) {
 				continue
 			}
 			// Otherwise load the chunk into memory from the save database
-			var buf []byte
-			if err := save.View(func(txn *badger.Txn) error {
-				item, err := txn.Get([]byte(fmt.Sprintf("Chunk-%d", r)))
-				if err != nil {
-					return err
-				}
-				buf, err = item.ValueCopy(buf)
-				return err
-			}); err != nil {
-				panic(err)
-			}
-			c.Read(bytes.NewBuffer(buf))
+			n := fmt.Sprintf("Chunk-%d", r)
+			buf := LoadValue(n)
+			c.Read(buf)
 		}
 	}
 	// After we load chunks we need to make sure to purge old chunks so we don't
@@ -240,25 +208,11 @@ func (m *CityMap) purgeOldChunks() {
 		m.InMemoryChunks.Remove(cr)
 		m.InMemoryChunksCount--
 	}
-	// Save all unloaded chunks to the database in batched transactions
-	txn := save.NewTransaction(true)
+	// Save all unloaded chunks to the database
 	for k, v := range bufs {
-		name := []byte(fmt.Sprintf("Chunk-%d", k))
-		if err := txn.Set(name, v); errors.Is(err, badger.ErrTxnTooBig) {
-			if err := txn.Commit(); err != nil {
-				panic(err)
-			}
-			txn.Discard()
-			txn = save.NewTransaction(true)
-			if err := txn.Set(name, v); err != nil {
-				panic(err)
-			}
-		}
+		name := fmt.Sprintf("Chunk-%d", k)
+		SaveValue(name, v)
 	}
-	if err := txn.Commit(); err != nil {
-		panic(err)
-	}
-	txn.Discard()
 	// If any chunks updated the tile cross references we need to save them
 	if crossReferencesDirty {
 		SaveTileRefs()
@@ -277,25 +231,11 @@ func (m *CityMap) saveAllChunks() {
 		c.Write(w)
 		bufs[x] = w.Bytes()
 	})
-	// Write to database in batched transactions
-	txn := save.NewTransaction(true)
+	// Write to database
 	for r, v := range bufs {
-		name := []byte(fmt.Sprintf("Chunk-%d", r))
-		if err := txn.Set(name, v); errors.Is(err, badger.ErrTxnTooBig) {
-			if err := txn.Commit(); err != nil {
-				panic(err)
-			}
-			txn.Discard()
-			txn = save.NewTransaction(true)
-			if err := txn.Set(name, v); err != nil {
-				panic(err)
-			}
-		}
+		name := fmt.Sprintf("Chunk-%d", r)
+		SaveValue(name, v)
 	}
-	if err := txn.Commit(); err != nil {
-		panic(err)
-	}
-	txn.Discard()
 	// If any chunks updated the tile cross references we need to save them
 	if crossReferencesDirty {
 		SaveTileRefs()
@@ -311,28 +251,13 @@ func (m *CityMap) SaveBitmaps() {
 	w := bytes.NewBuffer(nil)
 	util.PutUint32(w, 0) // Version
 	m.ChunksGenerated.WriteTo(w)
-	if err := save.Update(func(txn *badger.Txn) error {
-		return txn.Set([]byte("CityMap.ChunksGenerated"), w.Bytes())
-	}); err != nil {
-		panic(err)
-	}
+	SaveValue("CityMap.ChunksGenerated", w.Bytes())
 	m.cgDirty = false
 }
 
 // LoadBitmaps loads all persistent bitmaps.
 func (m *CityMap) LoadBitmaps() {
-	var buf []byte
-	if err := save.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte("CityMap.ChunksGenerated"))
-		if err != nil {
-			return err
-		}
-		buf, err = item.ValueCopy(buf)
-		return err
-	}); err != nil {
-		panic(err)
-	}
-	r := bytes.NewBuffer(buf)
+	r := LoadValue("CityMap.ChunksGenerated")
 	_ = util.GetUint32(r) // Version
 	m.ChunksGenerated.ReadFrom(r)
 }
