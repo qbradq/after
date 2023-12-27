@@ -11,6 +11,7 @@ import (
 // GameMode implements the top-level client interface.
 type GameMode struct {
 	CityMap   *game.CityMap // The city we are playing
+	LogMode   *LogMode      // Log display
 	MapMode   *MapMode      // Map display
 	Minimap   *Minimap      // Small mini-map
 	ModeStack []termui.Mode // Internal stack of mode that overlay the main game mode, like the escape menu or inventory screen
@@ -19,8 +20,9 @@ type GameMode struct {
 
 // NewGameMode returns a new game mode.
 func NewGameMode(m *game.CityMap) *GameMode {
-	return &GameMode{
+	gm := &GameMode{
 		CityMap: m,
+		LogMode: &LogMode{},
 		MapMode: &MapMode{
 			CityMap: m,
 			Center:  m.Player.Position,
@@ -30,6 +32,9 @@ func NewGameMode(m *game.CityMap) *GameMode {
 			CursorStyle: 1,
 		},
 	}
+	game.Log = gm.LogMode
+	game.Log.Log(termui.ColorTeal, "Welcome to the Aftermath!")
+	return gm
 }
 
 // HandleEvent implements the termui.Mode interface.
@@ -82,6 +87,7 @@ func (m *GameMode) HandleEvent(s termui.TerminalDriver, e any) error {
 	case *termui.EventQuit:
 		return termui.ErrorQuit
 	}
+	m.LogMode.HandleEvent(s, e)
 	return m.MapMode.HandleEvent(s, e)
 }
 
@@ -90,6 +96,8 @@ func (m *GameMode) Draw(s termui.TerminalDriver) {
 	// Draw the root window elements
 	termui.DrawClear(s)
 	sw, sh := s.Size()
+	m.LogMode.Bounds = util.NewRectXYWH(sw-38, 21, 38, sh-21)
+	m.LogMode.Draw(s)
 	m.MapMode.Bounds = util.NewRectXYWH(0, 0, sw-39, sh)
 	m.MapMode.Center = m.CityMap.Player.Position
 	m.MapMode.CursorStyle = 0
@@ -98,7 +106,8 @@ func (m *GameMode) Draw(s termui.TerminalDriver) {
 	m.Minimap.Bounds = util.NewRectXYWH(sw-22, 0, 21, 21)
 	m.Minimap.Center = util.NewPoint(m.CityMap.Player.Position.X/game.ChunkWidth, m.CityMap.Player.Position.Y/game.ChunkHeight)
 	m.Minimap.Draw(s)
-	// termui.DrawBox(s, util.NewRectXYWH(sw-38, 0, 16, 21), termui.CurrentTheme.Normal)
+	termui.DrawBox(s, util.NewRectXYWH(sw-38, 0, 16, 21), termui.CurrentTheme.Normal)
+	termui.DrawStringCenter(s, util.NewRectXYWH(sw-38, 0, 16, 1), "Placeholder", termui.CurrentTheme.Normal)
 	// Render the mode stack
 	for _, m := range m.ModeStack {
 		m.Draw(s)

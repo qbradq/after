@@ -8,6 +8,7 @@ require (
 	github.com/hajimehoshi/ebiten/v2 v2.6.3
 	github.com/kelindar/bitmap v1.5.2
 	github.com/larspensjo/Go-simplex-noise v0.0.0-20121005164837-bfdcb9fc4b93
+	github.com/mitchellh/go-wordwrap v1.0.1
 	go.etcd.io/bbolt v1.3.8
 )
 

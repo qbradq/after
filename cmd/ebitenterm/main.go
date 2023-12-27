@@ -4,7 +4,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"runtime/pprof"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/qbradq/after/internal/client/termgui"
@@ -24,14 +23,14 @@ func main() {
 		}
 	}()
 	go func() {
-		pf, err := os.Create("cpu.pprof")
-		if err != nil {
-			panic(err)
-		}
-		pprof.StartCPUProfile(pf)
+		// pf, err := os.Create("cpu.pprof")
+		// if err != nil {
+		// 	panic(err)
+		// }
+		// pprof.StartCPUProfile(pf)
 		termui.RunMode(s, termgui.NewMainMenu(s))
-		pprof.StopCPUProfile()
-		pf.Close()
+		// pprof.StopCPUProfile()
+		// pf.Close()
 		s.Fini()
 		os.Exit(0)
 	}()

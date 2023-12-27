@@ -105,8 +105,8 @@ func (d *Driver) Draw(s *ebiten.Image) {
 	var op ebiten.DrawImageOptions
 	d.lock.RLock()
 	var p util.Point
-	for p.Y = d.b.TL.Y; p.Y < d.b.BR.Y; p.Y++ {
-		for p.X = d.b.TL.X; p.X < d.b.BR.X; p.X++ {
+	for p.Y = d.b.TL.Y; p.Y <= d.b.BR.Y; p.Y++ {
+		for p.X = d.b.TL.X; p.X <= d.b.BR.X; p.X++ {
 			g := d.fb[p.Y*d.b.Width()+p.X]
 			fg, bg := g.Style.Decompose()
 			n := int(g.Rune)
