@@ -85,7 +85,7 @@ func (d *Driver) resize(b util.Rect) {
 
 // Update implements the ebiten.Game interface.
 func (d *Driver) Update() error {
-	in := make([]rune, 32)
+	in := make([]rune, 0, 32)
 	in = ebiten.AppendInputChars(in)
 	for _, r := range in {
 		d.events <- &termui.EventKey{Key: r}
