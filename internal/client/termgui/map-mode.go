@@ -65,16 +65,21 @@ func (m *MapMode) Draw(s termui.TerminalDriver) {
 	a := m.CityMap.Player
 	p = a.Position
 	sp := util.NewPoint(p.X-mtl.X+m.Bounds.TL.X, p.Y-mtl.Y+m.Bounds.TL.Y)
-	ns := termui.StyleDefault.
-		Background(a.Bg).
-		Foreground(a.Fg)
-	s.SetCell(sp, termui.Glyph{
-		Rune:  rune(a.Rune[0]),
-		Style: ns,
-	})
+	if m.Bounds.Contains(sp) {
+		ns := termui.StyleDefault.
+			Background(a.Bg).
+			Foreground(a.Fg)
+		s.SetCell(sp, termui.Glyph{
+			Rune:  rune(a.Rune[0]),
+			Style: ns,
+		})
+	}
 	// Draw the cursor
-	drawCursor(s, util.Point{
+	sp = util.Point{
 		X: (m.Center.X - mtl.X) + m.Bounds.TL.X,
 		Y: (m.Center.Y - mtl.Y) + m.Bounds.TL.Y,
-	}, m.Bounds, m.CursorStyle)
+	}
+	if m.Bounds.Contains(sp) {
+		drawCursor(s, sp, m.Bounds, m.CursorStyle)
+	}
 }
