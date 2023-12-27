@@ -36,7 +36,8 @@ func NewLoadMenu(s termui.TerminalDriver) *LoadMenu {
 				}
 				m := game.NewCityMap()
 				m.LoadCityPlan()
-				termui.RunMode(s, NewGameMode(m, util.NewPoint(0*game.ChunkWidth+game.ChunkWidth/2, 0*game.ChunkHeight+game.ChunkHeight/2)))
+				m.LoadDynamicData()
+				termui.RunMode(s, NewGameMode(m))
 				game.CloseSave()
 				return termui.ErrorQuit
 			},
@@ -61,6 +62,6 @@ func (m *LoadMenu) HandleEvent(s termui.TerminalDriver, e any) error {
 // Draw implements the termui.Mode interface.
 func (m *LoadMenu) Draw(s termui.TerminalDriver) {
 	w, h := s.Size()
-	m.list.Bounds = util.NewRectWH(w, h).CenterRect(22, len(m.list.Items)+2)
+	m.list.Bounds = util.NewRectWH(w, h).CenterRect(42, len(m.list.Items)+2)
 	m.list.Draw(s)
 }

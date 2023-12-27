@@ -35,38 +35,7 @@ func (m *MapMode) topLeft() util.Point {
 
 // HandleEvent implements the termui.Mode interface.
 func (m *MapMode) HandleEvent(s termui.TerminalDriver, e any) error {
-	switch ev := e.(type) {
-	case *termui.EventKey:
-		switch ev.Key {
-		case 'u':
-			m.Center.X++
-			m.Center.Y--
-		case 'y':
-			m.Center.X--
-			m.Center.Y--
-		case 'n':
-			m.Center.X++
-			m.Center.Y++
-		case 'b':
-			m.Center.X--
-			m.Center.Y++
-		case 'l':
-			m.Center.X++
-		case 'h':
-			m.Center.X--
-		case 'j':
-			m.Center.Y++
-		case 'k':
-			m.Center.Y--
-		case 'm':
-			termui.RunMode(s, &Minimap{
-				CityMap:     m.CityMap,
-				Bounds:      util.NewRectWH(s.Size()),
-				Center:      util.NewPoint(m.Center.X/game.ChunkWidth, m.Center.Y/game.ChunkHeight),
-				CursorStyle: 2,
-				DrawInfo:    true,
-			})
-		}
+	switch e.(type) {
 	case *termui.EventQuit:
 		return termui.ErrorQuit
 	}
@@ -78,6 +47,7 @@ func (m *MapMode) Draw(s termui.TerminalDriver) {
 	mtl := m.topLeft()
 	m.CityMap.EnsureLoaded(util.NewRectXYWH(mtl.X, mtl.Y, m.Bounds.Width(), m.Bounds.Height()))
 	var p util.Point
+	// Draw the tile matrix
 	for p.Y = mtl.Y; p.Y < mtl.Y+m.Bounds.Height(); p.Y++ {
 		for p.X = mtl.X; p.X < mtl.X+m.Bounds.Width(); p.X++ {
 			sp := util.NewPoint(p.X-mtl.X+m.Bounds.TL.X, p.Y-mtl.Y+m.Bounds.TL.Y)
@@ -91,6 +61,18 @@ func (m *MapMode) Draw(s termui.TerminalDriver) {
 			})
 		}
 	}
+	// Draw the player
+	a := m.CityMap.Player
+	p = a.Position
+	sp := util.NewPoint(p.X-mtl.X+m.Bounds.TL.X, p.Y-mtl.Y+m.Bounds.TL.Y)
+	ns := termui.StyleDefault.
+		Background(a.Bg).
+		Foreground(a.Fg)
+	s.SetCell(sp, termui.Glyph{
+		Rune:  rune(a.Rune[0]),
+		Style: ns,
+	})
+	// Draw the cursor
 	drawCursor(s, util.Point{
 		X: (m.Center.X - mtl.X) + m.Bounds.TL.X,
 		Y: (m.Center.Y - mtl.Y) + m.Bounds.TL.Y,

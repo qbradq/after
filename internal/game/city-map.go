@@ -18,11 +18,15 @@ const (
 	purgeInMemoryChunksTarget int = 100 // Number of chunks to keep in hot memory after purging least-recently used chunks
 )
 
+// Return slice for GetActors
+var gaRet []*Actor
+
 // CityMap represents the entire world of the game in terms of which chunks go
 // where.
 type CityMap struct {
 	Bounds              util.Rect     // Bounds of the city map in chunks
 	TileBounds          util.Rect     // Bounds of the city map in tiles
+	Player              *Player       // Player actor
 	Chunks              []*Chunk      // The chunks of the map
 	InMemoryChunks      bitmap.Bitmap // Bitmap of all chunks loaded into memory
 	InMemoryChunksCount int           // Running count of in-memory chunks to avoid excessive calls to bitmap.Count()
@@ -38,7 +42,7 @@ func NewCityMap() *CityMap {
 		Chunks:     make([]*Chunk, CityMapWidth*CityMapHeight),
 	}
 	for i := range m.Chunks {
-		m.Chunks[i] = NewChunk()
+		m.Chunks[i] = NewChunk(i%CityMapWidth, i/CityMapWidth, uint32(i))
 	}
 	return m
 }
@@ -74,6 +78,23 @@ func (m *CityMap) Write(w io.Writer) {
 		util.PutByte(w, byte(c.Facing))
 		util.PutByte(w, byte(c.Flags))
 	}
+}
+
+// SaveDynamicData writes top-level dynamic map data like the player actor's
+// current position.
+func (m *CityMap) SaveDynamicData() {
+	w := bytes.NewBuffer(nil)
+	util.PutUint32(w, 0) // Version
+	m.Player.Write(w)    // Player
+	SaveValue("CityMap.DynamicData", w.Bytes())
+}
+
+// LoadDynamicData loads top-level dynamic map data like the player actor's
+// current position.
+func (m *CityMap) LoadDynamicData() {
+	r := LoadValue("CityMap.DynamicData")
+	_ = util.GetUint32(r) // Version
+	m.Player = NewPlayerFromReader(r)
 }
 
 // Read reads the city-level map information from the buffer.
@@ -152,33 +173,39 @@ func (m *CityMap) EnsureLoaded(area util.Rect) {
 		for p.X = r.TL.X; p.X <= r.BR.X; p.X++ {
 			r := chunkRefForPoint(p)
 			c := m.Chunks[r]
-			c.Loaded = now
-			// Bail if we are already loaded
-			if c.Tiles != nil {
-				continue
-			}
-			// There is no possibility of error after this point so go ahead
-			// and mark the chunk as in-memory
-			m.InMemoryChunks.Set(r)
-			m.InMemoryChunksCount++
-			// Allocate memory
-			c.Tiles = make([]*TileDef, ChunkWidth*ChunkHeight)
-			// Generate the chunk if this has never happened before
-			if !m.ChunksGenerated.Contains(r) {
-				m.ChunksGenerated.Set(r)
-				m.cgDirty = true
-				c.Generator.Generate(c)
-				continue
-			}
-			// Otherwise load the chunk into memory from the save database
-			n := fmt.Sprintf("Chunk-%d", r)
-			buf := LoadValue(n)
-			c.Read(buf)
+			m.LoadChunk(c, now)
 		}
 	}
 	// After we load chunks we need to make sure to purge old chunks so we don't
 	// fill all available RAM with chunk data.
 	m.purgeOldChunks()
+}
+
+// LoadChunk loads the passed-in chunk or generates it if needed. This function
+// is cheap if the chunk is already in memory.
+func (m *CityMap) LoadChunk(c *Chunk, now time.Time) {
+	c.Loaded = now
+	// Bail if we are already loaded
+	if c.Tiles != nil {
+		return
+	}
+	// There is no possibility of error after this point so go ahead
+	// and mark the chunk as in-memory
+	m.InMemoryChunks.Set(c.Ref)
+	m.InMemoryChunksCount++
+	// Allocate memory
+	c.Tiles = make([]*TileDef, ChunkWidth*ChunkHeight)
+	// Generate the chunk if this has never happened before
+	if !m.ChunksGenerated.Contains(c.Ref) {
+		m.ChunksGenerated.Set(c.Ref)
+		m.cgDirty = true
+		c.Generator.Generate(c)
+		return
+	}
+	// Otherwise load the chunk into memory from the save database
+	n := fmt.Sprintf("Chunk-%d", c.Ref)
+	buf := LoadValue(n)
+	c.Read(buf)
 }
 
 // purgeOldChunks purges chunks in least-recently-used first order down to the
@@ -266,8 +293,67 @@ func (m *CityMap) LoadBitmaps() {
 // freeing memory.
 func (m *CityMap) FullSave() {
 	m.saveAllChunks()
+	m.SaveDynamicData()
 }
 
 func chunkRefForPoint(p util.Point) uint32 {
 	return uint32(p.Y*CityMapWidth + p.X)
+}
+
+// GetActors returns a slice of all of the actors within the given bounds. The
+// returned slice is reused by subsequent calls to GetActors().
+func (m *CityMap) GetActors(b util.Rect) []*Actor {
+	gaRet = gaRet[:0]
+	cb := util.Rect{
+		TL: util.Point{
+			X: b.TL.X / ChunkWidth,
+			Y: b.TL.Y / ChunkHeight,
+		},
+		BR: util.Point{
+			X: b.BR.X / ChunkWidth,
+			Y: b.BR.Y / ChunkHeight,
+		},
+	}
+	if cb.TL.X < 0 {
+		cb.TL.X = 0
+	}
+	if cb.TL.Y < 0 {
+		cb.TL.Y = 0
+	}
+	if cb.BR.X >= CityMapWidth {
+		cb.BR.X = CityMapWidth - 1
+	}
+	if cb.BR.Y >= CityMapHeight {
+		cb.BR.Y = CityMapHeight - 1
+	}
+	var p util.Point
+	for p.Y = cb.TL.Y; p.Y <= cb.BR.Y; p.Y++ {
+		for p.X = cb.TL.X; p.X <= cb.BR.X; p.X++ {
+			c := m.GetChunkFromMapPoint(p)
+			for _, a := range c.Actors {
+				if b.Contains(a.Position) {
+					gaRet = append(gaRet, a)
+				}
+			}
+		}
+	}
+	return gaRet
+}
+
+// AddActor adds the actor to the city at it's current location.
+func (m *CityMap) AddActor(a *Actor) {
+	c := m.GetChunk(a.Position)
+	m.LoadChunk(c, time.Now())
+	c.Actors = append(c.Actors, a)
+}
+
+// GetActorAt returns the actor at the given position or nil.
+func (m *CityMap) GetActorAt(p util.Point) *Actor {
+	c := m.GetChunk(p)
+	for _, a := range c.Actors {
+		if a.Position == p {
+			return a
+		}
+	}
+	return nil
 }

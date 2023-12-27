@@ -38,8 +38,11 @@ func NewMainMenu(s termui.TerminalDriver) *MainMenu {
 						panic(err)
 					}
 					m := citygen.CityGens["Interstate Town"]()
+					m.Player = game.NewPlayer()
+					m.Player.Position = util.NewPoint(0*game.ChunkWidth+game.ChunkWidth/2, 0*game.ChunkHeight+game.ChunkHeight/2)
 					m.SaveCityPlan()
-					termui.RunMode(s, NewGameMode(m, util.NewPoint(0*game.ChunkWidth+game.ChunkWidth/2, 0*game.ChunkHeight+game.ChunkHeight/2)))
+					m.SaveDynamicData()
+					termui.RunMode(s, NewGameMode(m))
 					game.CloseSave()
 				case 1:
 					game.LoadSaveInfo()

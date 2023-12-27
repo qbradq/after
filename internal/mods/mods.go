@@ -54,6 +54,7 @@ type Mod struct {
 
 // UnloadAllMods unloads all currently loaded mods.
 func UnloadAllMods() {
+	game.ActorDefs = map[string]*game.Actor{}
 	game.TileDefs = []*game.TileDef{}
 	game.TileRefs = map[string]game.TileRef{}
 	tilegen.TileGens = map[string]*tilegen.TileGen{}
@@ -63,21 +64,31 @@ func UnloadAllMods() {
 // LoadMods loads all of the listed mods.
 func LoadMods(ids []string) error {
 	UnloadAllMods()
+	// Actors
 	for _, id := range ids {
 		mod, found := mods[id]
 		if !found {
 			return fmt.Errorf("mod %s not found", id)
 		}
+		if err := mod.loadActors(); err != nil {
+			return err
+		}
+	}
+	// Tiles
+	for _, id := range ids {
+		mod := mods[id]
 		if err := mod.loadTiles(); err != nil {
 			return err
 		}
 	}
+	// TileGens
 	for _, id := range ids {
 		mod := mods[id]
 		if err := mod.loadTileGens(); err != nil {
 			return err
 		}
 	}
+	// ChunkGens
 	for _, id := range ids {
 		mod := mods[id]
 		if err := mod.loadChunkGens(); err != nil {
@@ -191,6 +202,35 @@ func (m *Mod) loadChunkGens() error {
 				}
 			}
 			chunkgen.ChunkGens[g.ID] = g
+		}
+	}
+	return nil
+}
+
+// loadActors loads the mod's actor definitions.
+func (m *Mod) loadActors() error {
+	files, err := os.ReadDir(path.Join(m.Path, "actors"))
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return err
+		}
+	}
+	for _, f := range files {
+		d, err := os.ReadFile(path.Join(m.Path, "actors", f.Name()))
+		if err != nil {
+			return err
+		}
+		var actors map[string]*game.Actor
+		err = json.Unmarshal(d, &actors)
+		if err != nil {
+			panic(err)
+		}
+		for k, a := range actors {
+			if _, found := game.ActorDefs[k]; found {
+				panic(fmt.Errorf("duplicate tile definition %s", k))
+			}
+			a.TemplateID = k
+			game.ActorDefs[k] = a
 		}
 	}
 	return nil

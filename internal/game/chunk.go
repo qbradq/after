@@ -36,6 +36,8 @@ const (
 // Chunk represents the smallest unit of city planning and contains the tiles,
 // items and actors within its bounds.
 type Chunk struct {
+	Ref               uint32       // Reference index for the chunk
+	Bounds            util.Rect    // Bounds of the chunk
 	Generator         ChunkGen     // The chunk generator responsible for procedural generation
 	ChunkGenOffset    util.Point   // Offset from the top-left corner of the chunk generator
 	Facing            util.Facing  // Facing of the chunk during generation
@@ -44,15 +46,18 @@ type Chunk struct {
 	MinimapForeground termui.Color // Foreground color of the rune on the minimap
 	MinimapBackground termui.Color // Background color of the rune on the minimap
 	Flags             ChunkFlags   // Flags
-	Tiles             []*TileDef   // Tile matrix
 	Loaded            time.Time    // Time this chunk was loaded, the zero value means it is not in memory
+	Tiles             []*TileDef   // Tile matrix
+	Actors            []*Actor     // All actors within the chunk
 }
 
 // NewChunk allocates and returns a new Chunk struct. Note that this struct does
 // *not* have the Generator field set yet and all of the tile pointers are nil.
 // See Load().
-func NewChunk() *Chunk {
+func NewChunk(x, y int, r uint32) *Chunk {
 	c := &Chunk{
+		Ref:               r,
+		Bounds:            util.NewRectXYWH(x*ChunkWidth, y*ChunkHeight, ChunkWidth, ChunkHeight),
 		Name:              "an error",
 		MinimapRune:       "!",
 		MinimapForeground: termui.ColorWhite,
@@ -67,11 +72,17 @@ func (c *Chunk) Write(w io.Writer) {
 	for _, t := range c.Tiles { // Tile map
 		util.PutUint16(w, uint16(getTileCrossRef(t.BackRef)))
 	}
+	util.PutUint16(w, uint16(len(c.Actors))) // Number of actors
+	for _, a := range c.Actors {             // Actors
+		a.Write(w)
+	}
 }
 
 // Unload frees chunk-level persistent memory
 func (c *Chunk) Unload() {
 	c.Tiles = nil
+	c.Actors = nil
+	c.Loaded = time.Time{}
 }
 
 // Read allocates memory and reads the chunk from r.
@@ -81,5 +92,9 @@ func (c *Chunk) Read(r io.Reader) {
 	for i := range c.Tiles { // Tile map
 		x := tileCrossRef(util.GetUint16(r))
 		c.Tiles[i] = tileCrossRefs[x]
+	}
+	n := int(util.GetUint16(r)) // Number of actors
+	for i := 0; i < n; i++ {    // Actors
+		c.Actors = append(c.Actors, NewActorFromReader(r))
 	}
 }

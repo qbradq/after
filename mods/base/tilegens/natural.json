@@ -4,8 +4,8 @@
         "Brush": 1
     },
     "RandomBrush": {
-        "Grass": 128,
-        "Brush": 16,
+        "Grass": 32,
+        "Brush": 8,
         "Tree": 1
     },
     "RandomForest": {
