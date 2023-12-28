@@ -156,6 +156,9 @@ func (d *Driver) Fini() {
 
 // SetCell implements the termui.TerminalDriver interface.
 func (d *Driver) SetCell(p util.Point, g termui.Glyph) {
+	if !d.b.Contains(p) {
+		return
+	}
 	d.bb[p.Y*d.b.Width()+p.X] = g
 }
 

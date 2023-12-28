@@ -90,8 +90,8 @@ func (c *Chunk) Read(r io.Reader) {
 	c.Tiles = make([]*TileDef, ChunkWidth*ChunkHeight)
 	_ = util.GetUint32(r)    // Version
 	for i := range c.Tiles { // Tile map
-		x := tileCrossRef(util.GetUint16(r))
-		c.Tiles[i] = tileCrossRefs[x]
+		x := TileCrossRef(util.GetUint16(r))
+		c.Tiles[i] = TileCrossRefs[x]
 	}
 	n := int(util.GetUint16(r)) // Number of actors
 	for i := 0; i < n; i++ {    // Actors

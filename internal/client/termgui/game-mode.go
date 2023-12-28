@@ -16,6 +16,7 @@ type GameMode struct {
 	Minimap   *Minimap      // Small mini-map
 	ModeStack []termui.Mode // Internal stack of mode that overlay the main game mode, like the escape menu or inventory screen
 	Quit      bool          // If true we should quit
+	InTarget  bool          // If true we are in targeting mode
 }
 
 // NewGameMode returns a new game mode.
@@ -37,19 +38,7 @@ func NewGameMode(m *game.CityMap) *GameMode {
 	return gm
 }
 
-// HandleEvent implements the termui.Mode interface.
-func (m *GameMode) HandleEvent(s termui.TerminalDriver, e any) error {
-	if len(m.ModeStack) > 0 {
-		err := m.ModeStack[len(m.ModeStack)-1].HandleEvent(s, e)
-		if m.Quit {
-			return termui.ErrorQuit
-		}
-		if errors.Is(err, termui.ErrorQuit) {
-			m.ModeStack = m.ModeStack[:len(m.ModeStack)-1]
-			return nil
-		}
-		return err
-	}
+func (m *GameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 	switch ev := e.(type) {
 	case *termui.EventKey:
 		switch ev.Key {
@@ -73,6 +62,15 @@ func (m *GameMode) HandleEvent(s termui.TerminalDriver, e any) error {
 			m.CityMap.Player.Position.Y++
 		case 'k':
 			m.CityMap.Player.Position.Y--
+		case 'x':
+			m.InTarget = true
+			m.MapMode.Callback = func(b bool) error {
+				m.InTarget = false
+				return nil
+			}
+			m.CityMap.Player.Position = m.CityMap.TileBounds.Bound(m.CityMap.Player.Position)
+			m.MapMode.Center = m.CityMap.Player.Position
+			return nil
 		case 'm':
 			termui.RunMode(s, &Minimap{
 				CityMap:     m.CityMap,
@@ -81,14 +79,37 @@ func (m *GameMode) HandleEvent(s termui.TerminalDriver, e any) error {
 				CursorStyle: 2,
 				DrawInfo:    true,
 			})
+			return nil
 		case '\033':
 			m.ModeStack = append(m.ModeStack, NewEscapeMenu(m))
+			return nil
 		}
 	case *termui.EventQuit:
 		return termui.ErrorQuit
 	}
+	m.CityMap.Player.Position = m.CityMap.TileBounds.Bound(m.CityMap.Player.Position)
+	return nil
+}
+
+// HandleEvent implements the termui.Mode interface.
+func (m *GameMode) HandleEvent(s termui.TerminalDriver, e any) error {
+	if len(m.ModeStack) > 0 {
+		err := m.ModeStack[len(m.ModeStack)-1].HandleEvent(s, e)
+		if m.Quit {
+			return termui.ErrorQuit
+		}
+		if errors.Is(err, termui.ErrorQuit) {
+			m.ModeStack = m.ModeStack[:len(m.ModeStack)-1]
+			return nil
+		}
+		return err
+	}
 	m.LogMode.HandleEvent(s, e)
-	return m.MapMode.HandleEvent(s, e)
+	if m.InTarget {
+		return m.MapMode.HandleEvent(s, e)
+	} else {
+		return m.handleEventInternal(s, e)
+	}
 }
 
 // Draw implements the termui.Mode interface.
@@ -99,8 +120,14 @@ func (m *GameMode) Draw(s termui.TerminalDriver) {
 	m.LogMode.Bounds = util.NewRectXYWH(sw-38, 21, 38, sh-21)
 	m.LogMode.Draw(s)
 	m.MapMode.Bounds = util.NewRectXYWH(0, 0, sw-39, sh)
-	m.MapMode.Center = m.CityMap.Player.Position
-	m.MapMode.CursorStyle = 0
+	if m.InTarget {
+		m.MapMode.CursorStyle = 2
+		m.MapMode.DrawInfo = true
+	} else {
+		m.MapMode.Center = m.CityMap.Player.Position
+		m.MapMode.CursorStyle = 0
+		m.MapMode.DrawInfo = false
+	}
 	m.MapMode.Draw(s)
 	termui.DrawVLine(s, util.NewPoint(sw-39, 0), sh, termui.CurrentTheme.Normal)
 	m.Minimap.Bounds = util.NewRectXYWH(sw-22, 0, 21, 21)

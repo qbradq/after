@@ -66,3 +66,44 @@ func (r Rect) CenterRect(w, h int) Rect {
 		h,
 	)
 }
+
+// Bound bounds a point to the rect, such that the point is forced inside the
+// rect along the axis where necessary.
+func (r Rect) Bound(p Point) Point {
+	if p.X < r.TL.X {
+		p.X = r.TL.X
+	}
+	if p.X > r.BR.X {
+		p.X = r.BR.X
+	}
+	if p.Y < r.TL.Y {
+		p.Y = r.TL.Y
+	}
+	if p.Y > r.BR.Y {
+		p.Y = r.BR.Y
+	}
+	return p
+}
+
+// Contain returns the rect contained within this rect, that is moved along the
+// axis so that b is contained within r. If any of the dimensions of b are
+// larger than that dimension in r the results are undefined.
+func (r Rect) Contain(b Rect) Rect {
+	if b.TL.X < r.TL.X {
+		b.BR.X += r.TL.X - b.TL.X
+		b.TL.X = r.TL.X
+	}
+	if b.BR.X > r.BR.X {
+		b.TL.X -= b.BR.X - r.BR.X
+		b.BR.X = r.BR.X
+	}
+	if b.TL.Y < r.TL.Y {
+		b.BR.Y += r.TL.Y - b.TL.Y
+		b.TL.Y = r.TL.Y
+	}
+	if b.BR.Y > r.BR.Y {
+		b.TL.Y -= b.BR.Y - r.BR.Y
+		b.BR.Y = r.BR.Y
+	}
+	return b
+}

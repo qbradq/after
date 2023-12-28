@@ -12,10 +12,10 @@ import (
 )
 
 const (
-	CityMapWidth              int = 660 // Width of a city map in chunks
-	CityMapHeight             int = 660 // Height of a city map in chunks
-	maxInMemoryChunks         int = 200 // Max chunks to keep in hot memory
-	purgeInMemoryChunksTarget int = 100 // Number of chunks to keep in hot memory after purging least-recently used chunks
+	CityMapWidth              int = 660  // Width of a city map in chunks
+	CityMapHeight             int = 660  // Height of a city map in chunks
+	maxInMemoryChunks         int = 1024 // Max chunks to keep in hot memory
+	purgeInMemoryChunksTarget int = 512  // Number of chunks to keep in hot memory after purging least-recently used chunks
 )
 
 // Return slice for GetActors
@@ -200,6 +200,9 @@ func (m *CityMap) LoadChunk(c *Chunk, now time.Time) {
 		m.ChunksGenerated.Set(c.Ref)
 		m.cgDirty = true
 		c.Generator.Generate(c)
+		w := bytes.NewBuffer(nil)
+		c.Write(w)
+		SaveValue(fmt.Sprintf("Chunk-%d", c.Ref), w.Bytes())
 		return
 	}
 	// Otherwise load the chunk into memory from the save database

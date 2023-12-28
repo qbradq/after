@@ -18,19 +18,19 @@ var TileRefs = map[string]TileRef{}
 // reference into the global TileDefs slice.
 type TileRef uint16
 
-// tileCrossRef is the value we write to the save database for persisting tile
+// TileCrossRef is the value we write to the save database for persisting tile
 // selections. See tileCrossRefs.
-type tileCrossRef uint16
+type TileCrossRef uint16
 
-// tileCrossRefs indexes all valid tileCrossRef values in the save database to
+// TileCrossRefs indexes all valid tileCrossRef values in the save database to
 // the tile defs.
-var tileCrossRefs []*TileDef
+var TileCrossRefs []*TileDef
 
-// tileRefMap is a map of tileCrossRef values to tile IDs.
-var tileRefMap = map[tileCrossRef]string{}
+// TileRefMap is a map of tileCrossRef values to tile IDs.
+var TileRefMap = map[TileCrossRef]string{}
 
 // tileCrossRefForRefs is a map of tileCrossRef associated TileRefs.
-var tileCrossRefForRef = map[TileRef]tileCrossRef{}
+var TileCrossRefForRef = map[TileRef]TileCrossRef{}
 
 // crossReferencesDirty is true when there have been additions made to the tile
 // cross references since the last call to SaveTileRefs().
@@ -38,14 +38,14 @@ var crossReferencesDirty bool
 
 // getTileCrossRef returns the tileCrossRef for the given TileRef. If this
 // TileRef has never been cross-referenced before it will be added.
-func getTileCrossRef(r TileRef) tileCrossRef {
-	x, found := tileCrossRefForRef[r]
+func getTileCrossRef(r TileRef) TileCrossRef {
+	x, found := TileCrossRefForRef[r]
 	if !found {
 		t := TileDefs[r]
-		x = tileCrossRef(len(tileCrossRefs))
-		tileCrossRefs = append(tileCrossRefs, t)
-		tileRefMap[x] = t.ID
-		tileCrossRefForRef[r] = x
+		x = TileCrossRef(len(TileCrossRefs))
+		TileCrossRefs = append(TileCrossRefs, t)
+		TileRefMap[x] = t.ID
+		TileCrossRefForRef[r] = x
 		crossReferencesDirty = true
 	}
 	return x
@@ -56,8 +56,8 @@ func SaveTileRefs() {
 	// Write out the map
 	w := bytes.NewBuffer(nil)
 	util.PutUint32(w, 0) // Version
-	util.PutUint16(w, uint16(len(tileRefMap)))
-	for k, v := range tileRefMap {
+	util.PutUint16(w, uint16(len(TileRefMap)))
+	for k, v := range TileRefMap {
 		util.PutUint16(w, uint16(k))
 		util.PutString(w, v)
 	}
@@ -68,7 +68,7 @@ func SaveTileRefs() {
 
 // LoadTileRefs loads tileRefMap and rebuilds tileCrossRefs.
 func LoadTileRefs() {
-	tileRefMap = make(map[tileCrossRef]string)
+	TileRefMap = make(map[TileCrossRef]string)
 	// Read from database
 	r := LoadValue("TileRefs")
 	if r == nil {
@@ -78,19 +78,19 @@ func LoadTileRefs() {
 	_ = util.GetUint32(r) // Version
 	n := int(util.GetUint16(r))
 	for i := 0; i < n; i++ {
-		tileRefMap[tileCrossRef(util.GetUint16(r))] = util.GetString(r)
+		TileRefMap[TileCrossRef(util.GetUint16(r))] = util.GetString(r)
 	}
 	// Rebuild the cross references
-	tileCrossRefs = make([]*TileDef, n)
-	tileCrossRefForRef = map[TileRef]tileCrossRef{}
-	for k, v := range tileRefMap {
+	TileCrossRefs = make([]*TileDef, n)
+	TileCrossRefForRef = map[TileRef]TileCrossRef{}
+	for k, v := range TileRefMap {
 		r, found := TileRefs[v]
 		if !found {
 			panic(fmt.Errorf("tile cross-reference referenced non-loaded tile %s", v))
 		}
 		t := TileDefs[r]
-		tileCrossRefs[k] = t
-		tileCrossRefForRef[r] = k
+		TileCrossRefs[k] = t
+		TileCrossRefForRef[r] = k
 	}
 }
 

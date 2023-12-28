@@ -71,19 +71,7 @@ func (m *Minimap) HandleEvent(s termui.TerminalDriver, e any) error {
 	case *termui.EventQuit:
 		return termui.ErrorQuit
 	}
-	// Bound focal point
-	if m.Center.X < 0 {
-		m.Center.X = 0
-	}
-	if m.Center.X >= game.CityMapWidth {
-		m.Center.X = game.CityMapWidth - 1
-	}
-	if m.Center.Y < 0 {
-		m.Center.Y = 0
-	}
-	if m.Center.Y >= game.CityMapHeight {
-		m.Center.Y = game.CityMapHeight - 1
-	}
+	m.Center = m.CityMap.Bounds.Bound(m.Center)
 	return nil
 }
 

@@ -57,6 +57,8 @@ func UnloadAllMods() {
 	game.ActorDefs = map[string]*game.Actor{}
 	game.TileDefs = []*game.TileDef{}
 	game.TileRefs = map[string]game.TileRef{}
+	game.TileCrossRefs = []*game.TileDef{}
+	game.TileCrossRefForRef = map[game.TileRef]game.TileCrossRef{}
 	tilegen.TileGens = map[string]*tilegen.TileGen{}
 	chunkgen.ChunkGens = map[string]*chunkgen.ChunkGen{}
 }

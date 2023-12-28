@@ -8,10 +8,12 @@ import (
 
 // MapMode implements the main play area of the client.
 type MapMode struct {
-	CityMap     *game.CityMap // City we are running
-	Bounds      util.Rect     // Area of the map display on the screen
-	Center      util.Point    // Centerpoint of the map display in absolute map coordinates
-	CursorStyle int           // Cursor style
+	CityMap     *game.CityMap    // City we are running
+	Bounds      util.Rect        // Area of the map display on the screen
+	Center      util.Point       // Centerpoint of the map display in absolute map coordinates
+	CursorStyle int              // Cursor style
+	Callback    func(bool) error // Callback function to execute when the user selects a tile or quits
+	DrawInfo    bool             // If true full tile information will be displayed next to the cursor
 }
 
 func (m *MapMode) topLeft() util.Point {
@@ -35,10 +37,44 @@ func (m *MapMode) topLeft() util.Point {
 
 // HandleEvent implements the termui.Mode interface.
 func (m *MapMode) HandleEvent(s termui.TerminalDriver, e any) error {
-	switch e.(type) {
+	switch ev := e.(type) {
+	case *termui.EventKey:
+		switch ev.Key {
+		case 'u':
+			m.Center.X++
+			m.Center.Y--
+		case 'y':
+			m.Center.X--
+			m.Center.Y--
+		case 'n':
+			m.Center.X++
+			m.Center.Y++
+		case 'b':
+			m.Center.X--
+			m.Center.Y++
+		case 'l':
+			m.Center.X++
+		case 'h':
+			m.Center.X--
+		case 'j':
+			m.Center.Y++
+		case 'k':
+			m.Center.Y--
+		case '\n':
+			if m.Callback != nil {
+				return m.Callback(true)
+			}
+			return nil
+		case '\033':
+			if m.Callback != nil {
+				return m.Callback(false)
+			}
+			return termui.ErrorQuit
+		}
 	case *termui.EventQuit:
 		return termui.ErrorQuit
 	}
+	m.Center = m.CityMap.TileBounds.Bound(m.Center)
 	return nil
 }
 
@@ -64,7 +100,7 @@ func (m *MapMode) Draw(s termui.TerminalDriver) {
 	// Draw the player
 	a := m.CityMap.Player
 	p = a.Position
-	sp := util.NewPoint(p.X-mtl.X+m.Bounds.TL.X, p.Y-mtl.Y+m.Bounds.TL.Y)
+	sp := util.NewPoint((p.X-mtl.X)+m.Bounds.TL.X, (p.Y-mtl.Y)+m.Bounds.TL.Y)
 	if m.Bounds.Contains(sp) {
 		ns := termui.StyleDefault.
 			Background(a.Bg).
@@ -81,5 +117,17 @@ func (m *MapMode) Draw(s termui.TerminalDriver) {
 	}
 	if m.Bounds.Contains(sp) {
 		drawCursor(s, sp, m.Bounds, m.CursorStyle)
+	}
+	// Draw info box if needed
+	if m.DrawInfo {
+		t := m.CityMap.GetTile(m.Center)
+		r := util.NewRectXYWH(sp.X+2, sp.Y-1, len(t.Name)+2, 3)
+		r = m.Bounds.Contain(r)
+		termui.DrawBox(s, r, termui.CurrentTheme.Normal)
+		r.TL.X++
+		r.TL.Y++
+		r.BR.X--
+		r.BR.Y--
+		termui.DrawStringLeft(s, r, t.Name, termui.CurrentTheme.Normal)
 	}
 }
