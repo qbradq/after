@@ -39,7 +39,7 @@ func NewMainMenu(s termui.TerminalDriver) *MainMenu {
 					}
 					m := citygen.CityGens["Interstate Town"]()
 					m.Player = game.NewPlayer()
-					m.Player.Position = util.NewPoint(0*game.ChunkWidth+game.ChunkWidth/2, 0*game.ChunkHeight+game.ChunkHeight/2)
+					m.Player.Position = util.NewPoint(10*game.ChunkWidth+game.ChunkWidth/2, 15*game.ChunkHeight+game.ChunkHeight/2)
 					m.SaveCityPlan()
 					m.FullSave()
 					game.SaveTileRefs()

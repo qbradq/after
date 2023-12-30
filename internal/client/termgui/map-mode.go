@@ -81,6 +81,7 @@ func (m *MapMode) HandleEvent(s termui.TerminalDriver, e any) error {
 // Draw implements the termui.Mode interface.
 func (m *MapMode) Draw(s termui.TerminalDriver) {
 	mtl := m.topLeft()
+	mb := util.NewRectXYWH(mtl.X, mtl.Y, m.Bounds.Width(), m.Bounds.Height())
 	m.CityMap.EnsureLoaded(util.NewRectXYWH(mtl.X, mtl.Y, m.Bounds.Width(), m.Bounds.Height()))
 	var p util.Point
 	// Draw the tile matrix
@@ -96,6 +97,30 @@ func (m *MapMode) Draw(s termui.TerminalDriver) {
 				Style: ns,
 			})
 		}
+	}
+	// Draw items
+	for _, i := range m.CityMap.ItemsWithin(mb) {
+		p := i.Position
+		sp := util.NewPoint((p.X-mtl.X)+m.Bounds.TL.X, (p.Y-mtl.Y)+m.Bounds.TL.Y)
+		ns := termui.StyleDefault.
+			Background(i.Bg).
+			Foreground(i.Fg)
+		s.SetCell(sp, termui.Glyph{
+			Rune:  rune(i.Rune[0]),
+			Style: ns,
+		})
+	}
+	// Draw actors
+	for _, a := range m.CityMap.ActorsWithin(mb) {
+		p := a.Position
+		sp := util.NewPoint((p.X-mtl.X)+m.Bounds.TL.X, (p.Y-mtl.Y)+m.Bounds.TL.Y)
+		ns := termui.StyleDefault.
+			Background(a.Bg).
+			Foreground(a.Fg)
+		s.SetCell(sp, termui.Glyph{
+			Rune:  rune(a.Rune[0]),
+			Style: ns,
+		})
 	}
 	// Draw the player
 	a := m.CityMap.Player

@@ -1,0 +1,32 @@
+{
+    "Door": {
+        "Name": "door",
+        "Rune": "+",
+        "Fg": "White",
+        "Bg": "Black"
+    },
+    "Window": {
+        "Name": "window",
+        "Rune": "-",
+        "Fg": "White",
+        "Bg": "Black"
+    },
+    "FenceGate": {
+        "Name": "fence gate",
+        "Rune": "+",
+        "Fg": "Yellow",
+        "Bg": "Black"
+    },
+    "Sink": {
+        "Name": "sink",
+        "Rune": "}",
+        "Fg": "Silver",
+        "Bg": "Black"
+    },
+    "GarageDoor": {
+        "Name": "garage door",
+        "Rune": "+",
+        "Fg": "Silver",
+        "Bg": "Black"
+    }
+}

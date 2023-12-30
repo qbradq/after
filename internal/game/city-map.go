@@ -343,15 +343,49 @@ func (m *CityMap) GetActors(b util.Rect) []*Actor {
 	return gaRet
 }
 
+// AddItem adds the item to the city at it's current location.
+func (m *CityMap) AddItem(i *Item) {
+	c := m.GetChunk(i.Position)
+	c.Items = append(c.Items, i)
+}
+
+// ItemsAt returns the items at the given position.
+func (m *CityMap) ItemsAt(p util.Point) []*Item {
+	var ret []*Item
+	c := m.GetChunk(p)
+	for _, i := range c.Items {
+		if i.Position == p {
+			ret = append(ret, i)
+		}
+	}
+	return ret
+}
+
+// ItemsWithin returns the items within the given bounds.
+func (m *CityMap) ItemsWithin(b util.Rect) []*Item {
+	var ret []*Item
+	cb := util.NewRectXYWH(b.TL.X/ChunkWidth, b.TL.Y/ChunkHeight, b.Width()/ChunkWidth+1, b.Height()/ChunkHeight+1)
+	for cy := cb.TL.Y; cy <= cb.BR.Y; cy++ {
+		for cx := cb.TL.X; cx <= cb.BR.X; cx++ {
+			c := m.Chunks[cy*CityMapWidth+cx]
+			for _, i := range c.Items {
+				if b.Contains(i.Position) {
+					ret = append(ret, i)
+				}
+			}
+		}
+	}
+	return ret
+}
+
 // AddActor adds the actor to the city at it's current location.
 func (m *CityMap) AddActor(a *Actor) {
 	c := m.GetChunk(a.Position)
-	m.LoadChunk(c, time.Now())
 	c.Actors = append(c.Actors, a)
 }
 
-// GetActorAt returns the actor at the given position or nil.
-func (m *CityMap) GetActorAt(p util.Point) *Actor {
+// ActorAt returns the actor at the given position or nil.
+func (m *CityMap) ActorAt(p util.Point) *Actor {
 	c := m.GetChunk(p)
 	for _, a := range c.Actors {
 		if a.Position == p {
@@ -359,4 +393,21 @@ func (m *CityMap) GetActorAt(p util.Point) *Actor {
 		}
 	}
 	return nil
+}
+
+// ActorsWithin returns the items within the given bounds.
+func (m *CityMap) ActorsWithin(b util.Rect) []*Actor {
+	var ret []*Actor
+	cb := util.NewRectXYWH(b.TL.X/ChunkWidth, b.TL.Y/ChunkHeight, b.Width()/ChunkWidth, b.Height()/ChunkHeight)
+	for cy := cb.TL.Y; cy <= cb.BR.Y; cy++ {
+		for cx := cb.TL.X; cx <= cb.BR.X; cx++ {
+			c := m.Chunks[cy*CityMapWidth+cx]
+			for _, a := range c.Actors {
+				if b.Contains(a.Position) {
+					ret = append(ret, a)
+				}
+			}
+		}
+	}
+	return ret
 }

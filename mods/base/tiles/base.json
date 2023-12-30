@@ -1,4 +1,34 @@
 {
+    "Floor": {
+        "Name": "floor",
+        "Rune": ".",
+        "Fg": "Gray",
+        "Bg": "Black"
+    },
+    "Wall": {
+        "Name": "wall",
+        "Rune": "#",
+        "Fg": "White",
+        "Bg": "Black"
+    },
+    "WindowFrame": {
+        "Name": "window frame",
+        "Rune": "^",
+        "Fg": "White",
+        "Bg": "Black"
+    },
+    "DoorFrame": {
+        "Name": "door frame",
+        "Rune": "^",
+        "Fg": "White",
+        "Bg": "Black"
+    },
+    "Fence": {
+        "Name": "fence",
+        "Rune": "#",
+        "Fg": "Yellow",
+        "Bg": "Black"
+    },
     "Grass": {
         "Name": "grass",
         "Rune": ".",

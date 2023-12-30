@@ -1,0 +1,62 @@
+{
+    "Chair": {
+        "Name": "chair",
+        "Rune": "_",
+        "Fg": "Yellow",
+        "Bg": "Black"
+    },
+    "Couch": {
+        "Name": "couch",
+        "Rune": "_",
+        "Fg": "Purple",
+        "Bg": "Black"
+    },
+    "Table": {
+        "Name": "table",
+        "Rune": "[",
+        "Fg": "Yellow",
+        "Bg": "Black"
+    },
+    "Counter": {
+        "Name": "counter",
+        "Rune": "[",
+        "Fg": "Yellow",
+        "Bg": "Black"
+    },
+    "Bed": {
+        "Name": "bed",
+        "Rune": "[",
+        "Fg": "White",
+        "Bg": "Black"
+    },
+    "Drawers": {
+        "Name": "drawers",
+        "Rune": "[",
+        "Fg": "Yellow",
+        "Bg": "Black"
+    },
+    "Oven": {
+        "Name": "oven",
+        "Rune": "0",
+        "Fg": "Silver",
+        "Bg": "Black"
+    },
+    "Refrigerator": {
+        "Name": "refrigerator",
+        "Rune": "[",
+        "Fg": "Blue",
+        "Bg": "Black"
+    },
+    "Toilet": {
+        "Name": "toilet",
+        "Rune": "_",
+        "Fg": "White",
+        "Bg": "Black"
+    },
+    "Tub": {
+        "Name": "tub",
+        "Rune": "]",
+        "Fg": "White",
+        "Bg": "Black"
+    }
+}

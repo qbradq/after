@@ -48,6 +48,7 @@ type Chunk struct {
 	Flags             ChunkFlags   // Flags
 	Loaded            time.Time    // Time this chunk was loaded, the zero value means it is not in memory
 	Tiles             []*TileDef   // Tile matrix
+	Items             []*Item      // All items within the chunk
 	Actors            []*Actor     // All actors within the chunk
 }
 
@@ -72,6 +73,10 @@ func (c *Chunk) Write(w io.Writer) {
 	for _, t := range c.Tiles { // Tile map
 		util.PutUint16(w, uint16(getTileCrossRef(t.BackRef)))
 	}
+	util.PutUint16(w, uint16(len(c.Items))) // Number of items
+	for _, i := range c.Items {             // Items
+		i.Write(w)
+	}
 	util.PutUint16(w, uint16(len(c.Actors))) // Number of actors
 	for _, a := range c.Actors {             // Actors
 		a.Write(w)
@@ -81,6 +86,7 @@ func (c *Chunk) Write(w io.Writer) {
 // Unload frees chunk-level persistent memory
 func (c *Chunk) Unload() {
 	c.Tiles = nil
+	c.Items = nil
 	c.Actors = nil
 	c.Loaded = time.Time{}
 }
@@ -93,8 +99,26 @@ func (c *Chunk) Read(r io.Reader) {
 		x := TileCrossRef(util.GetUint16(r))
 		c.Tiles[i] = TileCrossRefs[x]
 	}
-	n := int(util.GetUint16(r)) // Number of actors
-	for i := 0; i < n; i++ {    // Actors
+	n := int(util.GetUint16(r)) // Number of items
+	for i := 0; i < n; i++ {    // Items
+		c.Items = append(c.Items, NewItemFromReader(r))
+	}
+	n = int(util.GetUint16(r)) // Number of actors
+	for i := 0; i < n; i++ {   // Actors
 		c.Actors = append(c.Actors, NewActorFromReader(r))
 	}
+}
+
+// PlaceItemRelative adds the item to the chunk and adjusts the
+// position from chunk-relative to absolute.
+func (c *Chunk) PlaceItemRelative(i *Item) {
+	i.Position.X += c.Bounds.TL.X
+	i.Position.Y += c.Bounds.TL.Y
+	c.PlaceItem(i)
+}
+
+// PlaceItem places the item within the chunk. This is a no-op if the item's
+// current position lies outside the chunk.
+func (c *Chunk) PlaceItem(i *Item) {
+	c.Items = append(c.Items, i)
 }

@@ -1,6 +1,6 @@
 {
     "Player": {
-        "Name": "Player",
+        "Name": "player",
         "Rune": "@",
         "Fg": "White",
         "Bg": "Black"
