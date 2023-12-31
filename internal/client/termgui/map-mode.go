@@ -82,45 +82,79 @@ func (m *MapMode) HandleEvent(s termui.TerminalDriver, e any) error {
 func (m *MapMode) Draw(s termui.TerminalDriver) {
 	mtl := m.topLeft()
 	mb := util.NewRectXYWH(mtl.X, mtl.Y, m.Bounds.Width(), m.Bounds.Height())
-	m.CityMap.EnsureLoaded(util.NewRectXYWH(mtl.X, mtl.Y, m.Bounds.Width(), m.Bounds.Height()))
+	m.CityMap.EnsureLoaded(mb)
+	vis, rem := m.CityMap.MakeVisibilitySets(mb)
 	var p util.Point
 	// Draw the tile matrix
+	var idx uint32
 	for p.Y = mtl.Y; p.Y < mtl.Y+m.Bounds.Height(); p.Y++ {
 		for p.X = mtl.X; p.X < mtl.X+m.Bounds.Width(); p.X++ {
 			sp := util.NewPoint(p.X-mtl.X+m.Bounds.TL.X, p.Y-mtl.Y+m.Bounds.TL.Y)
-			t := m.CityMap.GetTile(p)
-			ns := termui.StyleDefault.
-				Background(t.Bg).
-				Foreground(t.Fg)
-			s.SetCell(sp, termui.Glyph{
-				Rune:  rune(t.Rune[0]),
-				Style: ns,
-			})
+			if vis.Contains(idx) {
+				t := m.CityMap.GetTile(p)
+				ns := termui.StyleDefault.
+					Background(t.Bg).
+					Foreground(t.Fg)
+				s.SetCell(sp, termui.Glyph{
+					Rune:  rune(t.Rune[0]),
+					Style: ns,
+				})
+			} else if rem.Contains(idx) {
+				t := m.CityMap.GetTile(p)
+				ns := termui.StyleDefault.
+					Foreground(termui.ColorGray)
+				s.SetCell(sp, termui.Glyph{
+					Rune:  rune(t.Rune[0]),
+					Style: ns,
+				})
+			} else {
+				ns := termui.StyleDefault.
+					Foreground(termui.ColorGray)
+				s.SetCell(sp, termui.Glyph{
+					Rune:  '?',
+					Style: ns,
+				})
+			}
+			idx++
 		}
 	}
 	// Draw items
 	for _, i := range m.CityMap.ItemsWithin(mb) {
 		p := i.Position
-		sp := util.NewPoint((p.X-mtl.X)+m.Bounds.TL.X, (p.Y-mtl.Y)+m.Bounds.TL.Y)
-		ns := termui.StyleDefault.
-			Background(i.Bg).
-			Foreground(i.Fg)
-		s.SetCell(sp, termui.Glyph{
-			Rune:  rune(i.Rune[0]),
-			Style: ns,
-		})
+		idx = uint32((p.Y-mtl.Y)*m.Bounds.Width() + (p.X - mtl.X))
+		if vis.Contains(idx) {
+			sp := util.NewPoint((p.X-mtl.X)+m.Bounds.TL.X, (p.Y-mtl.Y)+m.Bounds.TL.Y)
+			ns := termui.StyleDefault.
+				Background(i.Bg).
+				Foreground(i.Fg)
+			s.SetCell(sp, termui.Glyph{
+				Rune:  rune(i.Rune[0]),
+				Style: ns,
+			})
+		} else if rem.Contains(idx) {
+			sp := util.NewPoint((p.X-mtl.X)+m.Bounds.TL.X, (p.Y-mtl.Y)+m.Bounds.TL.Y)
+			ns := termui.StyleDefault.
+				Foreground(termui.ColorGray)
+			s.SetCell(sp, termui.Glyph{
+				Rune:  rune(i.Rune[0]),
+				Style: ns,
+			})
+		}
 	}
 	// Draw actors
 	for _, a := range m.CityMap.ActorsWithin(mb) {
 		p := a.Position
-		sp := util.NewPoint((p.X-mtl.X)+m.Bounds.TL.X, (p.Y-mtl.Y)+m.Bounds.TL.Y)
-		ns := termui.StyleDefault.
-			Background(a.Bg).
-			Foreground(a.Fg)
-		s.SetCell(sp, termui.Glyph{
-			Rune:  rune(a.Rune[0]),
-			Style: ns,
-		})
+		idx = uint32((p.Y-mtl.Y)*m.Bounds.Width() + (p.X - mtl.X))
+		if vis.Contains(idx) {
+			sp := util.NewPoint((p.X-mtl.X)+m.Bounds.TL.X, (p.Y-mtl.Y)+m.Bounds.TL.Y)
+			ns := termui.StyleDefault.
+				Background(a.Bg).
+				Foreground(a.Fg)
+			s.SetCell(sp, termui.Glyph{
+				Rune:  rune(a.Rune[0]),
+				Style: ns,
+			})
+		}
 	}
 	// Draw the player
 	a := m.CityMap.Player
@@ -145,14 +179,86 @@ func (m *MapMode) Draw(s termui.TerminalDriver) {
 	}
 	// Draw info box if needed
 	if m.DrawInfo {
-		t := m.CityMap.GetTile(m.Center)
-		r := util.NewRectXYWH(sp.X+2, sp.Y-1, len(t.Name)+2, 3)
-		r = m.Bounds.Contain(r)
-		termui.DrawBox(s, r, termui.CurrentTheme.Normal)
-		r.TL.X++
-		r.TL.Y++
-		r.BR.X--
-		r.BR.Y--
-		termui.DrawStringLeft(s, r, t.Name, termui.CurrentTheme.Normal)
+		idx = uint32((m.Center.Y-mtl.Y)*m.Bounds.Width() + (m.Center.X - mtl.X))
+		if vis.Contains(idx) {
+			t := m.CityMap.GetTile(m.Center)
+			a := m.CityMap.ActorAt(m.Center)
+			items := m.CityMap.ItemsAt(m.Center)
+			h := 1 + len(items)
+			w := len(t.Name)
+			if a != nil && len(a.Name) > w {
+				w = len(a.Name)
+			}
+			if a != nil {
+				h++
+			}
+			for _, i := range items {
+				if len(i.Name) > w {
+					w = len(i.Name)
+				}
+			}
+			if len(items) == 0 {
+				h++
+				if w < len("Nothing") {
+					w = len("Nothing")
+				}
+			}
+			r := util.NewRectXYWH(sp.X+2, sp.Y-1, w+2, h+2)
+			r = m.Bounds.Contain(r)
+			termui.DrawBox(s, r, termui.CurrentTheme.Normal)
+			r.TL.X++
+			r.TL.Y++
+			r.BR.X--
+			r.BR.Y--
+			termui.DrawFill(s, r, termui.Glyph{
+				Rune:  ' ',
+				Style: termui.CurrentTheme.Normal,
+			})
+			termui.DrawStringLeft(s, r, t.Name, termui.CurrentTheme.Normal)
+			r.TL.Y++
+			if a != nil {
+				termui.DrawStringLeft(s, r, a.Name, termui.CurrentTheme.Normal.Foreground(termui.ColorLime))
+				r.TL.Y++
+			}
+			for _, i := range items {
+				termui.DrawStringLeft(s, r, i.Name, termui.CurrentTheme.Normal.Foreground(termui.ColorAqua))
+				r.TL.Y++
+			}
+			if len(items) == 0 {
+				termui.DrawStringCenter(s, r, "Nothing", termui.CurrentTheme.Normal.Foreground(termui.ColorGray))
+			}
+		} else if rem.Contains(idx) {
+			t := m.CityMap.GetTile(m.Center)
+			h := 2
+			w := len("Remembered")
+			if len(t.Name) > w {
+				w = len(t.Name)
+			}
+			r := util.NewRectXYWH(sp.X+2, sp.Y-1, w+2, h+2)
+			r = m.Bounds.Contain(r)
+			termui.DrawBox(s, r, termui.CurrentTheme.Normal)
+			r.TL.X++
+			r.TL.Y++
+			r.BR.X--
+			r.BR.Y--
+			termui.DrawFill(s, r, termui.Glyph{
+				Rune:  ' ',
+				Style: termui.CurrentTheme.Normal,
+			})
+			termui.DrawStringLeft(s, r, t.Name, termui.CurrentTheme.Normal)
+			r.TL.Y++
+			termui.DrawStringCenter(s, r, "Remembered", termui.CurrentTheme.Normal.Foreground(termui.ColorGray))
+		} else {
+			h := 1
+			w := len("Unseen")
+			r := util.NewRectXYWH(sp.X+2, sp.Y-1, w+2, h+2)
+			r = m.Bounds.Contain(r)
+			termui.DrawBox(s, r, termui.CurrentTheme.Normal)
+			r.TL.X++
+			r.TL.Y++
+			r.BR.X--
+			r.BR.Y--
+			termui.DrawStringLeft(s, r, "Unseen", termui.CurrentTheme.Normal)
+		}
 	}
 }

@@ -21,6 +21,12 @@ const (
 // Return slice for GetActors
 var gaRet []*Actor
 
+// Buffer for visibility set
+var visBuf bitmap.Bitmap
+
+// Buffer for remembered set
+var remBuf bitmap.Bitmap
+
 // CityMap represents the entire world of the game in terms of which chunks go
 // where.
 type CityMap struct {
@@ -456,4 +462,92 @@ func (m *CityMap) MovePlayer(d util.Direction) bool {
 	}
 	m.Player.Position = np
 	return true
+}
+
+// MakeVisibilitySets constructs bitmaps representing the current and remembered
+// visibility of each position within the bounds relative to the player. This is
+// a no-op if the bounds do not contain the player. Subsequent calls to
+// MakeVisibilitySets reuse the same bitmaps.
+func (m *CityMap) MakeVisibilitySets(b util.Rect) (vis, rem bitmap.Bitmap) {
+	// Process one line of visibility calculations
+	fn := func(ps []util.Point) {
+		// Range over the points
+		for _, p := range ps {
+			// If this point blocks visibility we are done
+			c := m.GetChunk(p)
+			idx := c.relOfs(p)
+			if c.BlocksVis.Contains(idx) {
+				return
+			}
+			// If not we need to mark the point and all neighbors as visible
+			for iy := p.Y - 1; iy <= p.Y+1; iy++ {
+				if iy < 0 {
+					continue
+				}
+				if iy >= m.TileBounds.Height() {
+					break
+				}
+				for ix := p.X - 1; ix <= p.X+1; ix++ {
+					if ix < 0 {
+						continue
+					}
+					if ix >= m.TileBounds.Width() {
+						break
+					}
+					p := util.Point{
+						X: ix - b.TL.X,
+						Y: iy - b.TL.Y,
+					}
+					idx := uint32(p.Y*b.Width() + p.X)
+					vis.Set(idx)
+				}
+			}
+		}
+	}
+	// Setup return values for reuse
+	vis = visBuf
+	rem = remBuf
+	vis.Clear()
+	rem.Clear()
+	// Sanity checks
+	if !b.Contains(m.Player.Position) {
+		return
+	}
+	// Cast rays to the boarders of the rect
+	for i := 0; i < b.Width(); i++ {
+		fn(util.Ray(m.Player.Position, util.Point{
+			X: b.TL.X + i,
+			Y: b.TL.Y,
+		}))
+		fn(util.Ray(m.Player.Position, util.Point{
+			X: b.TL.X + i,
+			Y: b.BR.Y,
+		}))
+	}
+	for i := 1; i < b.Height()-1; i++ {
+		fn(util.Ray(m.Player.Position, util.Point{
+			X: b.TL.X,
+			Y: b.TL.Y + i,
+		}))
+		fn(util.Ray(m.Player.Position, util.Point{
+			X: b.BR.X,
+			Y: b.TL.Y + i,
+		}))
+	}
+	// Construct remembered set for chunks and return value
+	var p util.Point
+	for p.Y = b.TL.Y; p.Y <= b.BR.Y; p.Y++ {
+		for p.X = b.TL.X; p.X <= b.BR.X; p.X++ {
+			idx := uint32((p.Y-b.TL.Y)*b.Width() + (p.X - b.TL.X))
+			c := m.GetChunk(p)
+			cIdx := c.relOfs(p)
+			if vis.Contains(idx) {
+				c.HasSeen.Set(cIdx)
+			}
+			if c.HasSeen.Contains(cIdx) {
+				rem.Set(idx)
+			}
+		}
+	}
+	return
 }

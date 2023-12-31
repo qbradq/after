@@ -11,6 +11,6 @@
     "RandomForest": {
         "Grass": 6,
         "Brush": 4,
-        "Tree": 6
+        "Tree": 1
     }
 }
