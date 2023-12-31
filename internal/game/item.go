@@ -20,6 +20,8 @@ type Item struct {
 	Rune       string       // Display rune
 	Fg         termui.Color // Display foreground color
 	Bg         termui.Color // Display background color
+	BlocksVis  bool         // If true this item blocks visibility
+	BlocksWalk bool         // If true this item blocks walking
 }
 
 // NewItem creates a new item from the named template.

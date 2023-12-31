@@ -96,10 +96,12 @@ func LoadTileRefs() {
 
 // TileDef represents all of the data associated with a single tile.
 type TileDef struct {
-	BackRef TileRef      // The TileRef that indexes this TileDef within TileDefs, used to accelerate saving
-	ID      string       // The unique ID of the tile
-	Name    string       // Descriptive name of the tile
-	Rune    string       // Map display rune
-	Fg      termui.Color // Foreground display color
-	Bg      termui.Color // Background display color
+	BackRef    TileRef      // The TileRef that indexes this TileDef within TileDefs, used to accelerate saving
+	ID         string       // The unique ID of the tile
+	Name       string       // Descriptive name of the tile
+	Rune       string       // Map display rune
+	Fg         termui.Color // Foreground display color
+	Bg         termui.Color // Background display color
+	BlocksVis  bool         // If true this tile blocks visibility
+	BlocksWalk bool         // If true this tile blocks walking
 }

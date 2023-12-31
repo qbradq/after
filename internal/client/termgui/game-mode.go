@@ -39,29 +39,26 @@ func NewGameMode(m *game.CityMap) *GameMode {
 }
 
 func (m *GameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
+	dir := util.DirectionInvalid
 	switch ev := e.(type) {
 	case *termui.EventKey:
 		switch ev.Key {
 		case 'u':
-			m.CityMap.Player.Position.X++
-			m.CityMap.Player.Position.Y--
+			dir = util.DirectionNorthEast
 		case 'y':
-			m.CityMap.Player.Position.X--
-			m.CityMap.Player.Position.Y--
+			dir = util.DirectionNorthWest
 		case 'n':
-			m.CityMap.Player.Position.X++
-			m.CityMap.Player.Position.Y++
+			dir = util.DirectionSouthEast
 		case 'b':
-			m.CityMap.Player.Position.X--
-			m.CityMap.Player.Position.Y++
+			dir = util.DirectionSouthWest
 		case 'l':
-			m.CityMap.Player.Position.X++
+			dir = util.DirectionEast
 		case 'h':
-			m.CityMap.Player.Position.X--
+			dir = util.DirectionWest
 		case 'j':
-			m.CityMap.Player.Position.Y++
+			dir = util.DirectionSouth
 		case 'k':
-			m.CityMap.Player.Position.Y--
+			dir = util.DirectionNorth
 		case 'x':
 			m.InTarget = true
 			m.MapMode.Callback = func(b bool) error {
@@ -87,7 +84,9 @@ func (m *GameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 	case *termui.EventQuit:
 		return termui.ErrorQuit
 	}
-	m.CityMap.Player.Position = m.CityMap.TileBounds.Bound(m.CityMap.Player.Position)
+	if dir != util.DirectionInvalid {
+		m.CityMap.MovePlayer(dir)
+	}
 	return nil
 }
 

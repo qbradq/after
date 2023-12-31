@@ -9,13 +9,16 @@
         "Name": "wall",
         "Rune": "#",
         "Fg": "White",
-        "Bg": "Black"
+        "Bg": "Black",
+        "BlocksWalk": true,
+        "BlocksVis": true
     },
     "WindowFrame": {
         "Name": "window frame",
         "Rune": "^",
         "Fg": "White",
-        "Bg": "Black"
+        "Bg": "Black",
+        "BlocksWalk": true
     },
     "DoorFrame": {
         "Name": "door frame",
@@ -27,7 +30,9 @@
         "Name": "fence",
         "Rune": "#",
         "Fg": "Yellow",
-        "Bg": "Black"
+        "Bg": "Black",
+        "BlocksWalk": true,
+        "BlocksVis": true
     },
     "Grass": {
         "Name": "grass",
@@ -45,7 +50,9 @@
         "Name": "tree",
         "Rune": "*",
         "Fg": "Green",
-        "Bg": "Black"
+        "Bg": "Black",
+        "BlocksWalk": true,
+        "BlocksVis": true
     },
     "Pavement": {
         "Name": "pavement",

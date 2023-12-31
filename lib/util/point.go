@@ -13,3 +13,8 @@ func NewPoint(x, y int) Point {
 		Y: y,
 	}
 }
+
+// Add returns the result of adding the two points X and Y values.
+func (p Point) Add(a Point) Point {
+	return Point{p.X + a.X, p.Y + a.Y}
+}

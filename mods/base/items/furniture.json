@@ -15,13 +15,15 @@
         "Name": "table",
         "Rune": "[",
         "Fg": "Yellow",
-        "Bg": "Black"
+        "Bg": "Black",
+        "BlocksWalk": true
     },
     "Counter": {
         "Name": "counter",
         "Rune": "[",
         "Fg": "Yellow",
-        "Bg": "Black"
+        "Bg": "Black",
+        "BlocksWalk": true
     },
     "Bed": {
         "Name": "bed",
@@ -33,19 +35,22 @@
         "Name": "drawers",
         "Rune": "[",
         "Fg": "Yellow",
-        "Bg": "Black"
+        "Bg": "Black",
+        "BlocksWalk": true
     },
     "Oven": {
         "Name": "oven",
         "Rune": "0",
         "Fg": "Silver",
-        "Bg": "Black"
+        "Bg": "Black",
+        "BlocksWalk": true
     },
     "Refrigerator": {
         "Name": "refrigerator",
         "Rune": "[",
         "Fg": "Blue",
-        "Bg": "Black"
+        "Bg": "Black",
+        "BlocksWalk": true
     },
     "Toilet": {
         "Name": "toilet",

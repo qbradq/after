@@ -17,7 +17,20 @@ const (
 	DirectionSouthWest
 	DirectionWest
 	DirectionNorthWest
+	DirectionInvalid Direction = 0xFF
 )
+
+// Offsets for each direction
+var DirectionOffsets = []Point{
+	{0, -1},
+	{1, -1},
+	{1, 0},
+	{1, 1},
+	{0, 1},
+	{-1, 1},
+	{-1, 0},
+	{-1, -1},
+}
 
 // Bound returns a Direction value wrapped and bounded.
 func (d Direction) Bound() Direction {

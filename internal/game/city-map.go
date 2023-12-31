@@ -32,6 +32,8 @@ type CityMap struct {
 	InMemoryChunksCount int           // Running count of in-memory chunks to avoid excessive calls to bitmap.Count()
 	ChunksGenerated     bitmap.Bitmap // Bitmap of all chunks that have been generated
 	cgDirty             bool          // ChunksGenerated has been altered since the last call to SaveBitmaps
+	itemsWithinCache    []*Item       // Return slice for ItemsWithin()
+	actorsWithinCache   []*Actor      // Return slice for ActorsWithin()
 }
 
 // NewCityMap allocates and returns a new CityMap structure.
@@ -200,6 +202,7 @@ func (m *CityMap) LoadChunk(c *Chunk, now time.Time) {
 		m.ChunksGenerated.Set(c.Ref)
 		m.cgDirty = true
 		c.Generator.Generate(c)
+		c.RebuildBitmaps()
 		w := bytes.NewBuffer(nil)
 		c.Write(w)
 		SaveValue(fmt.Sprintf("Chunk-%d", c.Ref), w.Bytes())
@@ -209,6 +212,7 @@ func (m *CityMap) LoadChunk(c *Chunk, now time.Time) {
 	n := fmt.Sprintf("Chunk-%d", c.Ref)
 	buf := LoadValue(n)
 	c.Read(buf)
+	c.RebuildBitmaps()
 }
 
 // purgeOldChunks purges chunks in least-recently-used first order down to the
@@ -361,21 +365,22 @@ func (m *CityMap) ItemsAt(p util.Point) []*Item {
 	return ret
 }
 
-// ItemsWithin returns the items within the given bounds.
+// ItemsWithin returns the items within the given bounds. Subsequent calls to
+// ItemsWithin will re-use the same slice.
 func (m *CityMap) ItemsWithin(b util.Rect) []*Item {
-	var ret []*Item
+	m.itemsWithinCache = m.itemsWithinCache[:0]
 	cb := util.NewRectXYWH(b.TL.X/ChunkWidth, b.TL.Y/ChunkHeight, b.Width()/ChunkWidth+1, b.Height()/ChunkHeight+1)
 	for cy := cb.TL.Y; cy <= cb.BR.Y; cy++ {
 		for cx := cb.TL.X; cx <= cb.BR.X; cx++ {
 			c := m.Chunks[cy*CityMapWidth+cx]
 			for _, i := range c.Items {
 				if b.Contains(i.Position) {
-					ret = append(ret, i)
+					m.itemsWithinCache = append(m.itemsWithinCache, i)
 				}
 			}
 		}
 	}
-	return ret
+	return m.itemsWithinCache
 }
 
 // AddActor adds the actor to the city at it's current location.
@@ -397,17 +402,58 @@ func (m *CityMap) ActorAt(p util.Point) *Actor {
 
 // ActorsWithin returns the items within the given bounds.
 func (m *CityMap) ActorsWithin(b util.Rect) []*Actor {
-	var ret []*Actor
+	m.actorsWithinCache = m.actorsWithinCache[:0]
 	cb := util.NewRectXYWH(b.TL.X/ChunkWidth, b.TL.Y/ChunkHeight, b.Width()/ChunkWidth, b.Height()/ChunkHeight)
 	for cy := cb.TL.Y; cy <= cb.BR.Y; cy++ {
 		for cx := cb.TL.X; cx <= cb.BR.X; cx++ {
 			c := m.Chunks[cy*CityMapWidth+cx]
 			for _, a := range c.Actors {
 				if b.Contains(a.Position) {
-					ret = append(ret, a)
+					m.actorsWithinCache = append(m.actorsWithinCache, a)
 				}
 			}
 		}
 	}
-	return ret
+	return m.actorsWithinCache
+}
+
+// MoveActor attempts to move the actor in the given direction, returning true
+// on success.
+func (m *CityMap) MoveActor(a *Actor, d util.Direction) bool {
+	if d == util.DirectionInvalid {
+		return false
+	}
+	np := a.Position.Add(util.DirectionOffsets[d.Bound()])
+	if !m.TileBounds.Contains(np) {
+		return false
+	}
+	op := a.Position
+	oc := m.GetChunk(op)
+	nc := m.GetChunk(np)
+	oc.RemoveActor(a)
+	a.Position = np
+	if !nc.PlaceActor(a) {
+		a.Position = op
+		oc.PlaceActor(a)
+		return false
+	}
+	return true
+}
+
+// MovePlayer attempts to move the player's actor in the given direction,
+// returning true on success.
+func (m *CityMap) MovePlayer(d util.Direction) bool {
+	if d == util.DirectionInvalid {
+		return false
+	}
+	np := m.Player.Position.Add(util.DirectionOffsets[d.Bound()])
+	if !m.TileBounds.Contains(np) {
+		return false
+	}
+	nc := m.GetChunk(np)
+	if !nc.CanStep(&m.Player.Actor, np) {
+		return false
+	}
+	m.Player.Position = np
+	return true
 }
