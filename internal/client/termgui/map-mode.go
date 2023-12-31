@@ -11,6 +11,7 @@ type MapMode struct {
 	CityMap     *game.CityMap    // City we are running
 	Bounds      util.Rect        // Area of the map display on the screen
 	Center      util.Point       // Centerpoint of the map display in absolute map coordinates
+	CursorPos   util.Point       // Position of the cursor, if any
 	CursorStyle int              // Cursor style
 	Callback    func(bool) error // Callback function to execute when the user selects a tile or quits
 	DrawInfo    bool             // If true full tile information will be displayed next to the cursor
@@ -41,25 +42,25 @@ func (m *MapMode) HandleEvent(s termui.TerminalDriver, e any) error {
 	case *termui.EventKey:
 		switch ev.Key {
 		case 'u':
-			m.Center.X++
-			m.Center.Y--
+			m.CursorPos.X++
+			m.CursorPos.Y--
 		case 'y':
-			m.Center.X--
-			m.Center.Y--
+			m.CursorPos.X--
+			m.CursorPos.Y--
 		case 'n':
-			m.Center.X++
-			m.Center.Y++
+			m.CursorPos.X++
+			m.CursorPos.Y++
 		case 'b':
-			m.Center.X--
-			m.Center.Y++
+			m.CursorPos.X--
+			m.CursorPos.Y++
 		case 'l':
-			m.Center.X++
+			m.CursorPos.X++
 		case 'h':
-			m.Center.X--
+			m.CursorPos.X--
 		case 'j':
-			m.Center.Y++
+			m.CursorPos.Y++
 		case 'k':
-			m.Center.Y--
+			m.CursorPos.Y--
 		case '\n':
 			if m.Callback != nil {
 				return m.Callback(true)
@@ -74,7 +75,10 @@ func (m *MapMode) HandleEvent(s termui.TerminalDriver, e any) error {
 	case *termui.EventQuit:
 		return termui.ErrorQuit
 	}
-	m.Center = m.CityMap.TileBounds.Bound(m.Center)
+	m.CursorPos = m.CityMap.TileBounds.Bound(m.CursorPos)
+	mtl := m.topLeft()
+	mb := util.NewRectXYWH(mtl.X, mtl.Y, m.Bounds.Width(), m.Bounds.Height())
+	m.CursorPos = mb.Bound(m.CursorPos)
 	return nil
 }
 
@@ -171,19 +175,19 @@ func (m *MapMode) Draw(s termui.TerminalDriver) {
 	}
 	// Draw the cursor
 	sp = util.Point{
-		X: (m.Center.X - mtl.X) + m.Bounds.TL.X,
-		Y: (m.Center.Y - mtl.Y) + m.Bounds.TL.Y,
+		X: (m.CursorPos.X - mtl.X) + m.Bounds.TL.X,
+		Y: (m.CursorPos.Y - mtl.Y) + m.Bounds.TL.Y,
 	}
 	if m.Bounds.Contains(sp) {
 		drawCursor(s, sp, m.Bounds, m.CursorStyle)
 	}
 	// Draw info box if needed
 	if m.DrawInfo {
-		idx = uint32((m.Center.Y-mtl.Y)*m.Bounds.Width() + (m.Center.X - mtl.X))
+		idx = uint32((m.CursorPos.Y-mtl.Y)*m.Bounds.Width() + (m.CursorPos.X - mtl.X))
 		if vis.Contains(idx) {
-			t := m.CityMap.GetTile(m.Center)
-			a := m.CityMap.ActorAt(m.Center)
-			items := m.CityMap.ItemsAt(m.Center)
+			t := m.CityMap.GetTile(m.CursorPos)
+			a := m.CityMap.ActorAt(m.CursorPos)
+			items := m.CityMap.ItemsAt(m.CursorPos)
 			h := 1 + len(items)
 			w := len(t.Name)
 			if a != nil && len(a.Name) > w {
@@ -203,7 +207,11 @@ func (m *MapMode) Draw(s termui.TerminalDriver) {
 					w = len("Nothing")
 				}
 			}
-			r := util.NewRectXYWH(sp.X+2, sp.Y-1, w+2, h+2)
+			dx := sp.X + 2
+			if m.CursorPos.X > m.Center.X {
+				dx = sp.X - (3 + w)
+			}
+			r := util.NewRectXYWH(dx, sp.Y-1, w+2, h+2)
 			r = m.Bounds.Contain(r)
 			termui.DrawBox(s, r, termui.CurrentTheme.Normal)
 			r.TL.X++
@@ -228,13 +236,17 @@ func (m *MapMode) Draw(s termui.TerminalDriver) {
 				termui.DrawStringCenter(s, r, "Nothing", termui.CurrentTheme.Normal.Foreground(termui.ColorGray))
 			}
 		} else if rem.Contains(idx) {
-			t := m.CityMap.GetTile(m.Center)
+			t := m.CityMap.GetTile(m.CursorPos)
 			h := 2
 			w := len("Remembered")
 			if len(t.Name) > w {
 				w = len(t.Name)
 			}
-			r := util.NewRectXYWH(sp.X+2, sp.Y-1, w+2, h+2)
+			dx := sp.X + 2
+			if m.CursorPos.X > m.Center.X {
+				dx = sp.X - (3 + w)
+			}
+			r := util.NewRectXYWH(dx, sp.Y-1, w+2, h+2)
 			r = m.Bounds.Contain(r)
 			termui.DrawBox(s, r, termui.CurrentTheme.Normal)
 			r.TL.X++
@@ -251,7 +263,11 @@ func (m *MapMode) Draw(s termui.TerminalDriver) {
 		} else {
 			h := 1
 			w := len("Unseen")
-			r := util.NewRectXYWH(sp.X+2, sp.Y-1, w+2, h+2)
+			dx := sp.X + 2
+			if m.CursorPos.X > m.Center.X {
+				dx = sp.X - (3 + w)
+			}
+			r := util.NewRectXYWH(dx, sp.Y-1, w+2, h+2)
 			r = m.Bounds.Contain(r)
 			termui.DrawBox(s, r, termui.CurrentTheme.Normal)
 			r.TL.X++

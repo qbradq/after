@@ -67,6 +67,7 @@ func (m *GameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 			}
 			m.CityMap.Player.Position = m.CityMap.TileBounds.Bound(m.CityMap.Player.Position)
 			m.MapMode.Center = m.CityMap.Player.Position
+			m.MapMode.CursorPos = m.CityMap.Player.Position
 			return nil
 		case 'm':
 			termui.RunMode(s, &Minimap{
