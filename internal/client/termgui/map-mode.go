@@ -6,15 +6,19 @@ import (
 	"github.com/qbradq/after/lib/util"
 )
 
+// mapModeCallback is a callback function for the map mode cursor select.
+type mapModeCallback func(util.Point, bool) error
+
 // MapMode implements the main play area of the client.
 type MapMode struct {
-	CityMap     *game.CityMap    // City we are running
-	Bounds      util.Rect        // Area of the map display on the screen
-	Center      util.Point       // Centerpoint of the map display in absolute map coordinates
-	CursorPos   util.Point       // Position of the cursor, if any
-	CursorStyle int              // Cursor style
-	Callback    func(bool) error // Callback function to execute when the user selects a tile or quits
-	DrawInfo    bool             // If true full tile information will be displayed next to the cursor
+	CityMap     *game.CityMap   // City we are running
+	Bounds      util.Rect       // Area of the map display on the screen
+	Center      util.Point      // Centerpoint of the map display in absolute map coordinates
+	CursorPos   util.Point      // Position of the cursor, if any
+	CursorRange int             // Maximum range of the cursor
+	CursorStyle int             // Cursor style
+	Callback    mapModeCallback // Callback function to execute when the user selects a tile or quits
+	DrawInfo    bool            // If true full tile information will be displayed next to the cursor
 }
 
 func (m *MapMode) topLeft() util.Point {
@@ -61,19 +65,25 @@ func (m *MapMode) HandleEvent(s termui.TerminalDriver, e any) error {
 			m.CursorPos.Y++
 		case 'k':
 			m.CursorPos.Y--
+		case ' ':
+			fallthrough
 		case '\n':
 			if m.Callback != nil {
-				return m.Callback(true)
+				return m.Callback(m.CursorPos, true)
 			}
 			return nil
 		case '\033':
 			if m.Callback != nil {
-				return m.Callback(false)
+				return m.Callback(m.CursorPos, false)
 			}
 			return termui.ErrorQuit
 		}
 	case *termui.EventQuit:
 		return termui.ErrorQuit
+	}
+	if m.CursorRange > 0 {
+		m.CursorPos =
+			util.NewRectFromRadius(m.Center, m.CursorRange).Bound(m.CursorPos)
 	}
 	m.CursorPos = m.CityMap.TileBounds.Bound(m.CursorPos)
 	mtl := m.topLeft()

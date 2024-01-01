@@ -124,6 +124,9 @@ func (c *Chunk) Read(r io.Reader) {
 // RebuildBitmaps must be called after chunk load or generation in order to
 // rebuild the walk and vis bitmap caches. The HasSeen bitmap is persistent.
 func (c *Chunk) RebuildBitmaps() {
+	// Clear bitmaps
+	c.BlocksVis.Clear()
+	c.BlocksWalk.Clear()
 	// Consider tiles
 	for i, t := range c.Tiles {
 		if t.BlocksVis {
@@ -233,6 +236,9 @@ func (c *Chunk) RemoveActor(a *Actor) {
 func (c *Chunk) CanStep(a *Actor, p util.Point) bool {
 	if !c.Bounds.Contains(p) {
 		return false
+	}
+	if c.bitmapsDirty {
+		c.RebuildBitmaps()
 	}
 	if c.BlocksWalk.Contains(c.relOfs(p)) {
 		return false

@@ -45,6 +45,20 @@ func NewRectXYWH(x, y, w, h int) Rect {
 	}
 }
 
+// NewRectFromRadius creates a new rect centered on point p with radius r.
+func NewRectFromRadius(p Point, r int) Rect {
+	return Rect{
+		TL: Point{
+			X: p.X - r,
+			Y: p.Y - r,
+		},
+		BR: Point{
+			X: p.X + r,
+			Y: p.Y + r,
+		},
+	}
+}
+
 // Width returns the width of the rect.
 func (r Rect) Width() int { return (r.BR.X - r.TL.X) + 1 }
 

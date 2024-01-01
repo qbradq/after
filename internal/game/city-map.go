@@ -195,6 +195,9 @@ func (m *CityMap) LoadChunk(c *Chunk, now time.Time) {
 	c.Loaded = now
 	// Bail if we are already loaded
 	if c.Tiles != nil {
+		if c.bitmapsDirty {
+			c.RebuildBitmaps()
+		}
 		return
 	}
 	// There is no possibility of error after this point so go ahead
@@ -353,10 +356,14 @@ func (m *CityMap) GetActors(b util.Rect) []*Actor {
 	return gaRet
 }
 
-// AddItem adds the item to the city at it's current location.
-func (m *CityMap) AddItem(i *Item) {
-	c := m.GetChunk(i.Position)
-	c.Items = append(c.Items, i)
+// PlaceItem adds the item to the city at it's current location.
+func (m *CityMap) PlaceItem(i *Item) {
+	m.GetChunk(i.Position).PlaceItem(i)
+}
+
+// RemoveItem removes the item from the city map.
+func (m *CityMap) RemoveItem(i *Item) {
+	m.GetChunk(i.Position).RemoveItem(i)
 }
 
 // ItemsAt returns the items at the given position.
@@ -391,8 +398,12 @@ func (m *CityMap) ItemsWithin(b util.Rect) []*Item {
 
 // AddActor adds the actor to the city at it's current location.
 func (m *CityMap) AddActor(a *Actor) {
-	c := m.GetChunk(a.Position)
-	c.Actors = append(c.Actors, a)
+	m.GetChunk(a.Position).PlaceActor(a)
+}
+
+// RemoveActor removes the actor from the city at it's current location.
+func (m *CityMap) RemoveActor(a *Actor) {
+	m.GetChunk(a.Position).RemoveActor(a)
 }
 
 // ActorAt returns the actor at the given position or nil.

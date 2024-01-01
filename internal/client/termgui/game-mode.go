@@ -3,6 +3,7 @@ package termgui
 import (
 	"errors"
 
+	"github.com/qbradq/after/internal/events"
 	"github.com/qbradq/after/internal/game"
 	"github.com/qbradq/after/lib/termui"
 	"github.com/qbradq/after/lib/util"
@@ -61,13 +62,14 @@ func (m *GameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 			dir = util.DirectionNorth
 		case 'x':
 			m.InTarget = true
-			m.MapMode.Callback = func(b bool) error {
+			m.MapMode.Callback = func(p util.Point, b bool) error {
 				m.InTarget = false
 				return nil
 			}
 			m.CityMap.Player.Position = m.CityMap.TileBounds.Bound(m.CityMap.Player.Position)
 			m.MapMode.Center = m.CityMap.Player.Position
 			m.MapMode.CursorPos = m.CityMap.Player.Position
+			m.MapMode.CursorRange = 0
 			return nil
 		case 'm':
 			termui.RunMode(s, &Minimap{
@@ -78,6 +80,27 @@ func (m *GameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 				DrawInfo:    true,
 			})
 			return nil
+		case 'U':
+			m.InTarget = true
+			m.MapMode.Callback = func(p util.Point, b bool) error {
+				m.InTarget = false
+				if !b {
+					return nil
+				}
+				items := m.CityMap.ItemsAt(p)
+				if len(items) > 0 {
+					err := events.ExecuteItemEvent("Use", items[len(items)-1], &m.CityMap.Player.Actor, m.CityMap)
+					if err != nil {
+						panic(err)
+					}
+				}
+				return nil
+			}
+			m.CityMap.Player.Position = m.CityMap.TileBounds.Bound(m.CityMap.Player.Position)
+			m.MapMode.Center = m.CityMap.Player.Position
+			m.MapMode.CursorPos = m.CityMap.Player.Position
+			m.MapMode.CursorRange = 1
+			return nil
 		case '\033':
 			m.ModeStack = append(m.ModeStack, NewEscapeMenu(m))
 			return nil
@@ -85,8 +108,19 @@ func (m *GameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 	case *termui.EventQuit:
 		return termui.ErrorQuit
 	}
+	dir = dir.Bound()
 	if dir != util.DirectionInvalid {
-		m.CityMap.MovePlayer(dir)
+		if !m.CityMap.MovePlayer(dir) {
+			// Bump handling
+			np := m.CityMap.Player.Position.Add(util.DirectionOffsets[dir])
+			items := m.CityMap.ItemsAt(np)
+			if len(items) > 0 {
+				err := events.ExecuteItemEvent("Use", items[len(items)-1], &m.CityMap.Player.Actor, m.CityMap)
+				if err != nil {
+					panic(err)
+				}
+			}
+		}
 	}
 	return nil
 }

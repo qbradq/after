@@ -14,14 +14,17 @@ var ItemDefs = map[string]*Item{}
 // Item is any dynamic item within the world, anything that can be used, taken,
 // destroyed or built.
 type Item struct {
-	TemplateID string       // Template ID
-	Position   util.Point   // Current position on the map
-	Name       string       // Descriptive name
-	Rune       string       // Display rune
-	Fg         termui.Color // Display foreground color
-	Bg         termui.Color // Display background color
-	BlocksVis  bool         // If true this item blocks visibility
-	BlocksWalk bool         // If true this item blocks walking
+	// Persistent values
+	TemplateID string     // Template ID
+	Position   util.Point // Current position on the map
+	// Reconstructed values
+	Events     map[string]string // Map of event names to event handler names
+	Name       string            // Descriptive name
+	Rune       string            // Display rune
+	Fg         termui.Color      // Display foreground color
+	Bg         termui.Color      // Display background color
+	BlocksVis  bool              // If true this item blocks visibility
+	BlocksWalk bool              // If true this item blocks walking
 }
 
 // NewItem creates a new item from the named template.

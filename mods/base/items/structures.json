@@ -5,27 +5,39 @@
         "Fg": "Yellow",
         "Bg": "Black",
         "BlocksVis": true,
-        "BlocksWalk": true
+        "BlocksWalk": true,
+        "Events": {
+            "Use": "OpenDoor"
+        }
     },
     "OpenDoor": {
         "Name": "open door",
         "Rune": "-",
         "Fg": "Yellow",
-        "Bg": "Black"
+        "Bg": "Black",
+        "Events": {
+            "Use": "CloseDoor"
+        }
     },
     "Window": {
         "Name": "window",
         "Rune": "#",
         "Fg": "Aqua",
         "Bg": "Black",
-        "BlocksWalk": true
+        "BlocksWalk": true,
+        "Events": {
+            "Use": "OpenDoor"
+        }
     },
     "OpenWindow": {
         "Name": "open window",
         "Rune": "-",
         "Fg": "Aqua",
         "Bg": "Black",
-        "BlocksWalk": true
+        "BlocksWalk": true,
+        "Events": {
+            "Use": "CloseDoor"
+        }
     },
     "FenceGate": {
         "Name": "fence gate",
@@ -33,13 +45,19 @@
         "Fg": "Yellow",
         "Bg": "Black",
         "BlocksVis": true,
-        "BlocksWalk": true
+        "BlocksWalk": true,
+        "Events": {
+            "Use": "OpenDoor"
+        }
     },
     "OpenFenceGate": {
         "Name": "open fence gate",
         "Rune": "-",
         "Fg": "Yellow",
-        "Bg": "Black"
+        "Bg": "Black",
+        "Events": {
+            "Use": "CloseDoor"
+        }
     },
     "Sink": {
         "Name": "sink",
@@ -54,12 +72,18 @@
         "Fg": "Silver",
         "Bg": "Black",
         "BlocksVis": true,
-        "BlocksWalk": true
+        "BlocksWalk": true,
+        "Events": {
+            "Use": "OpenDoor"
+        }
     },
     "OpenGarageDoor": {
         "Name": "open garage door",
         "Rune": "-",
         "Fg": "Silver",
-        "Bg": "Black"
+        "Bg": "Black",
+        "Events": {
+            "Use": "CloseDoor"
+        }
     }
 }
