@@ -1,0 +1,14 @@
+{
+    "Zombie": {
+        "Name": "zombie",
+        "Rune": "Z",
+        "Fg": "White",
+        "Bg": "Black"
+    },
+    "ZombieChild": {
+        "Name": "zombie child",
+        "Rune": "z",
+        "Fg": "White",
+        "Bg": "Black"
+    }
+}

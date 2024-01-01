@@ -1,4 +1,4 @@
-package chunkgen
+package citygen
 
 import (
 	"errors"
@@ -7,8 +7,6 @@ import (
 	"strings"
 
 	"github.com/qbradq/after/internal/game"
-	"github.com/qbradq/after/internal/itemgen"
-	"github.com/qbradq/after/internal/tilegen"
 	"github.com/qbradq/after/lib/util"
 )
 
@@ -30,7 +28,7 @@ func (e *tileExpression) evaluate(c *game.Chunk, p util.Point) {
 
 // tileGenExpression returns the result of a tile generator.
 type tileGenExpression struct {
-	r tilegen.TileGen // Tile generator to execute
+	r TileGen // Tile generator to execute
 }
 
 // evaluate implements the evaluator interface.
@@ -55,8 +53,8 @@ func (e *itemExpression) evaluate(c *game.Chunk, p util.Point) {
 
 // itemGenExpression lays down items with a given chance based on a generator.
 type itemGenExpression struct {
-	r    itemgen.ItemGen // Item generator to execute
-	x, y int             // rng parameters
+	r    ItemGen // Item generator to execute
+	x, y int     // rng parameters
 }
 
 // evaluate implements the evaluator interface.
@@ -68,7 +66,36 @@ func (e *itemGenExpression) evaluate(c *game.Chunk, p util.Point) {
 	}
 }
 
-// GenStatement is a list of expressions to run on a single position in the
+// actorExpression lays down an actor with a given chance.
+type actorExpression struct {
+	r    string // Actor template name
+	x, y int    // rng parameters
+}
+
+func (e *actorExpression) evaluate(c *game.Chunk, p util.Point) {
+	if util.Random(0, e.y) < e.x {
+		a := game.NewActor(e.r)
+		a.Position = p
+		c.PlaceActorRelative(a)
+	}
+}
+
+// actorGenExpression lays down an actor with a given chance based on a
+// generator.
+type actorGenExpression struct {
+	r    ActorGen // Actor template name
+	x, y int      // rng parameters
+}
+
+func (e *actorGenExpression) evaluate(c *game.Chunk, p util.Point) {
+	if util.Random(0, e.y) < e.x {
+		a := e.r.Generate()
+		a.Position = p
+		c.PlaceActorRelative(a)
+	}
+}
+
+// genStatement is a list of expressions to run on a single position in the
 // chunk at generation time. The text format of an expression is as follows:
 // exp[;exp]... Where:
 // exp = (tile_exp|item_exp)|(item_exp@XinY) Where:
@@ -76,16 +103,28 @@ func (e *itemGenExpression) evaluate(c *game.Chunk, p util.Point) {
 // item_name is the name of an item or item generator
 // Y is the bounded maximum of the half-open range [0-Y)
 // X is the value of the random roll [0-Y) below which the item will appear
-type GenStatement []evaluator
+type genStatement []evaluator
 
-func (s *GenStatement) UnmarshalJSON(in []byte) error {
+func (s *genStatement) UnmarshalJSON(in []byte) error {
 	// Expression parsing
 	exprs := strings.Split(string(in[1:len(in)-1]), ";")
 	for _, expr := range exprs {
 		parts := strings.Split(expr, "@")
 		switch len(parts) {
 		case 1:
-			if gen, found := itemgen.ItemGens[parts[0]]; found {
+			if gen, found := ActorGens[parts[0]]; found {
+				*s = append(*s, &actorGenExpression{
+					r: gen,
+					x: 1,
+					y: 1,
+				})
+			} else if _, found := game.ActorDefs[parts[0]]; found {
+				*s = append(*s, &actorExpression{
+					r: parts[0],
+					x: 1,
+					y: 1,
+				})
+			} else if gen, found := ItemGens[parts[0]]; found {
 				*s = append(*s, &itemGenExpression{
 					r: gen,
 					x: 1,
@@ -97,7 +136,7 @@ func (s *GenStatement) UnmarshalJSON(in []byte) error {
 					x: 1,
 					y: 1,
 				})
-			} else if gen, found := tilegen.TileGens[parts[0]]; found {
+			} else if gen, found := TileGens[parts[0]]; found {
 				*s = append(*s, &tileGenExpression{
 					r: gen,
 				})
@@ -106,7 +145,7 @@ func (s *GenStatement) UnmarshalJSON(in []byte) error {
 					r: r,
 				})
 			} else {
-				return fmt.Errorf("unresolved item or tile reference %s", parts[0])
+				return fmt.Errorf("unresolved actor, item or tile reference %s", parts[0])
 			}
 		case 2:
 			nParts := strings.Split(parts[1], "n")
@@ -118,7 +157,19 @@ func (s *GenStatement) UnmarshalJSON(in []byte) error {
 			if err != nil {
 				return err
 			}
-			if gen, found := itemgen.ItemGens[parts[0]]; found {
+			if gen, found := ActorGens[parts[0]]; found {
+				*s = append(*s, &actorGenExpression{
+					r: gen,
+					x: int(x),
+					y: int(y),
+				})
+			} else if _, found := game.ActorDefs[parts[0]]; found {
+				*s = append(*s, &actorExpression{
+					r: parts[0],
+					x: int(x),
+					y: int(y),
+				})
+			} else if gen, found := ItemGens[parts[0]]; found {
 				*s = append(*s, &itemGenExpression{
 					r: gen,
 					x: int(x),
@@ -127,9 +178,11 @@ func (s *GenStatement) UnmarshalJSON(in []byte) error {
 			} else if _, found := game.ItemDefs[parts[0]]; found {
 				*s = append(*s, &itemExpression{
 					r: parts[0],
+					x: int(x),
+					y: int(y),
 				})
 			} else {
-				return fmt.Errorf("unresolved item reference %s", parts[0])
+				return fmt.Errorf("unresolved actor or item reference %s", parts[0])
 			}
 		default:
 			return fmt.Errorf("found %d parts, expected 1 or 2", len(parts))
@@ -143,6 +196,14 @@ func (s *GenStatement) UnmarshalJSON(in []byte) error {
 			tilesFound++
 		case *tileGenExpression:
 			tilesFound++
+		case *actorExpression:
+			if e.x < 1 || e.y < 1 {
+				return errors.New("generator statement actor expressions must use positive whole numbers")
+			}
+		case *actorGenExpression:
+			if e.x < 1 || e.y < 1 {
+				return errors.New("generator statement actor expressions must use positive whole numbers")
+			}
 		case *itemExpression:
 			if e.x < 1 || e.y < 1 {
 				return errors.New("generator statement item expressions must use positive whole numbers")
@@ -160,7 +221,7 @@ func (s *GenStatement) UnmarshalJSON(in []byte) error {
 }
 
 // evaluate evaluates each expression in the statement in order.
-func (s GenStatement) evaluate(c *game.Chunk, p util.Point) {
+func (s genStatement) evaluate(c *game.Chunk, p util.Point) {
 	for _, exp := range s {
 		exp.evaluate(c, p)
 	}

@@ -1,4 +1,4 @@
-package chunkgen
+package citygen
 
 import (
 	"github.com/qbradq/after/internal/game"
@@ -27,7 +27,7 @@ type ChunkGen struct {
 	Fg      termui.Color            // Foreground color
 	Bg      termui.Color            // Background color
 	Maps    [][]string              // List of maps of characters that define how to procedurally generate each tile, the map is selected at random
-	Tiles   map[string]GenStatement // Mapping of map characters to value generator statements
+	Tiles   map[string]genStatement // Mapping of map characters to value generator statements
 }
 
 // GetID returns the unique identifier of the generator.

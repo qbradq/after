@@ -2,7 +2,6 @@ package citygen
 
 import (
 	"github.com/larspensjo/Go-simplex-noise/simplexnoise"
-	"github.com/qbradq/after/internal/chunkgen"
 	"github.com/qbradq/after/internal/game"
 	"github.com/qbradq/after/lib/util"
 )
@@ -28,43 +27,43 @@ func interstate() *game.CityMap {
 			f := util.Facing(util.Random(0, 4))
 			if n > 0.25 {
 				if util.Random(0, 16) == 0 {
-					set(m, p, chunkgen.ChunkGens["BrushyField"], f)
+					set(m, p, ChunkGens["BrushyField"], f)
 				} else {
-					set(m, p, chunkgen.ChunkGens["GrassyField"], f)
+					set(m, p, ChunkGens["GrassyField"], f)
 				}
 			} else {
-				set(m, p, chunkgen.ChunkGens["Forest"], f)
+				set(m, p, ChunkGens["Forest"], f)
 			}
 		}
 	}
 	// Main interstate artery
 	iip := util.NewPoint(10, 15)
 	p = iip
-	place(m, chunkgen.ChunkGens["InterstateHighwayIntersection"], p, util.FacingNorth)
+	place(m, ChunkGens["InterstateHighwayIntersection"], p, util.FacingNorth)
 	for ; p.Y >= 0; p.Y-- {
-		place(m, chunkgen.ChunkGens["Interstate"], p, util.FacingNorth)
+		place(m, ChunkGens["Interstate"], p, util.FacingNorth)
 	}
 	p = iip
 	p.Y += 3
 	for ; p.Y < m.Bounds.Height(); p.Y++ {
-		place(m, chunkgen.ChunkGens["Interstate"], p, util.FacingNorth)
+		place(m, ChunkGens["Interstate"], p, util.FacingNorth)
 	}
 	// Crossing highway
 	p = iip
 	p.X--
 	p.Y += 2
 	for ; p.X >= 0; p.X-- {
-		place(m, chunkgen.ChunkGens["Highway"], p, util.FacingWest)
+		place(m, ChunkGens["Highway"], p, util.FacingWest)
 	}
 	p = iip
-	p.X += chunkgen.ChunkGens["InterstateHighwayIntersection"].Width
+	p.X += ChunkGens["InterstateHighwayIntersection"].Width
 	p.Y++
 	for ; p.X < m.Bounds.Width(); p.X++ {
-		place(m, chunkgen.ChunkGens["Highway"], p, util.FacingEast)
+		place(m, ChunkGens["Highway"], p, util.FacingEast)
 	}
 	// Test house
 	p = iip
 	p.X -= 2
-	place(m, chunkgen.ChunkGens["House"], p, util.FacingSouth)
+	place(m, ChunkGens["House"], p, util.FacingSouth)
 	return m
 }

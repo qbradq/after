@@ -200,6 +200,14 @@ func (c *Chunk) RemoveItem(i *Item) {
 	}
 }
 
+// PlaceActorRelative adds the actor to the chunk and adjusts the
+// position from chunk-relative to absolute.
+func (c *Chunk) PlaceActorRelative(a *Actor) {
+	a.Position.X += c.Bounds.TL.X
+	a.Position.Y += c.Bounds.TL.Y
+	c.PlaceActor(a)
+}
+
 // PlaceActor places the actor within the chunk. This is a no-op if the
 // current position lies outside the chunk. Returns true on success.
 func (c *Chunk) PlaceActor(a *Actor) bool {

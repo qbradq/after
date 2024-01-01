@@ -1,4 +1,4 @@
-package itemgen
+package citygen
 
 import (
 	"encoding/json"
@@ -8,7 +8,7 @@ import (
 	"github.com/qbradq/after/lib/util"
 )
 
-// ItemGen generates a single tile from a set of possibilities.
+// ItemGen generates a single item from a set of possibilities.
 type ItemGen []string
 
 // ItemGens is the mapping of generator names to objects.
@@ -20,7 +20,7 @@ func (g *ItemGen) UnmarshalJSON(in []byte) error {
 	for k, n := range src {
 		_, found := game.ItemDefs[k]
 		if !found {
-			panic(fmt.Errorf("TileGen referenced non-existent tile %s", k))
+			panic(fmt.Errorf("ItemGen referenced non-existent item %s", k))
 		}
 		for i := 0; i < n; i++ {
 			*g = append(*g, k)

@@ -1,4 +1,4 @@
-package tilegen
+package citygen
 
 import (
 	"encoding/json"

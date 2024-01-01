@@ -1,7 +1,6 @@
 package citygen
 
 import (
-	"github.com/qbradq/after/internal/chunkgen"
 	"github.com/qbradq/after/internal/game"
 	"github.com/qbradq/after/lib/util"
 )
@@ -27,7 +26,7 @@ func overlaps(b util.Rect, m *game.CityMap) bool {
 
 // place attempts to place the given chunk generator with the given facing. This
 // function returns true if the chunk generator was able to be placed properly.
-func place(m *game.CityMap, g *chunkgen.ChunkGen, p util.Point, f util.Facing) bool {
+func place(m *game.CityMap, g *ChunkGen, p util.Point, f util.Facing) bool {
 	// Variable setup based on facing
 	var b util.Rect
 	switch f.Bound() {
@@ -87,7 +86,7 @@ func place(m *game.CityMap, g *chunkgen.ChunkGen, p util.Point, f util.Facing) b
 
 // set sets the given chunk with parameters from the generator and assumes that
 // the generator is a 1x1. This does *not* mark the chunk as occupied.
-func set(m *game.CityMap, p util.Point, g *chunkgen.ChunkGen, f util.Facing) {
+func set(m *game.CityMap, p util.Point, g *ChunkGen, f util.Facing) {
 	c := m.GetChunkFromMapPoint(p)
 	if c == nil {
 		return

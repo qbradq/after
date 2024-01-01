@@ -7,10 +7,8 @@ import (
 	"os"
 	"path"
 
-	"github.com/qbradq/after/internal/chunkgen"
+	"github.com/qbradq/after/internal/citygen"
 	"github.com/qbradq/after/internal/game"
-	"github.com/qbradq/after/internal/itemgen"
-	"github.com/qbradq/after/internal/tilegen"
 )
 
 func init() {
@@ -60,9 +58,9 @@ func UnloadAllMods() {
 	game.TileRefs = map[string]game.TileRef{}
 	game.TileCrossRefs = []*game.TileDef{}
 	game.TileCrossRefForRef = map[game.TileRef]game.TileCrossRef{}
-	tilegen.TileGens = map[string]tilegen.TileGen{}
-	itemgen.ItemGens = map[string]itemgen.ItemGen{}
-	chunkgen.ChunkGens = map[string]*chunkgen.ChunkGen{}
+	citygen.TileGens = map[string]citygen.TileGen{}
+	citygen.ItemGens = map[string]citygen.ItemGen{}
+	citygen.ChunkGens = map[string]*citygen.ChunkGen{}
 	game.ItemDefs = map[string]*game.Item{}
 	game.ActorDefs = map[string]*game.Actor{}
 }
@@ -165,16 +163,16 @@ func (m *Mod) loadTileGens() error {
 		if err != nil {
 			return err
 		}
-		var gens map[string]tilegen.TileGen
+		var gens map[string]citygen.TileGen
 		err = json.Unmarshal(d, &gens)
 		if err != nil {
 			return err
 		}
 		for k, gen := range gens {
-			if _, found := tilegen.TileGens[k]; found {
+			if _, found := citygen.TileGens[k]; found {
 				return fmt.Errorf("duplicate tile generator %s", k)
 			}
-			tilegen.TileGens[k] = gen
+			citygen.TileGens[k] = gen
 		}
 	}
 	return nil
@@ -195,7 +193,7 @@ func (m *Mod) loadChunkGens() error {
 		if err != nil {
 			return err
 		}
-		var gens []*chunkgen.ChunkGen
+		var gens []*citygen.ChunkGen
 		err = json.Unmarshal(d, &gens)
 		if err != nil {
 			return err
@@ -204,7 +202,7 @@ func (m *Mod) loadChunkGens() error {
 			if len(g.ID) < 1 {
 				return errors.New("chunk generator with no ID given")
 			}
-			if _, found := chunkgen.ChunkGens[g.ID]; found {
+			if _, found := citygen.ChunkGens[g.ID]; found {
 				return fmt.Errorf("duplicate chunk generator %s", g.ID)
 			}
 			for iGenMap, genMap := range g.Maps {
@@ -219,7 +217,7 @@ func (m *Mod) loadChunkGens() error {
 					}
 				}
 			}
-			chunkgen.ChunkGens[g.ID] = g
+			citygen.ChunkGens[g.ID] = g
 		}
 	}
 	return nil
@@ -299,16 +297,16 @@ func (m *Mod) loadItemGens() error {
 		if err != nil {
 			return err
 		}
-		var gens map[string]itemgen.ItemGen
+		var gens map[string]citygen.ItemGen
 		err = json.Unmarshal(d, &gens)
 		if err != nil {
 			panic(err)
 		}
 		for k, gen := range gens {
-			if _, found := itemgen.ItemGens[k]; found {
+			if _, found := citygen.ItemGens[k]; found {
 				return fmt.Errorf("duplicate item generator definition %s", k)
 			}
-			itemgen.ItemGens[k] = gen
+			citygen.ItemGens[k] = gen
 		}
 	}
 	return nil
