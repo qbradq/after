@@ -110,7 +110,7 @@ func (m *GameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 	}
 	dir = dir.Bound()
 	if dir != util.DirectionInvalid {
-		if !m.CityMap.MovePlayer(dir) {
+		if !m.CityMap.StepPlayer(dir) {
 			// Bump handling
 			np := m.CityMap.Player.Position.Add(util.DirectionOffsets[dir])
 			items := m.CityMap.ItemsAt(np)

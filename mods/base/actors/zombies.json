@@ -1,12 +1,14 @@
 {
     "Zombie": {
         "Name": "zombie",
+        "AITemplate": "Zombie",
         "Rune": "Z",
         "Fg": "White",
         "Bg": "Black"
     },
     "ZombieChild": {
         "Name": "zombie child",
+        "AITemplate": "Zombie",
         "Rune": "z",
         "Fg": "White",
         "Bg": "Black"

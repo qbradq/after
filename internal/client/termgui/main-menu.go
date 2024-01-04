@@ -3,6 +3,7 @@ package termgui
 import (
 	"time"
 
+	_ "github.com/qbradq/after/internal/ai"
 	"github.com/qbradq/after/internal/citygen"
 	"github.com/qbradq/after/internal/game"
 	"github.com/qbradq/after/internal/mods"
@@ -38,7 +39,7 @@ func NewMainMenu(s termui.TerminalDriver) *MainMenu {
 						panic(err)
 					}
 					m := citygen.CityGens["Interstate Town"]()
-					m.Player = game.NewPlayer()
+					m.Player = game.NewPlayer(m.Now)
 					m.Player.Position = util.NewPoint(10*game.ChunkWidth+game.ChunkWidth/2, 15*game.ChunkHeight+game.ChunkHeight/2)
 					m.SaveCityPlan()
 					m.FullSave()

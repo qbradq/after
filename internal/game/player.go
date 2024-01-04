@@ -2,6 +2,7 @@ package game
 
 import (
 	"io"
+	"time"
 )
 
 // Player implements the player's special actor.
@@ -10,8 +11,8 @@ type Player struct {
 }
 
 // NewPlayer creates and returns a new Player struct.
-func NewPlayer() *Player {
-	a := NewActor("Player")
+func NewPlayer(now time.Time) *Player {
+	a := NewActor("Player", now)
 	return &Player{
 		Actor: *a,
 	}

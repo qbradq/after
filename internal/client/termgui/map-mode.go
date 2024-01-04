@@ -96,7 +96,7 @@ func (m *MapMode) HandleEvent(s termui.TerminalDriver, e any) error {
 func (m *MapMode) Draw(s termui.TerminalDriver) {
 	mtl := m.topLeft()
 	mb := util.NewRectXYWH(mtl.X, mtl.Y, m.Bounds.Width(), m.Bounds.Height())
-	m.CityMap.EnsureLoaded(mb)
+	m.CityMap.EnsureLoaded(mb.Divide(game.ChunkWidth))
 	vis, rem := m.CityMap.MakeVisibilitySets(mb)
 	var p util.Point
 	// Draw the tile matrix

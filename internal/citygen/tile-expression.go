@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/qbradq/after/internal/game"
 	"github.com/qbradq/after/lib/util"
@@ -13,7 +14,7 @@ import (
 // evaluator evaluates a single expression executing its generation function.
 type evaluator interface {
 	// evaluate evaluates a single expression executing its function.
-	evaluate(*game.Chunk, util.Point)
+	evaluate(*game.Chunk, util.Point, time.Time)
 }
 
 // tileExpression returns a fixed tile.
@@ -22,7 +23,7 @@ type tileExpression struct {
 }
 
 // evaluate implements the evaluator interface.
-func (e *tileExpression) evaluate(c *game.Chunk, p util.Point) {
+func (e *tileExpression) evaluate(c *game.Chunk, p util.Point, t time.Time) {
 	c.Tiles[p.Y*game.ChunkWidth+p.X] = game.TileDefs[e.r]
 }
 
@@ -32,7 +33,7 @@ type tileGenExpression struct {
 }
 
 // evaluate implements the evaluator interface.
-func (e *tileGenExpression) evaluate(c *game.Chunk, p util.Point) {
+func (e *tileGenExpression) evaluate(c *game.Chunk, p util.Point, t time.Time) {
 	c.Tiles[p.Y*game.ChunkWidth+p.X] = e.r.Generate()
 }
 
@@ -43,7 +44,7 @@ type itemExpression struct {
 }
 
 // evaluate implements the evaluator interface.
-func (e *itemExpression) evaluate(c *game.Chunk, p util.Point) {
+func (e *itemExpression) evaluate(c *game.Chunk, p util.Point, t time.Time) {
 	if util.Random(0, e.y) < e.x {
 		i := game.NewItem(e.r)
 		i.Position = p
@@ -58,7 +59,7 @@ type itemGenExpression struct {
 }
 
 // evaluate implements the evaluator interface.
-func (e *itemGenExpression) evaluate(c *game.Chunk, p util.Point) {
+func (e *itemGenExpression) evaluate(c *game.Chunk, p util.Point, t time.Time) {
 	if util.Random(0, e.y) < e.x {
 		i := e.r.Generate()
 		i.Position = p
@@ -72,9 +73,9 @@ type actorExpression struct {
 	x, y int    // rng parameters
 }
 
-func (e *actorExpression) evaluate(c *game.Chunk, p util.Point) {
+func (e *actorExpression) evaluate(c *game.Chunk, p util.Point, t time.Time) {
 	if util.Random(0, e.y) < e.x {
-		a := game.NewActor(e.r)
+		a := game.NewActor(e.r, t)
 		a.Position = p
 		c.PlaceActorRelative(a)
 	}
@@ -87,9 +88,9 @@ type actorGenExpression struct {
 	x, y int      // rng parameters
 }
 
-func (e *actorGenExpression) evaluate(c *game.Chunk, p util.Point) {
+func (e *actorGenExpression) evaluate(c *game.Chunk, p util.Point, t time.Time) {
 	if util.Random(0, e.y) < e.x {
-		a := e.r.Generate()
+		a := e.r.Generate(t)
 		a.Position = p
 		c.PlaceActorRelative(a)
 	}
@@ -221,8 +222,8 @@ func (s *genStatement) UnmarshalJSON(in []byte) error {
 }
 
 // evaluate evaluates each expression in the statement in order.
-func (s genStatement) evaluate(c *game.Chunk, p util.Point) {
+func (s genStatement) evaluate(c *game.Chunk, p util.Point, t time.Time) {
 	for _, exp := range s {
-		exp.evaluate(c, p)
+		exp.evaluate(c, p, t)
 	}
 }

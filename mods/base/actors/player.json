@@ -1,6 +1,7 @@
 {
     "Player": {
         "Name": "player",
+        "AITemplate": "Nil",
         "Rune": "@",
         "Fg": "White",
         "Bg": "Black"

@@ -3,6 +3,7 @@ package util
 import (
 	"encoding/binary"
 	"io"
+	"time"
 )
 
 // PutBool writes a boolean value
@@ -50,6 +51,13 @@ func PutUint32(w io.Writer, v uint32) {
 	w.Write(b[:])
 }
 
+// PutUint64 writes a 64-bit numeric value
+func PutUint64(w io.Writer, v uint64) {
+	var b [8]byte
+	binary.BigEndian.PutUint64(b[:], v)
+	w.Write(b[:])
+}
+
 // PutPoint writes a Point value to the writer.
 func PutPoint(w io.Writer, p Point) {
 	PutUint32(w, uint32(p.X))
@@ -69,6 +77,11 @@ func PutDictionary(w io.Writer, d *Dictionary) {
 		PutString(w, k)
 	}
 	PutUint16(w, IndexInvalid)
+}
+
+// PutTime writes a time.Time value to the writer.
+func PutTime(w io.Writer, t time.Time) {
+	PutUint64(w, uint64(t.UnixMilli()))
 }
 
 // GetString returns the next null-terminated string in the data buffer.
@@ -105,6 +118,13 @@ func GetUint32(r io.Reader) uint32 {
 	return binary.BigEndian.Uint32(buf)
 }
 
+// GetUint64 returns the next unsigned 64-bit integer in the data buffer.
+func GetUint64(r io.Reader) uint32 {
+	var buf = []byte{0, 0, 0, 0, 0, 0, 0, 0}
+	r.Read(buf)
+	return binary.BigEndian.Uint32(buf)
+}
+
 // GetPoint returns the next Point value in the data buffer.
 func GetPoint(r io.Reader) Point {
 	return Point{
@@ -121,6 +141,7 @@ func GetRect(r io.Reader) Rect {
 	}
 }
 
+// GetDirectory returns the next Directory structure in the data buffer.
 func GetDictionary(r io.Reader) *Dictionary {
 	ret := NewDictionary()
 	var highestIndex uint16
@@ -138,4 +159,9 @@ func GetDictionary(r io.Reader) *Dictionary {
 	}
 	ret.nextIdx = highestIndex + 1
 	return ret
+}
+
+// GetTime returns the next time.Time value in the data buffer.
+func GetTime(r io.Reader) time.Time {
+	return time.UnixMilli(int64(GetUint64(r)))
 }

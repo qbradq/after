@@ -18,7 +18,7 @@ const (
 // library to interact with them.
 type ChunkGen interface {
 	// Generate handles all initial procedural generation for the chunk
-	Generate(*Chunk)
+	Generate(*Chunk, *CityMap)
 	// AssignStaticInfo inserts all of the non-procedurally generated bits into
 	// the chunk, such as name and map rune.
 	AssignStaticInfo(*Chunk)

@@ -2,6 +2,7 @@ package game
 
 import (
 	"bytes"
+	"container/heap"
 	"fmt"
 	"io"
 	"sort"
@@ -16,6 +17,8 @@ const (
 	CityMapHeight             int = 660  // Height of a city map in chunks
 	maxInMemoryChunks         int = 1024 // Max chunks to keep in hot memory
 	purgeInMemoryChunksTarget int = 512  // Number of chunks to keep in hot memory after purging least-recently used chunks
+	chunkUpdateRadius         int = 10   // Number of chunks away from the player to update actors
+	chunkLoadRadius           int = 12   // Number of chunks away from the player to keep chunks hot-loaded
 )
 
 // Return slice for GetActors
@@ -30,16 +33,25 @@ var remBuf bitmap.Bitmap
 // CityMap represents the entire world of the game in terms of which chunks go
 // where.
 type CityMap struct {
-	Bounds              util.Rect     // Bounds of the city map in chunks
-	TileBounds          util.Rect     // Bounds of the city map in tiles
-	Player              *Player       // Player actor
-	Chunks              []*Chunk      // The chunks of the map
-	InMemoryChunks      bitmap.Bitmap // Bitmap of all chunks loaded into memory
-	InMemoryChunksCount int           // Running count of in-memory chunks to avoid excessive calls to bitmap.Count()
-	ChunksGenerated     bitmap.Bitmap // Bitmap of all chunks that have been generated
-	cgDirty             bool          // ChunksGenerated has been altered since the last call to SaveBitmaps
-	itemsWithinCache    []*Item       // Return slice for ItemsWithin()
-	actorsWithinCache   []*Actor      // Return slice for ActorsWithin()
+	// Dynamic persistent data
+	Player *Player   // Player actor
+	Now    time.Time // Current in-game time
+	// Static persistent data
+	chunks []*Chunk // The chunks of the map
+	// Reconstructed values
+	Bounds     util.Rect // Bounds of the city map in chunks
+	TileBounds util.Rect // Bounds of the city map in tiles
+	// Working variables
+	inMemoryChunks      bitmap.Bitmap    // Bitmap of all chunks loaded into memory
+	inMemoryChunksCount int              // Running count of in-memory chunks to avoid excessive calls to bitmap.Count()
+	chunksGenerated     bitmap.Bitmap    // Bitmap of all chunks that have been generated
+	cgDirty             bool             // ChunksGenerated has been altered since the last call to SaveBitmaps
+	updateSet           map[int]struct{} // Set of all chunks in the current update set
+	usNewCache          []int            // Cache of chunk indexes of newly added chunks to the update set
+	usOldCache          []int            // Cache of chunk indexes of newly removed chunks to the update set
+	aq                  actorQueue       // Queue of all actors within update range
+	itemsWithinCache    []*Item          // Return slice for ItemsWithin()
+	actorsWithinCache   []*Actor         // Return slice for ActorsWithin()
 }
 
 // NewCityMap allocates and returns a new CityMap structure.
@@ -47,11 +59,19 @@ func NewCityMap() *CityMap {
 	m := &CityMap{
 		Bounds:     util.NewRectWH(CityMapWidth, CityMapHeight),
 		TileBounds: util.NewRectWH(CityMapWidth*ChunkWidth, CityMapHeight*ChunkHeight),
-		Chunks:     make([]*Chunk, CityMapWidth*CityMapHeight),
+		chunks:     make([]*Chunk, CityMapWidth*CityMapHeight),
+		updateSet:  map[int]struct{}{},
+		usNewCache: make([]int, 0, chunkUpdateRadius*chunkUpdateRadius),
+		usOldCache: make([]int, 0, chunkUpdateRadius*chunkUpdateRadius),
+		aq:         actorQueue{},
 	}
-	for i := range m.Chunks {
-		m.Chunks[i] = NewChunk(i%CityMapWidth, i/CityMapWidth, uint32(i))
+	// Configure the starting time as two years from now at 0800
+	t := time.Now().Add(time.Hour * 24 * 730)
+	m.Now = time.Date(t.Year(), t.Month(), t.Day(), 8, 0, 0, 0, t.Location())
+	for i := range m.chunks {
+		m.chunks[i] = NewChunk(i%CityMapWidth, i/CityMapWidth, uint32(i))
 	}
+	heap.Init(&m.aq)
 	return m
 }
 
@@ -74,13 +94,13 @@ func (m *CityMap) LoadCityPlan() {
 func (m *CityMap) Write(w io.Writer) {
 	// Build dictionary of chunk generator IDs
 	dict := util.NewDictionary()
-	for _, c := range m.Chunks {
+	for _, c := range m.chunks {
 		dict.Put(c.Generator.GetID())
 	}
 	// Write the file
 	util.PutUint32(w, 0) // Version
 	util.PutDictionary(w, dict)
-	for _, c := range m.Chunks {
+	for _, c := range m.chunks {
 		util.PutUint16(w, dict.Get(c.Generator.GetID()))
 		util.PutPoint(w, c.ChunkGenOffset)
 		util.PutByte(w, byte(c.Facing))
@@ -109,7 +129,7 @@ func (m *CityMap) LoadDynamicData() {
 func (m *CityMap) Read(r io.Reader) {
 	_ = util.GetUint32(r) // Version
 	dict := util.GetDictionary(r)
-	for _, c := range m.Chunks {
+	for _, c := range m.chunks {
 		s := dict.Lookup(util.GetUint16(r))
 		c.Generator = GetChunkGen(s)
 		c.ChunkGenOffset = util.GetPoint(r)
@@ -125,7 +145,7 @@ func (m *CityMap) GetChunkFromMapPoint(p util.Point) *Chunk {
 	if !m.Bounds.Contains(p) {
 		return nil
 	}
-	return m.Chunks[p.Y*CityMapWidth+p.X]
+	return m.chunks[p.Y*CityMapWidth+p.X]
 }
 
 // GetChunk returns the correct chunk for the given absolute tile point or nil
@@ -134,7 +154,7 @@ func (m *CityMap) GetChunk(p util.Point) *Chunk {
 	if !m.TileBounds.Contains(p) {
 		return nil
 	}
-	return m.Chunks[(p.Y/ChunkHeight)*CityMapWidth+(p.X/ChunkWidth)]
+	return m.chunks[(p.Y/ChunkHeight)*CityMapWidth+(p.X/ChunkWidth)]
 }
 
 // GetTile returns the tile at the given absolute tile point or nil if the point
@@ -143,25 +163,14 @@ func (m *CityMap) GetTile(p util.Point) *TileDef {
 	if !m.TileBounds.Contains(p) {
 		return nil
 	}
-	c := m.Chunks[(p.Y/ChunkHeight)*CityMapWidth+(p.X/ChunkWidth)]
+	c := m.chunks[(p.Y/ChunkHeight)*CityMapWidth+(p.X/ChunkWidth)]
 	t := c.Tiles[(p.Y%ChunkHeight)*ChunkWidth+(p.X%ChunkWidth)]
 	return t
 }
 
-// EnsureLoaded ensures that all chunks in the area given in absolute tile
-// coordinates have been generated and are loaded into memory.
-func (m *CityMap) EnsureLoaded(area util.Rect) {
-	// Calculate bounding area of the rect in terms of chunks and bound it.
-	r := util.Rect{
-		TL: util.Point{
-			X: area.TL.X / ChunkWidth,
-			Y: area.TL.Y / ChunkHeight,
-		},
-		BR: util.Point{
-			X: area.BR.X / ChunkWidth,
-			Y: area.BR.Y / ChunkHeight,
-		},
-	}
+// EnsureLoaded ensures that all chunks in the area given in chunk coordinates
+// have been generated and are loaded into memory.
+func (m *CityMap) EnsureLoaded(r util.Rect) {
 	if r.TL.X < 0 {
 		r.TL.X = 0
 	}
@@ -180,7 +189,7 @@ func (m *CityMap) EnsureLoaded(area util.Rect) {
 	for p.Y = r.TL.Y; p.Y <= r.BR.Y; p.Y++ {
 		for p.X = r.TL.X; p.X <= r.BR.X; p.X++ {
 			r := chunkRefForPoint(p)
-			c := m.Chunks[r]
+			c := m.chunks[r]
 			m.LoadChunk(c, now)
 		}
 	}
@@ -202,15 +211,15 @@ func (m *CityMap) LoadChunk(c *Chunk, now time.Time) {
 	}
 	// There is no possibility of error after this point so go ahead
 	// and mark the chunk as in-memory
-	m.InMemoryChunks.Set(c.Ref)
-	m.InMemoryChunksCount++
+	m.inMemoryChunks.Set(c.Ref)
+	m.inMemoryChunksCount++
 	// Allocate memory
 	c.Tiles = make([]*TileDef, ChunkWidth*ChunkHeight)
 	// Generate the chunk if this has never happened before
-	if !m.ChunksGenerated.Contains(c.Ref) {
-		m.ChunksGenerated.Set(c.Ref)
+	if !m.chunksGenerated.Contains(c.Ref) {
+		m.chunksGenerated.Set(c.Ref)
 		m.cgDirty = true
-		c.Generator.Generate(c)
+		c.Generator.Generate(c, m)
 		c.RebuildBitmaps()
 		w := bytes.NewBuffer(nil)
 		c.Write(w)
@@ -229,12 +238,12 @@ func (m *CityMap) LoadChunk(c *Chunk, now time.Time) {
 // maximum.
 func (m *CityMap) purgeOldChunks() {
 	// Short-circuit condition
-	if m.InMemoryChunksCount <= maxInMemoryChunks {
+	if m.inMemoryChunksCount <= maxInMemoryChunks {
 		return
 	}
 	// Sort the chunks by time last updated
-	cRefs := make([]uint32, 0, m.InMemoryChunksCount)
-	m.InMemoryChunks.Range(func(x uint32) {
+	cRefs := make([]uint32, 0, m.inMemoryChunksCount)
+	m.inMemoryChunks.Range(func(x uint32) {
 		cRefs = append(cRefs, x)
 	})
 	sort.Slice(cRefs, func(i, j int) bool {
@@ -244,12 +253,12 @@ func (m *CityMap) purgeOldChunks() {
 	bufs := map[uint32][]byte{}
 	for _, cr := range cRefs[:maxInMemoryChunks-purgeInMemoryChunksTarget] {
 		w := bytes.NewBuffer(nil)
-		c := m.Chunks[cr]
+		c := m.chunks[cr]
 		c.Write(w)
 		bufs[cr] = w.Bytes()
 		c.Unload()
-		m.InMemoryChunks.Remove(cr)
-		m.InMemoryChunksCount--
+		m.inMemoryChunks.Remove(cr)
+		m.inMemoryChunksCount--
 	}
 	// Save all unloaded chunks to the database
 	for k, v := range bufs {
@@ -268,9 +277,9 @@ func (m *CityMap) purgeOldChunks() {
 func (m *CityMap) saveAllChunks() {
 	// Accumulate all data
 	bufs := map[uint32][]byte{}
-	m.InMemoryChunks.Range(func(x uint32) {
+	m.inMemoryChunks.Range(func(x uint32) {
 		w := bytes.NewBuffer(nil)
-		c := m.Chunks[x]
+		c := m.chunks[x]
 		c.Write(w)
 		bufs[x] = w.Bytes()
 	})
@@ -293,7 +302,7 @@ func (m *CityMap) SaveBitmaps() {
 	}
 	w := bytes.NewBuffer(nil)
 	util.PutUint32(w, 0) // Version
-	m.ChunksGenerated.WriteTo(w)
+	m.chunksGenerated.WriteTo(w)
 	SaveValue("CityMap.ChunksGenerated", w.Bytes())
 	m.cgDirty = false
 }
@@ -302,7 +311,7 @@ func (m *CityMap) SaveBitmaps() {
 func (m *CityMap) LoadBitmaps() {
 	r := LoadValue("CityMap.ChunksGenerated")
 	_ = util.GetUint32(r) // Version
-	m.ChunksGenerated.ReadFrom(r)
+	m.chunksGenerated.ReadFrom(r)
 }
 
 // FullSave commits the entire working set to the current save database without
@@ -385,7 +394,7 @@ func (m *CityMap) ItemsWithin(b util.Rect) []*Item {
 	cb := util.NewRectXYWH(b.TL.X/ChunkWidth, b.TL.Y/ChunkHeight, b.Width()/ChunkWidth+1, b.Height()/ChunkHeight+1)
 	for cy := cb.TL.Y; cy <= cb.BR.Y; cy++ {
 		for cx := cb.TL.X; cx <= cb.BR.X; cx++ {
-			c := m.Chunks[cy*CityMapWidth+cx]
+			c := m.chunks[cy*CityMapWidth+cx]
 			for _, i := range c.Items {
 				if b.Contains(i.Position) {
 					m.itemsWithinCache = append(m.itemsWithinCache, i)
@@ -420,10 +429,10 @@ func (m *CityMap) ActorAt(p util.Point) *Actor {
 // ActorsWithin returns the items within the given bounds.
 func (m *CityMap) ActorsWithin(b util.Rect) []*Actor {
 	m.actorsWithinCache = m.actorsWithinCache[:0]
-	cb := util.NewRectXYWH(b.TL.X/ChunkWidth, b.TL.Y/ChunkHeight, b.Width()/ChunkWidth, b.Height()/ChunkHeight)
+	cb := util.NewRectXYWH(b.TL.X/ChunkWidth, b.TL.Y/ChunkHeight, b.Width()/ChunkWidth+1, b.Height()/ChunkHeight+1)
 	for cy := cb.TL.Y; cy <= cb.BR.Y; cy++ {
 		for cx := cb.TL.X; cx <= cb.BR.X; cx++ {
-			c := m.Chunks[cy*CityMapWidth+cx]
+			c := m.chunks[cy*CityMapWidth+cx]
 			for _, a := range c.Actors {
 				if b.Contains(a.Position) {
 					m.actorsWithinCache = append(m.actorsWithinCache, a)
@@ -434,9 +443,9 @@ func (m *CityMap) ActorsWithin(b util.Rect) []*Actor {
 	return m.actorsWithinCache
 }
 
-// MoveActor attempts to move the actor in the given direction, returning true
+// StepActor attempts to move the actor in the given direction, returning true
 // on success.
-func (m *CityMap) MoveActor(a *Actor, d util.Direction) bool {
+func (m *CityMap) StepActor(a *Actor, d util.Direction) bool {
 	if d == util.DirectionInvalid {
 		return false
 	}
@@ -457,9 +466,9 @@ func (m *CityMap) MoveActor(a *Actor, d util.Direction) bool {
 	return true
 }
 
-// MovePlayer attempts to move the player's actor in the given direction,
+// StepPlayer attempts to move the player's actor in the given direction,
 // returning true on success.
-func (m *CityMap) MovePlayer(d util.Direction) bool {
+func (m *CityMap) StepPlayer(d util.Direction) bool {
 	if d == util.DirectionInvalid {
 		return false
 	}
@@ -472,6 +481,7 @@ func (m *CityMap) MovePlayer(d util.Direction) bool {
 		return false
 	}
 	m.Player.Position = np
+	m.playerTookTurn(time.Second)
 	return true
 }
 
@@ -561,4 +571,84 @@ func (m *CityMap) MakeVisibilitySets(b util.Rect) (vis, rem bitmap.Bitmap) {
 		}
 	}
 	return
+}
+
+// CanSeePlayerFrom returns true if there is line of sight between the given
+// point and the player.
+func (m *CityMap) CanSeePlayerFrom(p util.Point) bool {
+	for _, p := range util.Ray(p, m.Player.Position) {
+		c := m.GetChunk(p)
+		if !c.BlocksVis.Contains(c.relOfs(p)) {
+			return false
+		}
+	}
+	return true
+}
+
+// Update updates the game world for d duration based around point p.
+func (m *CityMap) Update(p util.Point, d time.Duration) {
+	fn := func(p util.Point) int {
+		return p.Y*CityMapWidth + p.X
+	}
+	// Reset caches
+	m.usNewCache = m.usNewCache[:0]
+	m.usOldCache = m.usOldCache[:0]
+	// Establish working parameters
+	cp := util.Point{
+		X: p.X / ChunkWidth,
+		Y: p.Y / ChunkHeight,
+	}
+	lb := util.NewRectFromRadius(cp, chunkLoadRadius).Overlap(m.Bounds)
+	ub := util.NewRectFromRadius(cp, chunkUpdateRadius).Overlap(m.Bounds)
+	// Load chunks
+	m.EnsureLoaded(lb)
+	// Prep new chunks set
+	newSet := map[int]struct{}{}
+	for p.Y = ub.TL.Y; p.Y <= ub.BR.Y; p.Y++ {
+		for p.X = ub.TL.X; p.X <= ub.BR.X; p.X++ {
+			idx := fn(p)
+			newSet[idx] = struct{}{}
+			if _, found := m.updateSet[idx]; !found {
+				m.usNewCache = append(m.usNewCache, idx)
+			}
+		}
+	}
+	// Prep old chunks set
+	for k := range m.updateSet {
+		if _, found := newSet[k]; !found {
+			m.usOldCache = append(m.usOldCache, k)
+		}
+	}
+	m.updateSet = newSet
+	// Remove actors in the old chunks from the priority queue
+	for _, idx := range m.usOldCache {
+		c := m.chunks[idx]
+		for _, a := range c.Actors {
+			heap.Remove(&m.aq, a.pqIdx)
+		}
+	}
+	// Add actors in the new chunks to the priority queue
+	for _, idx := range m.usNewCache {
+		c := m.chunks[idx]
+		for _, a := range c.Actors {
+			heap.Push(&m.aq, a)
+		}
+	}
+	// Step time and process the priority queue
+	m.Now = m.Now.Add(d)
+	for {
+		a := heap.Pop(&m.aq).(*Actor)
+		if m.Now.Before(a.NextThink) {
+			heap.Push(&m.aq, a)
+			break
+		}
+		a.NextThink = a.NextThink.Add(a.AIModel.Act(a, a.NextThink, m))
+		heap.Push(&m.aq, a)
+	}
+}
+
+// playerTookTurn is responsible for updating the city map model for the given
+// duration as well as anything else that should happen after the player's turn.
+func (m *CityMap) playerTookTurn(d time.Duration) {
+	m.Update(m.Player.Position, d)
 }

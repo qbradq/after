@@ -65,6 +65,14 @@ func (r Rect) Width() int { return (r.BR.X - r.TL.X) + 1 }
 // Height returns the height of the rect.
 func (r Rect) Height() int { return (r.BR.Y - r.TL.Y) + 1 }
 
+// Divide divides all of the points of the rect by a.
+func (r Rect) Divide(a int) Rect {
+	return Rect{
+		TL: r.TL.Divide(a),
+		BR: r.BR.Divide(a),
+	}
+}
+
 // Contains returns true if the point is contained within the rect.
 func (r Rect) Contains(p Point) bool {
 	return p.X >= r.TL.X && p.X <= r.BR.X && p.Y >= r.TL.Y && p.Y <= r.BR.Y
@@ -120,4 +128,25 @@ func (r Rect) Contain(b Rect) Rect {
 		b.BR.Y = r.BR.Y
 	}
 	return b
+}
+
+// Overlap returns the overlapping rect between r and a. If there is no overlap
+// the zero value is returned.
+func (r Rect) Overlap(a Rect) Rect {
+	if a.BR.X < r.TL.X || a.TL.X > r.BR.X || a.BR.Y < r.TL.Y || a.TL.Y > r.BR.Y {
+		return Rect{}
+	}
+	if a.TL.X < r.TL.X {
+		a.TL.X = r.TL.X
+	}
+	if a.BR.X > r.BR.X {
+		a.BR.X = r.BR.X
+	}
+	if a.TL.Y < r.TL.Y {
+		a.TL.Y = r.TL.Y
+	}
+	if a.BR.Y > r.BR.Y {
+		a.BR.Y = r.BR.Y
+	}
+	return a
 }
