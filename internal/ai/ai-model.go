@@ -26,6 +26,7 @@ func regFn(name string, fn aiFn) {
 	if _, found := aiFns[name]; found {
 		panic(fmt.Errorf("duplicate AI function %s", name))
 	}
+	aiFns[name] = fn
 }
 
 // AIModel implements the thinking AI of CPU-controlled actors.
@@ -82,5 +83,5 @@ func (ai *AIModel) Write(w io.Writer) {
 
 // Act is responsible for calling act().
 func (ai *AIModel) Act(a *game.Actor, t time.Time, m *game.CityMap) time.Duration {
-	return time.Second
+	return aiFns[ai.act](ai, a, t, m)
 }

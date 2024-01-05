@@ -578,7 +578,7 @@ func (m *CityMap) MakeVisibilitySets(b util.Rect) (vis, rem bitmap.Bitmap) {
 func (m *CityMap) CanSeePlayerFrom(p util.Point) bool {
 	for _, p := range util.Ray(p, m.Player.Position) {
 		c := m.GetChunk(p)
-		if !c.BlocksVis.Contains(c.relOfs(p)) {
+		if c.BlocksVis.Contains(c.relOfs(p)) {
 			return false
 		}
 	}
