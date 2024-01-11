@@ -41,6 +41,7 @@ type Actor struct {
 	Rune       string       // Display rune
 	Fg         termui.Color // Display foreground color
 	Bg         termui.Color // Display background color
+	WalkSpeed  float64      // Number of seconds between steps at walking pace
 	// Transient values
 	pqIdx int // Priority queue index
 }

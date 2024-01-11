@@ -42,6 +42,7 @@ func NewMainMenu(s termui.TerminalDriver) *MainMenu {
 					m.Player = game.NewPlayer(m.Now)
 					m.Player.Position = util.NewPoint(10*game.ChunkWidth+game.ChunkWidth/2, 15*game.ChunkHeight+game.ChunkHeight/2)
 					m.SaveCityPlan()
+					m.Update(m.Player.Position, 0)
 					m.FullSave()
 					game.SaveTileRefs()
 					termui.RunMode(s, NewGameMode(m))

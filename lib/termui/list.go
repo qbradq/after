@@ -28,14 +28,24 @@ func (m *List) HandleInput(s TerminalDriver, e any) error {
 	case *EventKey:
 		switch ev.Key {
 		case 'k':
-			m.CursorPos--
-			if m.CursorPos < 0 {
-				m.CursorPos += len(m.Items)
+			for {
+				m.CursorPos--
+				if m.CursorPos < 0 {
+					m.CursorPos += len(m.Items)
+				}
+				if m.Items[m.CursorPos] != "_hbar_" {
+					break
+				}
 			}
 		case 'j':
-			m.CursorPos++
-			if m.CursorPos >= len(m.Items) {
-				m.CursorPos -= len(m.Items)
+			for {
+				m.CursorPos++
+				if m.CursorPos >= len(m.Items) {
+					m.CursorPos -= len(m.Items)
+				}
+				if m.Items[m.CursorPos] != "_hbar_" {
+					break
+				}
 			}
 		case ' ':
 			fallthrough
@@ -78,11 +88,21 @@ func (m *List) Draw(s TerminalDriver) {
 				Rune:  ' ',
 				Style: CurrentTheme.Highlight,
 			})
-			DrawStringLeft(s, util.NewRectXYWH(b.TL.X, b.TL.Y+i-si, b.Width(), 1),
-				text, CurrentTheme.Highlight)
+			if text == "_hbar_" {
+				DrawHLine(s, util.NewPoint(b.TL.X, b.TL.Y+i-si), b.Width(),
+					CurrentTheme.Highlight)
+			} else {
+				DrawStringLeft(s, util.NewRectXYWH(b.TL.X, b.TL.Y+i-si, b.Width(), 1),
+					text, CurrentTheme.Highlight)
+			}
 		} else {
-			DrawStringLeft(s, util.NewRectXYWH(b.TL.X, b.TL.Y+i-si, b.Width(), 1),
-				text, CurrentTheme.Normal)
+			if text == "_hbar_" {
+				DrawHLine(s, util.NewPoint(b.TL.X, b.TL.Y+i-si), b.Width(),
+					CurrentTheme.Normal)
+			} else {
+				DrawStringLeft(s, util.NewRectXYWH(b.TL.X, b.TL.Y+i-si, b.Width(), 1),
+					text, CurrentTheme.Normal)
+			}
 		}
 	}
 }

@@ -17,8 +17,8 @@ const (
 	CityMapHeight             int = 660  // Height of a city map in chunks
 	maxInMemoryChunks         int = 1024 // Max chunks to keep in hot memory
 	purgeInMemoryChunksTarget int = 512  // Number of chunks to keep in hot memory after purging least-recently used chunks
-	chunkUpdateRadius         int = 10   // Number of chunks away from the player to update actors
-	chunkLoadRadius           int = 12   // Number of chunks away from the player to keep chunks hot-loaded
+	chunkUpdateRadius         int = 2    // Number of chunks away from the player to update actors
+	chunkLoadRadius           int = 3    // Number of chunks away from the player to keep chunks hot-loaded
 )
 
 // Return slice for GetActors
@@ -42,6 +42,7 @@ type CityMap struct {
 	Bounds     util.Rect // Bounds of the city map in chunks
 	TileBounds util.Rect // Bounds of the city map in tiles
 	// Working variables
+	PlayerApproachDMap  *DMap            // DMap for path finding toward the player
 	inMemoryChunks      bitmap.Bitmap    // Bitmap of all chunks loaded into memory
 	inMemoryChunksCount int              // Running count of in-memory chunks to avoid excessive calls to bitmap.Count()
 	chunksGenerated     bitmap.Bitmap    // Bitmap of all chunks that have been generated
@@ -52,6 +53,8 @@ type CityMap struct {
 	aq                  actorQueue       // Queue of all actors within update range
 	itemsWithinCache    []*Item          // Return slice for ItemsWithin()
 	actorsWithinCache   []*Actor         // Return slice for ActorsWithin()
+	updateBounds        util.Rect        // Bounds of the current update
+	loadBounds          util.Rect        // Load bounds of the current update
 }
 
 // NewCityMap allocates and returns a new CityMap structure.
@@ -64,6 +67,10 @@ func NewCityMap() *CityMap {
 		usNewCache: make([]int, 0, chunkUpdateRadius*chunkUpdateRadius),
 		usOldCache: make([]int, 0, chunkUpdateRadius*chunkUpdateRadius),
 		aq:         actorQueue{},
+		PlayerApproachDMap: NewDMap(util.NewRectWH(
+			(chunkUpdateRadius*2+1)*ChunkWidth,
+			(chunkUpdateRadius*2+1)*ChunkHeight,
+		)),
 	}
 	// Configure the starting time as two years from now at 0800
 	t := time.Now().Add(time.Hour * 24 * 730)
@@ -481,7 +488,7 @@ func (m *CityMap) StepPlayer(d util.Direction) bool {
 		return false
 	}
 	m.Player.Position = np
-	m.playerTookTurn(time.Second)
+	m.PlayerTookTurn(time.Second)
 	return true
 }
 
@@ -600,6 +607,8 @@ func (m *CityMap) Update(p util.Point, d time.Duration) {
 	}
 	lb := util.NewRectFromRadius(cp, chunkLoadRadius).Overlap(m.Bounds)
 	ub := util.NewRectFromRadius(cp, chunkUpdateRadius).Overlap(m.Bounds)
+	m.loadBounds = lb.Multiply(ChunkWidth)
+	m.updateBounds = ub.Multiply(ChunkWidth)
 	// Load chunks
 	m.EnsureLoaded(lb)
 	// Prep new chunks set
@@ -636,19 +645,25 @@ func (m *CityMap) Update(p util.Point, d time.Duration) {
 	}
 	// Step time and process the priority queue
 	m.Now = m.Now.Add(d)
-	for {
-		a := heap.Pop(&m.aq).(*Actor)
-		if m.Now.Before(a.NextThink) {
+	if len(m.aq) > 0 {
+		for {
+			a := heap.Pop(&m.aq).(*Actor)
+			if m.Now.Before(a.NextThink) {
+				heap.Push(&m.aq, a)
+				break
+			}
+			a.NextThink = a.NextThink.Add(a.AIModel.Act(a, a.NextThink, m))
 			heap.Push(&m.aq, a)
-			break
 		}
-		a.NextThink = a.NextThink.Add(a.AIModel.Act(a, a.NextThink, m))
-		heap.Push(&m.aq, a)
 	}
 }
 
-// playerTookTurn is responsible for updating the city map model for the given
+// PlayerTookTurn is responsible for updating the city map model for the given
 // duration as well as anything else that should happen after the player's turn.
-func (m *CityMap) playerTookTurn(d time.Duration) {
+func (m *CityMap) PlayerTookTurn(d time.Duration) {
+	m.PlayerApproachDMap.Clear()
+	m.PlayerApproachDMap.Relocate(m.updateBounds.TL)
+	m.PlayerApproachDMap.SetGoal(m.Player.Position)
+	m.PlayerApproachDMap.Calculate(m)
 	m.Update(m.Player.Position, d)
 }

@@ -4,6 +4,7 @@
         "AITemplate": "Nil",
         "Rune": "@",
         "Fg": "White",
-        "Bg": "Black"
+        "Bg": "Black",
+        "WalkSpeed": 1
     }
 }

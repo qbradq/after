@@ -1,6 +1,8 @@
 package termgui
 
 import (
+	"strconv"
+
 	"github.com/qbradq/after/internal/game"
 	"github.com/qbradq/after/lib/termui"
 	"github.com/qbradq/after/lib/util"
@@ -19,6 +21,7 @@ type MapMode struct {
 	CursorStyle int             // Cursor style
 	Callback    mapModeCallback // Callback function to execute when the user selects a tile or quits
 	DrawInfo    bool            // If true full tile information will be displayed next to the cursor
+	DrawDMap    bool            // If true draws the player approach dmap instead of the map
 }
 
 func (m *MapMode) topLeft() util.Point {
@@ -97,10 +100,74 @@ func (m *MapMode) Draw(s termui.TerminalDriver) {
 	mtl := m.topLeft()
 	mb := util.NewRectXYWH(mtl.X, mtl.Y, m.Bounds.Width(), m.Bounds.Height())
 	m.CityMap.EnsureLoaded(mb.Divide(game.ChunkWidth))
+	if m.DrawDMap {
+		m.drawDMap(s, mtl, mb)
+	} else {
+		m.drawMap(s, mtl, mb)
+	}
+}
+
+func (m *MapMode) drawDMap(s termui.TerminalDriver, mtl util.Point, mb util.Rect) {
+	var p util.Point
+	// Draw the player approach DMap
+	for p.Y = mb.TL.Y; p.Y <= mb.BR.Y; p.Y++ {
+		for p.X = mb.TL.X; p.X <= mb.BR.X; p.X++ {
+			sp := util.NewPoint(p.X-mtl.X+m.Bounds.TL.X, p.Y-mtl.Y+m.Bounds.TL.Y)
+			r := m.CityMap.PlayerApproachDMap.Rank(p)
+			code := r & 0x000F
+			fg := termui.Color(15 - ((r & 0x00F0) >> 4))
+			bg := termui.Color((r & 0x0F00) >> 8)
+			rn := '0' + rune(code)
+			if rn > '9' {
+				rn += 7
+			}
+			ns := termui.StyleDefault.
+				Background(bg).
+				Foreground(fg)
+			s.SetCell(sp, termui.Glyph{
+				Rune:  rn,
+				Style: ns,
+			})
+		}
+	}
+	// Draw the cursor
+	sp := util.Point{
+		X: (m.CursorPos.X - mtl.X) + m.Bounds.TL.X,
+		Y: (m.CursorPos.Y - mtl.Y) + m.Bounds.TL.Y,
+	}
+	if m.Bounds.Contains(sp) {
+		drawCursor(s, sp, m.Bounds, m.CursorStyle)
+	}
+	// Draw info box if needed
+	if m.DrawInfo {
+		rank := m.CityMap.PlayerApproachDMap.Rank(m.CursorPos)
+		text := strconv.FormatUint(uint64(rank), 16)
+		h := 1
+		w := 4
+		dx := sp.X + 2
+		if m.CursorPos.X > m.Center.X {
+			dx = sp.X - (3 + w)
+		}
+		r := util.NewRectXYWH(dx, sp.Y-1, w+2, h+2)
+		r = m.Bounds.Contain(r)
+		termui.DrawBox(s, r, termui.CurrentTheme.Normal)
+		r.TL.X++
+		r.TL.Y++
+		r.BR.X--
+		r.BR.Y--
+		termui.DrawFill(s, r, termui.Glyph{
+			Rune:  ' ',
+			Style: termui.CurrentTheme.Normal,
+		})
+		termui.DrawStringLeft(s, r, text, termui.CurrentTheme.Normal)
+	}
+}
+
+func (m *MapMode) drawMap(s termui.TerminalDriver, mtl util.Point, mb util.Rect) {
 	vis, rem := m.CityMap.MakeVisibilitySets(mb)
 	var p util.Point
-	// Draw the tile matrix
 	var idx uint32
+	// Draw the tile matrix
 	for p.Y = mtl.Y; p.Y < mtl.Y+m.Bounds.Height(); p.Y++ {
 		for p.X = mtl.X; p.X < mtl.X+m.Bounds.Width(); p.X++ {
 			sp := util.NewPoint(p.X-mtl.X+m.Bounds.TL.X, p.Y-mtl.Y+m.Bounds.TL.Y)

@@ -5,13 +5,22 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Launch Package",
+            "name": "Ebitenterm",
             "type": "go",
             "request": "launch",
             "mode": "debug",
             "console": "externalTerminal",
             "cwd": "${workspaceFolder}",
             "program": "${workspaceFolder}/cmd/ebitenterm",
+        },
+        {
+            "name": "TermGUI",
+            "type": "go",
+            "request": "launch",
+            "mode": "debug",
+            "console": "externalTerminal",
+            "cwd": "${workspaceFolder}",
+            "program": "${workspaceFolder}/cmd/termgui",
         }
     ]
 }

@@ -13,11 +13,11 @@ type EscapeMenu struct {
 
 // NewEscapeMenu returns a new EscapeMenu ready for use.
 func NewEscapeMenu(m *GameMode) *EscapeMenu {
-	return &EscapeMenu{
+	ret := &EscapeMenu{
 		m: m,
 		list: termui.List{
 			Boxed: true,
-			Items: []string{"Resume", "Force Save", "Save and Quit"},
+			Items: []string{"Resume", "Force Save", "Save and Quit", "_hbar_"},
 			Title: "Game Menu",
 			Selected: func(td termui.TerminalDriver, i int) error {
 				switch i {
@@ -30,11 +30,20 @@ func NewEscapeMenu(m *GameMode) *EscapeMenu {
 					m.CityMap.FullSave()
 					m.Quit = true
 					return termui.ErrorQuit
+				case 4:
+					m.Debug = !m.Debug
+					return termui.ErrorQuit
 				}
 				return nil
 			},
 		},
 	}
+	if m.Debug {
+		ret.list.Items = append(ret.list.Items, "Disable Debug Display")
+	} else {
+		ret.list.Items = append(ret.list.Items, "Enable Debug Display")
+	}
+	return ret
 }
 
 // HandleEvent implements the termui.Mode interface.
@@ -53,6 +62,6 @@ func (m *EscapeMenu) HandleEvent(s termui.TerminalDriver, e any) error {
 // Draw implements the termui.Mode interface.
 func (m *EscapeMenu) Draw(s termui.TerminalDriver) {
 	w, h := s.Size()
-	m.list.Bounds = util.NewRectWH(w, h).CenterRect(22, 5)
+	m.list.Bounds = util.NewRectWH(w, h).CenterRect(27, 7)
 	m.list.Draw(s)
 }

@@ -61,6 +61,10 @@ func interstate() *game.CityMap {
 	for ; p.X < m.Bounds.Width(); p.X++ {
 		place(m, ChunkGens["Highway"], p, util.FacingEast)
 	}
+	// Test chunk
+	p = iip
+	p.X--
+	place(m, ChunkGens["Test"], p, util.FacingSouth)
 	// Test house
 	p = iip
 	p.X -= 2

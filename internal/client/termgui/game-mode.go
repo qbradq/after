@@ -2,6 +2,7 @@ package termgui
 
 import (
 	"errors"
+	"time"
 
 	"github.com/qbradq/after/internal/events"
 	"github.com/qbradq/after/internal/game"
@@ -18,6 +19,7 @@ type GameMode struct {
 	ModeStack []termui.Mode // Internal stack of mode that overlay the main game mode, like the escape menu or inventory screen
 	Quit      bool          // If true we should quit
 	InTarget  bool          // If true we are in targeting mode
+	Debug     bool          // If true display debug information
 }
 
 // NewGameMode returns a new game mode.
@@ -60,6 +62,10 @@ func (m *GameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 			dir = util.DirectionSouth
 		case 'k':
 			dir = util.DirectionNorth
+		case '.':
+			m.CityMap.PlayerTookTurn(time.Second)
+			s.FlushEvents()
+			return nil
 		case 'x':
 			m.InTarget = true
 			m.MapMode.Callback = func(p util.Point, b bool) error {
@@ -93,6 +99,7 @@ func (m *GameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 					if err != nil {
 						panic(err)
 					}
+					m.CityMap.PlayerTookTurn(time.Second)
 				}
 				return nil
 			}
@@ -119,7 +126,10 @@ func (m *GameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 				if err != nil {
 					panic(err)
 				}
+				m.CityMap.PlayerTookTurn(time.Second)
 			}
+		} else {
+			s.FlushEvents()
 		}
 	}
 	return nil
@@ -162,6 +172,7 @@ func (m *GameMode) Draw(s termui.TerminalDriver) {
 		m.MapMode.CursorStyle = 0
 		m.MapMode.DrawInfo = false
 	}
+	m.MapMode.DrawDMap = m.Debug
 	m.MapMode.Draw(s)
 	termui.DrawVLine(s, util.NewPoint(sw-39, 0), sh, termui.CurrentTheme.Normal)
 	m.Minimap.Bounds = util.NewRectXYWH(sw-22, 0, 21, 21)

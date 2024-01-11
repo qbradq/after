@@ -23,6 +23,8 @@ type TerminalDriver interface {
 	GetCell(util.Point) Glyph
 	// PollEvent returns the next event.
 	PollEvent() any
+	// FlushEvents discards all non-system events currently in the buffer.
+	FlushEvents()
 	// Size returns the size of the screen.
 	Size() (int, int)
 	// Sync must redraw the entire terminal display.

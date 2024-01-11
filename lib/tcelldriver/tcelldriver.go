@@ -48,7 +48,9 @@ var colorBackRef = map[tcell.Color]termui.Color{
 
 // Driver is the termui.Driver implementation over tcell.
 type Driver struct {
-	s tcell.Screen
+	s      tcell.Screen
+	quit   chan struct{}
+	events chan any
 }
 
 // Init must be called to initialize the driver.
@@ -62,12 +64,47 @@ func (d *Driver) Init() error {
 		return err
 	}
 	d.s.Clear()
+	d.quit = make(chan struct{})
+	d.events = make(chan any, 1024)
+	go pumpEvents(d)
 	return nil
 }
 
 // Fini must be called to close the driver.
 func (d *Driver) Fini() {
+	d.quit <- struct{}{}
 	d.s.Fini()
+}
+
+func pumpEvents(d *Driver) {
+	for {
+		select {
+		case <-d.quit:
+			d.events <- &termui.EventQuit{}
+			return
+		default:
+			e := d.s.PollEvent()
+			switch ev := e.(type) {
+			case *tcell.EventKey:
+				switch ev.Key() {
+				case tcell.KeyRune:
+					d.events <- &termui.EventKey{Key: ev.Rune()}
+				case tcell.KeyEnter:
+					d.events <- &termui.EventKey{Key: '\n'}
+				case tcell.KeyEsc:
+					d.events <- &termui.EventKey{Key: '\033'}
+				}
+			case *tcell.EventResize:
+				w, h := ev.Size()
+				d.events <- &termui.EventResize{
+					Size: util.Point{
+						X: w,
+						Y: h,
+					},
+				}
+			}
+		}
+	}
 }
 
 // Size implements the termui.TerminalDriver interface.
@@ -96,26 +133,31 @@ func (d *Driver) GetCell(p util.Point) termui.Glyph {
 
 // PollEvent implements the termui.TerminalDriver interface.
 func (d *Driver) PollEvent() any {
-	for {
-		e := d.s.PollEvent()
-		switch ev := e.(type) {
-		case *tcell.EventKey:
-			switch ev.Key() {
-			case tcell.KeyRune:
-				return &termui.EventKey{Key: ev.Rune()}
-			case tcell.KeyEnter:
-				return &termui.EventKey{Key: '\n'}
-			case tcell.KeyEsc:
-				return &termui.EventKey{Key: '\033'}
+	return <-d.events
+}
+
+// FlushEvents implements the termui.TerminalDriver interface.
+func (d *Driver) FlushEvents() {
+	var keep []any
+	var done bool
+	for !done {
+		select {
+		case ev := <-d.events:
+			switch ev.(type) {
+			case *termui.EventResize:
+				keep = append(keep, ev)
+			case *termui.EventQuit:
+				keep = append(keep, ev)
+			case *termui.EventKey:
+				// Discard event
 			}
-		case *tcell.EventResize:
-			w, h := ev.Size()
-			return &termui.EventResize{
-				Size: util.Point{
-					X: w,
-					Y: h,
-				},
+		default:
+			// Out of events on the channel, re-populate with any system
+			// messages we extracted and return
+			for _, ev := range keep {
+				d.events <- ev
 			}
+			done = true
 		}
 	}
 }

@@ -65,11 +65,24 @@ func (r Rect) Width() int { return (r.BR.X - r.TL.X) + 1 }
 // Height returns the height of the rect.
 func (r Rect) Height() int { return (r.BR.Y - r.TL.Y) + 1 }
 
+// Area returns the width of the rect multiplied by its height.
+func (r Rect) Area() int {
+	return r.Width() * r.Height()
+}
+
 // Divide divides all of the points of the rect by a.
 func (r Rect) Divide(a int) Rect {
 	return Rect{
 		TL: r.TL.Divide(a),
 		BR: r.BR.Divide(a),
+	}
+}
+
+// Multiply multiplies all of the points of the rect by a.
+func (r Rect) Multiply(a int) Rect {
+	return Rect{
+		TL: r.TL.Multiply(a),
+		BR: r.BR.Multiply(a),
 	}
 }
 

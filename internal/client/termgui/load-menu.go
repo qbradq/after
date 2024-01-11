@@ -37,6 +37,7 @@ func NewLoadMenu(s termui.TerminalDriver) *LoadMenu {
 				m := game.NewCityMap()
 				m.LoadCityPlan()
 				m.LoadDynamicData()
+				m.Update(m.Player.Position, 0)
 				termui.RunMode(s, NewGameMode(m))
 				game.CloseSave()
 				return termui.ErrorQuit

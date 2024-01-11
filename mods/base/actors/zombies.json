@@ -4,13 +4,15 @@
         "AITemplate": "Zombie",
         "Rune": "Z",
         "Fg": "White",
-        "Bg": "Black"
+        "Bg": "Black",
+        "WalkSpeed": 1.5
     },
     "ZombieChild": {
         "Name": "zombie child",
         "AITemplate": "Zombie",
         "Rune": "z",
         "Fg": "White",
-        "Bg": "Black"
+        "Bg": "Black",
+        "WalkSpeed": 2
     }
 }

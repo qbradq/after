@@ -145,6 +145,10 @@ func (c *Chunk) RebuildBitmaps() {
 			c.BlocksWalk.Set(c.relOfs(i.Position))
 		}
 	}
+	// Consider actors
+	for _, a := range c.Actors {
+		c.BlocksWalk.Set(c.relOfs(a.Position))
+	}
 	c.bitmapsDirty = false
 }
 
@@ -215,6 +219,7 @@ func (c *Chunk) PlaceActor(a *Actor) bool {
 		return false
 	}
 	c.Actors = append(c.Actors, a)
+	c.BlocksWalk.Set(c.relOfs(a.Position))
 	return true
 }
 
@@ -238,6 +243,7 @@ func (c *Chunk) RemoveActor(a *Actor) {
 	c.Actors[idx] = c.Actors[len(c.Actors)-1]
 	c.Actors[len(c.Actors)-1] = nil
 	c.Actors = c.Actors[:len(c.Actors)-1]
+	c.bitmapsDirty = true
 }
 
 // CanStep returns true if the location is valid for an actor.

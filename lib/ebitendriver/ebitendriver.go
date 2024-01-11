@@ -175,6 +175,36 @@ func (d *Driver) PollEvent() any {
 	return <-d.events
 }
 
+// FlushEvents implements the termui.TerminalDriver interface.
+func (d *Driver) FlushEvents() {
+	var keep []any
+	var done bool
+	if d.quit {
+		d.events <- &termui.EventQuit{}
+		return
+	}
+	for !done {
+		select {
+		case ev := <-d.events:
+			switch ev.(type) {
+			case *termui.EventResize:
+				keep = append(keep, ev)
+			case *termui.EventQuit:
+				keep = append(keep, ev)
+			case *termui.EventKey:
+				// Discard event
+			}
+		default:
+			// Out of events on the channel, re-populate with any system
+			// messages we extracted and return
+			for _, ev := range keep {
+				d.events <- ev
+			}
+			done = true
+		}
+	}
+}
+
 // Size implements the termui.TerminalDriver interface.
 func (d *Driver) Size() (int, int) {
 	return d.b.Width(), d.b.Height()

@@ -5,7 +5,6 @@ import (
 
 	"github.com/qbradq/after/internal/game"
 	"github.com/qbradq/after/lib/termui"
-	"github.com/qbradq/after/lib/util"
 )
 
 // Zombie configures an AIModel to act as a zombie with very slow reaction
@@ -31,27 +30,9 @@ func init() {
 			return aiFns["zmActAttack"](ai, a, t, m)
 		}
 		// Need to get closer, try to approach
-		d := a.Position.DirectionTo(m.Player.Position)
-		if m.StepActor(a, d) {
-			return time.Second
-		}
-		step := 1
-		if d.IsDiagonal() {
-			step++
-		}
-		if util.RandomBool() {
-			if m.StepActor(a, d.RotateClockwise(step)) {
-				return time.Second
-			}
-			m.StepActor(a, d.RotateCounterclockwise(step))
-			return time.Second
-		} else {
-			if m.StepActor(a, d.RotateCounterclockwise(step)) {
-				return time.Second
-			}
-			m.StepActor(a, d.RotateClockwise(step))
-			return time.Second
-		}
+		_, d := m.PlayerApproachDMap.RollDown(a.Position)
+		m.StepActor(a, d)
+		return time.Second * time.Duration(a.WalkSpeed)
 	})
 	regFn("zmActAttack", func(ai *AIModel, a *game.Actor, t time.Time, m *game.CityMap) time.Duration {
 		game.Log.Log(termui.ColorRed, "You got attacked!")
