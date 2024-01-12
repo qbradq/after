@@ -4,9 +4,9 @@ import (
 	"bytes"
 	_ "embed"
 	"image"
-	"image/color"
 	_ "image/png"
 	"sync"
+	"time"
 
 	"github.com/gopxl/pixel"
 	"github.com/gopxl/pixel/pixelgl"
@@ -23,15 +23,16 @@ var iconData []byte
 // Driver implements a termui.TerminalDriver that uses the Pixel library
 // to implement a graphical terminal emulator with a square font.
 type Driver struct {
-	quit   bool            // If true PollEvent will always return *EventQuit
-	lock   sync.RWMutex    // Mutex for fb
-	b      util.Rect       // Bounds of the screen
-	events chan any        // Events channel
-	fb     []termui.Glyph  // Front buffer
-	bb     []termui.Glyph  // Back buffer
-	icon   pixel.Picture   // Icon image
-	font   pixel.Picture   // Font backing image
-	glyphs []*pixel.Sprite // Cache of glyph images
+	quit    bool            // If true PollEvent will always return *EventQuit
+	lock    sync.RWMutex    // Mutex for fb
+	b       util.Rect       // Bounds of the screen
+	events  chan any        // Events channel
+	fbDirty bool            // If true, fb needs to be re-drawn
+	fb      []termui.Glyph  // Front buffer
+	bb      []termui.Glyph  // Back buffer
+	icon    pixel.Picture   // Icon image
+	font    pixel.Picture   // Font backing image
+	glyphs  []*pixel.Sprite // Cache of glyph images
 }
 
 // NewDriver returns a new Driver ready for use.
@@ -108,23 +109,33 @@ func (d *Driver) Run() {
 		panic(err)
 	}
 	// Main program loop
+	d.fbDirty = true
 	for !win.Closed() && !d.quit {
+		// Refresh display
+		// if d.fbDirty {
+		start := time.Now()
+		d.draw(win)
+		win.SwapBuffers()
+		util.Log("PixelDriver.draw: %dms", time.Since(start).Milliseconds())
+		d.fbDirty = false
+		// }
 		// Wait for input
-		win.UpdateInputWait(0)
-		// Input events
+		win.UpdateInput()
+		// Collect events
 		for _, r := range win.Typed() {
 			d.events <- &termui.EventKey{Key: r}
+			d.fbDirty = true
 		}
 		if win.JustPressed(pixelgl.KeyEnter) {
 			d.events <- &termui.EventKey{Key: '\n'}
+			d.fbDirty = true
 		}
 		if win.JustPressed(pixelgl.KeyEscape) {
 			d.events <- &termui.EventKey{Key: '\033'}
+			d.fbDirty = true
 		}
-		// Refresh display
-		win.Clear(color.RGBA{A: 255})
-		d.draw(win)
-		win.SwapBuffers()
+		// Give up time slice
+		time.Sleep(time.Millisecond * 33)
 	}
 }
 
@@ -234,6 +245,7 @@ func (d *Driver) Sync() {
 	d.lock.Lock()
 	copy(d.fb, d.bb)
 	d.lock.Unlock()
+	d.fbDirty = true
 }
 
 // Show implements the termui.TerminalDriver interface.

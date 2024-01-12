@@ -3,6 +3,7 @@ package termui
 import (
 	"errors"
 	"log"
+	"time"
 
 	"github.com/qbradq/after/lib/util"
 )
@@ -56,14 +57,24 @@ func RunMode(s TerminalDriver, m Mode) {
 			m.Draw(s)
 			s.Sync()
 		default:
+			start := time.Now()
 			if err := m.HandleEvent(s, e); err != nil {
 				if errors.Is(err, ErrorQuit) {
 					return
 				}
 				log.Fatal(err)
 			}
+			updateTime := time.Since(start)
+			start = time.Now()
 			m.Draw(s)
+			drawTime := time.Since(start)
+			start = time.Now()
 			s.Show()
+			showTime := time.Since(start)
+			util.Log("termui.RunMode Update: %dms Draw: %dms Show: %dms",
+				updateTime.Milliseconds(),
+				drawTime.Milliseconds(),
+				showTime.Milliseconds())
 		}
 	}
 }
