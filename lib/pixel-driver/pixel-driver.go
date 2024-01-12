@@ -1,20 +1,24 @@
-package ebitendriver
+package pixeldriver
 
 import (
 	"bytes"
 	_ "embed"
 	"image"
+	"image/color"
 	_ "image/png"
 	"sync"
 
-	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/inpututil"
+	"github.com/gopxl/pixel"
+	"github.com/gopxl/pixel/pixelgl"
 	"github.com/qbradq/after/lib/termui"
 	"github.com/qbradq/after/lib/util"
 )
 
 //go:embed font.png
 var fontData []byte
+
+//go:embed icon.png
+var iconData []byte
 
 // Driver implements a termui.TerminalDriver that uses the Pixel library
 // to implement a graphical terminal emulator with a square font.
@@ -25,12 +29,17 @@ type Driver struct {
 	events chan any        // Events channel
 	fb     []termui.Glyph  // Front buffer
 	bb     []termui.Glyph  // Back buffer
-	font   *ebiten.Image   // Font backing image
-	glyphs []*ebiten.Image // Cache of glyph images
+	icon   pixel.Picture   // Icon image
+	font   pixel.Picture   // Font backing image
+	glyphs []*pixel.Sprite // Cache of glyph images
 }
 
 // NewDriver returns a new Driver ready for use.
 func NewDriver() *Driver {
+	icon, _, err := image.Decode(bytes.NewReader(iconData))
+	if err != nil {
+		return nil
+	}
 	baseFont, _, err := image.Decode(bytes.NewReader(fontData))
 	if err != nil {
 		return nil
@@ -51,17 +60,19 @@ func NewDriver() *Driver {
 	}
 	d := &Driver{
 		events: make(chan any, 128),
-		font:   ebiten.NewImageFromImage(font),
-		glyphs: make([]*ebiten.Image, 128*16),
+		icon:   pixel.PictureDataFromImage(icon),
+		font:   pixel.PictureDataFromImage(font),
+		glyphs: make([]*pixel.Sprite, 128*16),
 	}
 	for iy := 0; iy < 8*16; iy++ {
 		for ix := 0; ix < 16; ix++ {
 			sx := ix * 8
-			sy := iy * 8
-			d.glyphs[iy*16+ix] = d.font.SubImage(image.Rect(sx, sy, sx+8, sy+8)).(*ebiten.Image)
+			sy := int(d.font.Bounds().H()) - (iy*8 + 8)
+			d.glyphs[iy*16+ix] = pixel.NewSprite(d.font,
+				pixel.R(float64(sx), float64(sy), float64(sx+8), float64(sy+8)))
 		}
 	}
-	d.resize(util.NewRectWH(80, 45))
+	d.resize(util.NewRectWH(80, 50))
 	return d
 }
 
@@ -83,28 +94,47 @@ func (d *Driver) resize(b util.Rect) {
 	}
 }
 
-// Update implements the ebiten.Game interface.
-func (d *Driver) Update() error {
-	in := make([]rune, 0, 32)
-	in = ebiten.AppendInputChars(in)
-	for _, r := range in {
-		d.events <- &termui.EventKey{Key: r}
+// Run implements the pixel main loop.
+func (d *Driver) Run() {
+	cfg := pixelgl.WindowConfig{
+		Title:     "After",
+		Icon:      []pixel.Picture{d.icon},
+		Bounds:    pixel.R(0, 0, 80*8*2, 50*8*2),
+		Resizable: true,
+		VSync:     true,
 	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) ||
-		inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter) {
-		d.events <- &termui.EventKey{Key: '\n'}
+	win, err := pixelgl.NewWindow(cfg)
+	if err != nil {
+		panic(err)
 	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
-		d.events <- &termui.EventKey{Key: '\033'}
+	// Main program loop
+	for !win.Closed() && !d.quit {
+		// Wait for input
+		win.UpdateInputWait(0)
+		// Input events
+		for _, r := range win.Typed() {
+			d.events <- &termui.EventKey{Key: r}
+		}
+		if win.JustPressed(pixelgl.KeyEnter) {
+			d.events <- &termui.EventKey{Key: '\n'}
+		}
+		if win.JustPressed(pixelgl.KeyEscape) {
+			d.events <- &termui.EventKey{Key: '\033'}
+		}
+		// Refresh display
+		win.Clear(color.RGBA{A: 255})
+		d.draw(win)
+		win.SwapBuffers()
 	}
-	return nil
 }
 
-// Draw implements the ebiten.Game interface.
-func (d *Driver) Draw(s *ebiten.Image) {
-	var op ebiten.DrawImageOptions
-	d.lock.RLock()
+func (d *Driver) draw(t pixel.Target) {
 	var p util.Point
+	var m pixel.Matrix
+	_, bh := d.Size()
+	sh := bh * 8 * 2
+	b := pixel.NewBatch(&pixel.TrianglesData{}, d.font)
+	d.lock.RLock()
 	for p.Y = d.b.TL.Y; p.Y <= d.b.BR.Y; p.Y++ {
 		for p.X = d.b.TL.X; p.X <= d.b.BR.X; p.X++ {
 			g := d.fb[p.Y*d.b.Width()+p.X]
@@ -116,22 +146,15 @@ func (d *Driver) Draw(s *ebiten.Image) {
 			n += int(fg) * 128
 			char := d.glyphs[n]
 			block := d.glyphs[int(bg)*128+127]
-			op.GeoM.Reset()
-			op.GeoM.Translate(float64(p.X*8), float64(p.Y*8))
-			s.DrawImage(block, &op)
-			s.DrawImage(char, &op)
+			m = pixel.IM.
+				Scaled(pixel.ZV, 2).
+				Moved(pixel.V(float64(p.X*8*2+8), float64((sh-p.Y*8*2)-8)))
+			block.Draw(b, m)
+			char.Draw(b, m)
 		}
 	}
 	d.lock.RUnlock()
-}
-
-// Layout implements the ebiten.Game interface.
-func (d *Driver) Layout(w, h int) (int, int) {
-	z := 2
-	w /= z
-	h /= z
-	d.resize(util.NewRectWH(w/8, h/8))
-	return w, h
+	b.Draw(t)
 }
 
 // Quit sets the quit flag so the application can exit gracefully.
@@ -141,17 +164,13 @@ func (d *Driver) Quit() {
 
 // Init implements the termui.TerminalDriver interface.
 func (d *Driver) Init() error {
-	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
-	ebiten.SetScreenClearedEveryFrame(false)
-	ebiten.SetRunnableOnUnfocused(false)
-	ebiten.SetWindowSize(80*8*2, 50*8*2)
-	ebiten.SetWindowTitle("After")
+	// Nothing to do
 	return nil
 }
 
 // Fini implements the termui.TerminalDriver interface.
 func (d *Driver) Fini() {
-	// Nothing to be done
+	d.Quit()
 }
 
 // SetCell implements the termui.TerminalDriver interface.

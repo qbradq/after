@@ -115,21 +115,21 @@ func (m *CityMap) Write(w io.Writer) {
 	}
 }
 
-// SaveDynamicData writes top-level dynamic map data like the player actor's
-// current position.
+// SaveDynamicData writes top-level dynamic map data.
 func (m *CityMap) SaveDynamicData() {
 	w := bytes.NewBuffer(nil)
-	util.PutUint32(w, 0) // Version
-	m.Player.Write(w)    // Player
+	util.PutUint32(w, 0)   // Version
+	m.Player.Write(w)      // Player
+	util.PutTime(w, m.Now) // Current time
 	SaveValue("CityMap.DynamicData", w.Bytes())
 }
 
-// LoadDynamicData loads top-level dynamic map data like the player actor's
-// current position.
+// LoadDynamicData loads top-level dynamic map data.
 func (m *CityMap) LoadDynamicData() {
 	r := LoadValue("CityMap.DynamicData")
-	_ = util.GetUint32(r) // Version
-	m.Player = NewPlayerFromReader(r)
+	_ = util.GetUint32(r)             // Version
+	m.Player = NewPlayerFromReader(r) // Player
+	m.Now = util.GetTime(r)           // Current time
 }
 
 // Read reads the city-level map information from the buffer.
@@ -643,7 +643,10 @@ func (m *CityMap) Update(p util.Point, d time.Duration) {
 			heap.Push(&m.aq, a)
 		}
 	}
-	// Step time and process the priority queue
+	// Step time and process the priority queue if needed
+	if d == 0 {
+		return
+	}
 	m.Now = m.Now.Add(d)
 	if len(m.aq) > 0 {
 		for {

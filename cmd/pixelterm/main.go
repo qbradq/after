@@ -1,18 +1,17 @@
 package main
 
 import (
-	"log"
 	"os"
 	"os/signal"
 
-	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/gopxl/pixel/pixelgl"
 	"github.com/qbradq/after/internal/client/termgui"
-	ebitendriver "github.com/qbradq/after/lib/ebiten-driver"
+	pixeldriver "github.com/qbradq/after/lib/pixel-driver"
 	"github.com/qbradq/after/lib/termui"
 )
 
 func main() {
-	s := ebitendriver.NewDriver()
+	s := pixeldriver.NewDriver()
 	s.Init()
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
@@ -34,9 +33,7 @@ func main() {
 		s.Fini()
 		os.Exit(0)
 	}()
-	if err := ebiten.RunGame(s); err != nil {
-		log.Fatal(err)
-	}
+	pixelgl.Run(s.Run)
 	s.Fini()
-	s.Quit()
+	os.Exit(0)
 }

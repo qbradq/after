@@ -80,4 +80,20 @@ func (m *MainMenu) Draw(s termui.TerminalDriver) {
 	termui.DrawStringCenter(s, util.NewRectXYWH(0, (h/2)-5, w, 1), "by Norman B. Lancaster qbradq@gmail.com", termui.CurrentTheme.Normal.Foreground(termui.ColorGreen))
 	m.list.Bounds = util.NewRectWH(w, h).CenterRect(14, 5)
 	m.list.Draw(s)
+	s.SetCell(util.Point{
+		X: 0,
+		Y: 0,
+	}, termui.Glyph{
+		Rune:  ' ',
+		Style: termui.StyleDefault.Background(termui.ColorAqua),
+	})
+	for i := 0; i < 8; i++ {
+		s.SetCell(util.Point{
+			X: w - (i + 1),
+			Y: h - (i + 1),
+		}, termui.Glyph{
+			Rune:  ' ',
+			Style: termui.StyleDefault.Background(termui.ColorAqua),
+		})
+	}
 }

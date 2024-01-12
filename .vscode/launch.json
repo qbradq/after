@@ -21,6 +21,18 @@
             "console": "externalTerminal",
             "cwd": "${workspaceFolder}",
             "program": "${workspaceFolder}/cmd/termgui",
+        },
+        {
+            "name": "PixelTerm",
+            "type": "go",
+            "request": "launch",
+            "mode": "debug",
+            "console": "externalTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "CGO_ENABLED": "1",
+            },
+            "program": "${workspaceFolder}/cmd/pixelterm",
         }
     ]
 }
