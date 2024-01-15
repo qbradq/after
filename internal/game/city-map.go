@@ -496,7 +496,17 @@ func (m *CityMap) MakeVisibilitySets(b util.Rect) (vis, rem bitmap.Bitmap) {
 	// Process one line of visibility calculations
 	fn := func(ps []util.Point) {
 		// Range over the points
+		done := false
 		for _, p := range ps {
+			// Bail if we've already hit a non-visible position
+			if done {
+				break
+			}
+			// If this point blocks visibility we are done
+			c := m.GetChunk(p)
+			if c.BlocksVis.Contains(c.relOfs(p)) {
+				done = true
+			}
 			// Skip processing points that have already been marked visible
 			idx := uint32((p.Y-b.TL.Y)*b.Width() + (p.X - b.TL.X))
 			if vis.Contains(idx) {
@@ -507,11 +517,11 @@ func (m *CityMap) MakeVisibilitySets(b util.Rect) (vis, rem bitmap.Bitmap) {
 			// Set all neighbors as visible if they block vis, this fixes wall
 			// looking issues
 			for dp.Y = p.Y - 1; dp.Y <= p.Y+1; dp.Y++ {
-				if !b.Contains(dp) {
+				if dp.Y < b.TL.Y || dp.Y > b.BR.Y {
 					continue
 				}
 				for dp.X = p.X - 1; dp.X <= p.X+1; dp.X++ {
-					if !b.Contains(dp) {
+					if dp.X < b.TL.X || dp.X > b.BR.X {
 						continue
 					}
 					c := m.GetChunk(dp)
@@ -519,11 +529,6 @@ func (m *CityMap) MakeVisibilitySets(b util.Rect) (vis, rem bitmap.Bitmap) {
 						vis.Set(uint32((dp.Y-b.TL.Y)*b.Width() + (dp.X - b.TL.X)))
 					}
 				}
-			}
-			// If this point blocks visibility we are done
-			c := m.GetChunk(p)
-			if c.BlocksVis.Contains(c.relOfs(p)) {
-				return
 			}
 		}
 	}

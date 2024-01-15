@@ -20,11 +20,11 @@ func Ray(p1, p2 Point) []Point {
 	}
 	err := dx - dy
 	gx, gy := p1.X, p1.Y
+	rayBuf = append(rayBuf, Point{
+		X: gx,
+		Y: gy,
+	})
 	for {
-		rayBuf = append(rayBuf, Point{
-			X: gx,
-			Y: gy,
-		})
 		err2 := 2 * err
 		if err2 > (dy * -1) {
 			err -= dy
@@ -34,6 +34,10 @@ func Ray(p1, p2 Point) []Point {
 			err += dx
 			gy += sy
 		}
+		rayBuf = append(rayBuf, Point{
+			X: gx,
+			Y: gy,
+		})
 		if gx == p2.X && gy == p2.Y {
 			break
 		}

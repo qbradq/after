@@ -4,6 +4,7 @@ import (
 	"bytes"
 	_ "embed"
 	"image"
+	_ "image/png"
 	"sync"
 	"time"
 
@@ -40,12 +41,12 @@ func NewDriver() *Driver {
 	// Load icon
 	icon, _, err := image.Decode(bytes.NewReader(iconData))
 	if err != nil {
-		return nil
+		panic(err)
 	}
 	// Load base font
 	baseFont, _, err := image.Decode(bytes.NewReader(fontData))
 	if err != nil {
-		return nil
+		panic(err)
 	}
 	// Generate font backing image
 	w := baseFont.Bounds().Dx()
