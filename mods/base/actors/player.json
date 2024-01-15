@@ -5,6 +5,7 @@
         "Rune": "@",
         "Fg": "White",
         "Bg": "Black",
-        "WalkSpeed": 1
+        "WalkSpeed": 1,
+        "SightRange": 64
     }
 }

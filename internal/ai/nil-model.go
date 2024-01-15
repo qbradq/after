@@ -13,7 +13,7 @@ func init() {
 			act: "nil",
 		}
 	})
-	regFn("nil", func(a1 *AIModel, a2 *game.Actor, t time.Time, cm *game.CityMap) time.Duration {
+	regFn("nil", func(a1 *AIModel, a2 *game.Actor, cm *game.CityMap) time.Duration {
 		return time.Second * 60
 	})
 }

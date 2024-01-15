@@ -4,7 +4,6 @@ import (
 	"bytes"
 	_ "embed"
 	"image"
-	_ "image/png"
 	"sync"
 	"time"
 
@@ -23,55 +22,51 @@ var iconData []byte
 // Driver implements a termui.TerminalDriver that uses the Pixel library
 // to implement a graphical terminal emulator with a square font.
 type Driver struct {
-	quit    bool            // If true PollEvent will always return *EventQuit
-	lock    sync.RWMutex    // Mutex for fb
-	b       util.Rect       // Bounds of the screen
-	events  chan any        // Events channel
-	fbDirty bool            // If true, fb needs to be re-drawn
-	fb      []termui.Glyph  // Front buffer
-	bb      []termui.Glyph  // Back buffer
-	icon    pixel.Picture   // Icon image
-	font    pixel.Picture   // Font backing image
-	glyphs  []*pixel.Sprite // Cache of glyph images
+	quit    bool                 // If true PollEvent will always return *EventQuit
+	lock    sync.RWMutex         // Mutex for fb
+	b       util.Rect            // Bounds of the screen
+	events  chan any             // Events channel
+	fbDirty bool                 // If true, fb needs to be re-drawn
+	fb      []termui.Glyph       // Front buffer
+	bb      []termui.Glyph       // Back buffer
+	font    *image.Paletted      // Font backing image
+	screen  *image.Paletted      // Rendering surface
+	icon    pixel.Picture        // Icon image
+	td      *pixel.TrianglesData // TrianglesData cache to avoid constant allocation
 }
 
 // NewDriver returns a new Driver ready for use.
 func NewDriver() *Driver {
+	// Load icon
 	icon, _, err := image.Decode(bytes.NewReader(iconData))
 	if err != nil {
 		return nil
 	}
+	// Load base font
 	baseFont, _, err := image.Decode(bytes.NewReader(fontData))
 	if err != nil {
 		return nil
 	}
+	// Generate font backing image
 	w := baseFont.Bounds().Dx()
 	h := baseFont.Bounds().Dy()
-	font := image.NewRGBA(image.Rect(0, 0, w, h*16))
+	font := image.NewPaletted(image.Rect(0, 0, w, h), termui.Palette)
 	for sy := 0; sy < h; sy++ {
 		for sx := 0; sx < w; sx++ {
 			sc := baseFont.At(sx, sy)
 			if _, _, _, a := sc.RGBA(); a == 0 {
-				continue
-			}
-			for i, c := range termui.Palette {
-				font.Set(sx, i*h+sy, c)
+				font.SetColorIndex(sx, sy, 0)
+			} else {
+				font.SetColorIndex(sx, sy, 1)
 			}
 		}
 	}
+	// Driver
 	d := &Driver{
 		events: make(chan any, 128),
 		icon:   pixel.PictureDataFromImage(icon),
-		font:   pixel.PictureDataFromImage(font),
-		glyphs: make([]*pixel.Sprite, 128*16),
-	}
-	for iy := 0; iy < 8*16; iy++ {
-		for ix := 0; ix < 16; ix++ {
-			sx := ix * 8
-			sy := int(d.font.Bounds().H()) - (iy*8 + 8)
-			d.glyphs[iy*16+ix] = pixel.NewSprite(d.font,
-				pixel.R(float64(sx), float64(sy), float64(sx+8), float64(sy+8)))
-		}
+		font:   font,
+		td:     &pixel.TrianglesData{},
 	}
 	d.resize(util.NewRectWH(80, 50))
 	return d
@@ -83,9 +78,10 @@ func (d *Driver) resize(b util.Rect) {
 		return
 	}
 	d.b = b
-	d.bb = make([]termui.Glyph, b.Width()*b.Height())
 	d.lock.Lock()
+	d.bb = make([]termui.Glyph, b.Width()*b.Height())
 	d.fb = make([]termui.Glyph, b.Width()*b.Height())
+	d.screen = image.NewPaletted(image.Rect(0, 0, b.Width()*8, b.Height()*8), termui.Palette)
 	d.lock.Unlock()
 	d.events <- &termui.EventResize{
 		Size: util.Point{
@@ -141,10 +137,7 @@ func (d *Driver) Run() {
 
 func (d *Driver) draw(t pixel.Target) {
 	var p util.Point
-	var m pixel.Matrix
-	_, bh := d.Size()
-	sh := bh * 8 * 2
-	b := pixel.NewBatch(&pixel.TrianglesData{}, d.font)
+	d.td.SetLen(0)
 	d.lock.RLock()
 	for p.Y = d.b.TL.Y; p.Y <= d.b.BR.Y; p.Y++ {
 		for p.X = d.b.TL.X; p.X <= d.b.BR.X; p.X++ {
@@ -154,18 +147,28 @@ func (d *Driver) draw(t pixel.Target) {
 			if n > 126 {
 				n = 126
 			}
-			n += int(fg) * 128
-			char := d.glyphs[n]
-			block := d.glyphs[int(bg)*128+127]
-			m = pixel.IM.
-				Scaled(pixel.ZV, 2).
-				Moved(pixel.V(float64(p.X*8*2+8), float64((sh-p.Y*8*2)-8)))
-			block.Draw(b, m)
-			char.Draw(b, m)
+			sx := (n % 16) * 8
+			sy := (n / 16) * 8
+			for iy := 0; iy < 8; iy++ {
+				dy := (p.Y * 8) + iy
+				for ix := 0; ix < 8; ix++ {
+					dx := (p.X * 8) + ix
+					s := d.font.Pix[(sy+iy)*128+sx+ix]
+					if s == 0 {
+						d.screen.Pix[dy*d.screen.Stride+dx] = uint8(bg)
+					} else {
+						d.screen.Pix[dy*d.screen.Stride+dx] = uint8(fg)
+					}
+				}
+			}
 		}
 	}
 	d.lock.RUnlock()
-	b.Draw(t)
+	pic := pixel.PictureDataFromImage(d.screen)
+	s := pixel.NewSprite(pic, pic.Bounds())
+	s.Draw(t, pixel.IM.
+		Scaled(pixel.ZV, 2).
+		Moved(pixel.V(pic.Bounds().W(), pic.Bounds().H())))
 }
 
 // Quit sets the quit flag so the application can exit gracefully.
@@ -189,12 +192,17 @@ func (d *Driver) SetCell(p util.Point, g termui.Glyph) {
 	if !d.b.Contains(p) {
 		return
 	}
+	d.lock.Lock()
 	d.bb[p.Y*d.b.Width()+p.X] = g
+	d.lock.Unlock()
 }
 
 // GetCell implements the termui.TerminalDriver interface.
 func (d *Driver) GetCell(p util.Point) termui.Glyph {
-	return d.bb[p.Y*d.b.Width()+p.X]
+	d.lock.RLock()
+	g := d.bb[p.Y*d.b.Width()+p.X]
+	d.lock.RUnlock()
+	return g
 }
 
 // PollEvent implements the termui.TerminalDriver interface.

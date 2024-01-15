@@ -6,7 +6,7 @@ import (
 )
 
 // Direction represents one of the eight compass rose points.
-type Direction uint8
+type Direction byte
 
 const (
 	DirectionNorth Direction = iota

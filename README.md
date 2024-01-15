@@ -6,6 +6,7 @@ A text-mode roguelike about scratching out a life in the post-apocalypse
 ### Example car layouts
 
 **Large**
+```
      #####
      -----
     -+_._+-
@@ -14,15 +15,20 @@ A text-mode roguelike about scratching out a life in the post-apocalypse
      #_._#
      #_._#
      #+++#
+```
 
 **Medium**
+```
     #---#
     +_|_+
     +_|_+
     #---#
     #+++#
+```
 
 **Small**
+```
     #--#
     +__+
     #--#
+```

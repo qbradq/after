@@ -13,7 +13,7 @@ import (
 type AIModel interface {
 	// Act is responsible for taking the next action for the actor and returning
 	// the duration until the next call to Act().
-	Act(*Actor, time.Time, *CityMap) time.Duration
+	Act(*Actor, *CityMap) time.Duration
 	// Write writes the internal state of the model to the writer.
 	Write(io.Writer)
 }
@@ -42,6 +42,7 @@ type Actor struct {
 	Fg         termui.Color // Display foreground color
 	Bg         termui.Color // Display background color
 	WalkSpeed  float64      // Number of seconds between steps at walking pace
+	SightRange int          // Distance this actor can see
 	// Transient values
 	pqIdx int // Priority queue index
 }

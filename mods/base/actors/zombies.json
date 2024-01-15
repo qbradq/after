@@ -5,7 +5,8 @@
         "Rune": "Z",
         "Fg": "White",
         "Bg": "Black",
-        "WalkSpeed": 1.5
+        "WalkSpeed": 1.5,
+        "SightRange": 32
     },
     "ZombieChild": {
         "Name": "zombie child",
@@ -13,6 +14,7 @@
         "Rune": "z",
         "Fg": "White",
         "Bg": "Black",
-        "WalkSpeed": 2
+        "WalkSpeed": 2,
+        "SightRange": 24
     }
 }

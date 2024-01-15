@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"os/signal"
+	"runtime/pprof"
 
 	"github.com/gopxl/pixel/pixelgl"
 	"github.com/qbradq/after/internal/client/termgui"
@@ -29,7 +30,12 @@ func main() {
 		// pprof.StartCPUProfile(pf)
 		termui.RunMode(s, termgui.NewMainMenu(s))
 		// pprof.StopCPUProfile()
-		// pf.Close()
+		pf, err := os.Create("heap.pprof")
+		if err != nil {
+			panic(err)
+		}
+		pprof.WriteHeapProfile(pf)
+		pf.Close()
 		s.Fini()
 		os.Exit(0)
 	}()

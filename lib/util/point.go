@@ -21,6 +21,11 @@ func (p Point) Add(a Point) Point {
 	return Point{p.X + a.X, p.Y + a.Y}
 }
 
+// Step returns the result of stepping in direction d from point p.
+func (p Point) Step(d Direction) Point {
+	return p.Add(DirectionOffsets[d.Bound()])
+}
+
 // Sub returns the result of subtracting a from p.
 func (p Point) Sub(a Point) Point {
 	return Point{p.X - a.X, p.Y - a.Y}

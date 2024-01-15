@@ -17,8 +17,8 @@ const (
 	CityMapHeight             int = 660  // Height of a city map in chunks
 	maxInMemoryChunks         int = 1024 // Max chunks to keep in hot memory
 	purgeInMemoryChunksTarget int = 512  // Number of chunks to keep in hot memory after purging least-recently used chunks
-	chunkUpdateRadius         int = 2    // Number of chunks away from the player to update actors
-	chunkLoadRadius           int = 3    // Number of chunks away from the player to keep chunks hot-loaded
+	chunkUpdateRadius         int = 4    // Number of chunks away from the player to update actors
+	chunkLoadRadius           int = 5    // Number of chunks away from the player to keep chunks hot-loaded
 )
 
 // Return slice for GetActors
@@ -42,7 +42,6 @@ type CityMap struct {
 	Bounds     util.Rect // Bounds of the city map in chunks
 	TileBounds util.Rect // Bounds of the city map in tiles
 	// Working variables
-	PlayerApproachDMap  *DMap            // DMap for path finding toward the player
 	inMemoryChunks      bitmap.Bitmap    // Bitmap of all chunks loaded into memory
 	inMemoryChunksCount int              // Running count of in-memory chunks to avoid excessive calls to bitmap.Count()
 	chunksGenerated     bitmap.Bitmap    // Bitmap of all chunks that have been generated
@@ -67,10 +66,6 @@ func NewCityMap() *CityMap {
 		usNewCache: make([]int, 0, chunkUpdateRadius*chunkUpdateRadius),
 		usOldCache: make([]int, 0, chunkUpdateRadius*chunkUpdateRadius),
 		aq:         actorQueue{},
-		PlayerApproachDMap: NewDMap(util.NewRectWH(
-			(chunkUpdateRadius*2+1)*ChunkWidth,
-			(chunkUpdateRadius*2+1)*ChunkHeight,
-		)),
 	}
 	// Configure the starting time as two years from now at 0800
 	t := time.Now().Add(time.Hour * 24 * 730)
@@ -167,7 +162,7 @@ func (m *CityMap) GetChunk(p util.Point) *Chunk {
 // GetTile returns the tile at the given absolute tile point or nil if the point
 // is out of bounds.
 func (m *CityMap) GetTile(p util.Point) *TileDef {
-	if !m.TileBounds.Contains(p) {
+	if !m.loadBounds.Contains(p) {
 		return nil
 	}
 	c := m.chunks[(p.Y/ChunkHeight)*CityMapWidth+(p.X/ChunkWidth)]
@@ -497,38 +492,38 @@ func (m *CityMap) StepPlayer(d util.Direction) bool {
 // a no-op if the bounds do not contain the player. Subsequent calls to
 // MakeVisibilitySets reuse the same bitmaps.
 func (m *CityMap) MakeVisibilitySets(b util.Rect) (vis, rem bitmap.Bitmap) {
+	var dp util.Point
 	// Process one line of visibility calculations
 	fn := func(ps []util.Point) {
 		// Range over the points
 		for _, p := range ps {
-			// If this point blocks visibility we are done
-			c := m.GetChunk(p)
-			idx := c.relOfs(p)
-			if c.BlocksVis.Contains(idx) {
-				return
+			// Skip processing points that have already been marked visible
+			idx := uint32((p.Y-b.TL.Y)*b.Width() + (p.X - b.TL.X))
+			if vis.Contains(idx) {
+				continue
 			}
-			// If not we need to mark the point and all neighbors as visible
-			for iy := p.Y - 1; iy <= p.Y+1; iy++ {
-				if iy < 0 {
+			// Set this point as visible
+			vis.Set(idx)
+			// Set all neighbors as visible if they block vis, this fixes wall
+			// looking issues
+			for dp.Y = p.Y - 1; dp.Y <= p.Y+1; dp.Y++ {
+				if !b.Contains(dp) {
 					continue
 				}
-				if iy >= m.TileBounds.Height() {
-					break
-				}
-				for ix := p.X - 1; ix <= p.X+1; ix++ {
-					if ix < 0 {
+				for dp.X = p.X - 1; dp.X <= p.X+1; dp.X++ {
+					if !b.Contains(dp) {
 						continue
 					}
-					if ix >= m.TileBounds.Width() {
-						break
+					c := m.GetChunk(dp)
+					if c.BlocksVis.Contains(c.relOfs(dp)) {
+						vis.Set(uint32((dp.Y-b.TL.Y)*b.Width() + (dp.X - b.TL.X)))
 					}
-					p := util.Point{
-						X: ix - b.TL.X,
-						Y: iy - b.TL.Y,
-					}
-					idx := uint32(p.Y*b.Width() + p.X)
-					vis.Set(idx)
 				}
+			}
+			// If this point blocks visibility we are done
+			c := m.GetChunk(p)
+			if c.BlocksVis.Contains(c.relOfs(p)) {
+				return
 			}
 		}
 	}
@@ -655,7 +650,7 @@ func (m *CityMap) Update(p util.Point, d time.Duration) {
 				heap.Push(&m.aq, a)
 				break
 			}
-			a.NextThink = a.NextThink.Add(a.AIModel.Act(a, a.NextThink, m))
+			a.NextThink = a.NextThink.Add(a.AIModel.Act(a, m))
 			heap.Push(&m.aq, a)
 		}
 	}
@@ -664,9 +659,5 @@ func (m *CityMap) Update(p util.Point, d time.Duration) {
 // PlayerTookTurn is responsible for updating the city map model for the given
 // duration as well as anything else that should happen after the player's turn.
 func (m *CityMap) PlayerTookTurn(d time.Duration) {
-	m.PlayerApproachDMap.Clear()
-	m.PlayerApproachDMap.Relocate(m.updateBounds.TL)
-	m.PlayerApproachDMap.SetGoal(m.Player.Position)
-	m.PlayerApproachDMap.Calculate(m)
 	m.Update(m.Player.Position, d)
 }

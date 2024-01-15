@@ -84,6 +84,12 @@ func PutTime(w io.Writer, t time.Time) {
 	PutUint64(w, uint64(t.UnixMilli()))
 }
 
+// PutBytes puts a slice of bytes to the writer.
+func PutBytes(w io.Writer, d []byte) {
+	PutUint32(w, uint32(len(d)))
+	w.Write(d)
+}
+
 // GetString returns the next null-terminated string in the data buffer.
 func GetString(r io.Reader) string {
 	var buf = []byte{0}
@@ -164,4 +170,12 @@ func GetDictionary(r io.Reader) *Dictionary {
 // GetTime returns the next time.Time value in the data buffer.
 func GetTime(r io.Reader) time.Time {
 	return time.UnixMilli(int64(GetUint64(r)))
+}
+
+// GetBytes returns the next byte slice in the data buffer.
+func GetBytes(r io.Reader) []byte {
+	n := GetUint32(r)
+	ret := make([]byte, n)
+	r.Read(ret)
+	return ret
 }

@@ -172,7 +172,7 @@ func (m *GameMode) Draw(s termui.TerminalDriver) {
 		m.MapMode.CursorStyle = 0
 		m.MapMode.DrawInfo = false
 	}
-	m.MapMode.DrawDMap = m.Debug
+	m.MapMode.DrawPaths = m.Debug
 	m.MapMode.Draw(s)
 	termui.DrawVLine(s, util.NewPoint(sw-39, 0), sh, termui.CurrentTheme.Normal)
 	m.Minimap.Bounds = util.NewRectXYWH(sw-22, 0, 21, 21)
