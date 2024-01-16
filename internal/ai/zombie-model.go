@@ -29,6 +29,8 @@ func init() {
 		if a.Position.Distance(m.Player.Position) < 2 {
 			return aiFns["zmActAttack"](ai, a, m)
 		}
+		// Try to re-target the player every step
+		ai.targetPlayer(a, m)
 		// Already at the POI or out of path steps, just wait there
 		if len(ai.Path) == 0 || a.Position.Distance(ai.POI) < 1 {
 			ai.cd -= time.Second
@@ -39,7 +41,6 @@ func init() {
 			return time.Second
 		}
 		// Need to get closer, try to approach
-		ai.targetPlayer(a, m)
 		if m.StepActor(a, ai.Path[0]) {
 			// Step was successful, advance the path
 			ai.Path = ai.Path[1:]

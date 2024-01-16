@@ -151,14 +151,14 @@ func (m *MapMode) drawPaths(s termui.TerminalDriver, mtl util.Point, mb util.Rec
 }
 
 func (m *MapMode) drawMap(s termui.TerminalDriver, mtl util.Point, mb util.Rect) {
-	vis, rem := m.CityMap.MakeVisibilitySets(mb)
+	m.CityMap.MakeVisibilitySets(mb)
 	var p util.Point
 	var idx uint32
 	// Draw the tile matrix
 	for p.Y = mtl.Y; p.Y < mtl.Y+m.Bounds.Height(); p.Y++ {
 		for p.X = mtl.X; p.X < mtl.X+m.Bounds.Width(); p.X++ {
 			sp := util.NewPoint(p.X-mtl.X+m.Bounds.TL.X, p.Y-mtl.Y+m.Bounds.TL.Y)
-			if vis.Contains(idx) {
+			if m.CityMap.Visibility.Contains(idx) {
 				t := m.CityMap.GetTile(p)
 				ns := termui.StyleDefault.
 					Background(t.Bg).
@@ -167,7 +167,7 @@ func (m *MapMode) drawMap(s termui.TerminalDriver, mtl util.Point, mb util.Rect)
 					Rune:  rune(t.Rune[0]),
 					Style: ns,
 				})
-			} else if rem.Contains(idx) {
+			} else if m.CityMap.Remebered.Contains(idx) {
 				t := m.CityMap.GetTile(p)
 				ns := termui.StyleDefault.
 					Foreground(termui.ColorGray)
@@ -190,7 +190,7 @@ func (m *MapMode) drawMap(s termui.TerminalDriver, mtl util.Point, mb util.Rect)
 	for _, i := range m.CityMap.ItemsWithin(mb) {
 		p := i.Position
 		idx = uint32((p.Y-mtl.Y)*m.Bounds.Width() + (p.X - mtl.X))
-		if vis.Contains(idx) {
+		if m.CityMap.Visibility.Contains(idx) {
 			sp := util.NewPoint((p.X-mtl.X)+m.Bounds.TL.X, (p.Y-mtl.Y)+m.Bounds.TL.Y)
 			ns := termui.StyleDefault.
 				Background(i.Bg).
@@ -199,7 +199,7 @@ func (m *MapMode) drawMap(s termui.TerminalDriver, mtl util.Point, mb util.Rect)
 				Rune:  rune(i.Rune[0]),
 				Style: ns,
 			})
-		} else if rem.Contains(idx) {
+		} else if m.CityMap.Remebered.Contains(idx) {
 			sp := util.NewPoint((p.X-mtl.X)+m.Bounds.TL.X, (p.Y-mtl.Y)+m.Bounds.TL.Y)
 			ns := termui.StyleDefault.
 				Foreground(termui.ColorGray)
@@ -213,7 +213,7 @@ func (m *MapMode) drawMap(s termui.TerminalDriver, mtl util.Point, mb util.Rect)
 	for _, a := range m.CityMap.ActorsWithin(mb) {
 		p := a.Position
 		idx = uint32((p.Y-mtl.Y)*m.Bounds.Width() + (p.X - mtl.X))
-		if vis.Contains(idx) {
+		if m.CityMap.Visibility.Contains(idx) {
 			sp := util.NewPoint((p.X-mtl.X)+m.Bounds.TL.X, (p.Y-mtl.Y)+m.Bounds.TL.Y)
 			ns := termui.StyleDefault.
 				Background(a.Bg).
@@ -248,7 +248,7 @@ func (m *MapMode) drawMap(s termui.TerminalDriver, mtl util.Point, mb util.Rect)
 	// Draw info box if needed
 	if m.DrawInfo {
 		idx = uint32((m.CursorPos.Y-mtl.Y)*m.Bounds.Width() + (m.CursorPos.X - mtl.X))
-		if vis.Contains(idx) {
+		if m.CityMap.Visibility.Contains(idx) {
 			t := m.CityMap.GetTile(m.CursorPos)
 			a := m.CityMap.ActorAt(m.CursorPos)
 			items := m.CityMap.ItemsAt(m.CursorPos)
@@ -299,7 +299,7 @@ func (m *MapMode) drawMap(s termui.TerminalDriver, mtl util.Point, mb util.Rect)
 			if len(items) == 0 {
 				termui.DrawStringCenter(s, r, "Nothing", termui.CurrentTheme.Normal.Foreground(termui.ColorGray))
 			}
-		} else if rem.Contains(idx) {
+		} else if m.CityMap.Remebered.Contains(idx) {
 			t := m.CityMap.GetTile(m.CursorPos)
 			h := 2
 			w := len("Remembered")

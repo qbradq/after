@@ -24,12 +24,6 @@ const (
 // Return slice for GetActors
 var gaRet []*Actor
 
-// Buffer for visibility set
-var visBuf bitmap.Bitmap
-
-// Buffer for remembered set
-var remBuf bitmap.Bitmap
-
 // CityMap represents the entire world of the game in terms of which chunks go
 // where.
 type CityMap struct {
@@ -42,6 +36,9 @@ type CityMap struct {
 	Bounds     util.Rect // Bounds of the city map in chunks
 	TileBounds util.Rect // Bounds of the city map in tiles
 	// Working variables
+	Visibility          bitmap.Bitmap    // Last visibility set calcualted for the player
+	Remebered           bitmap.Bitmap    // Last remembered set calculated for the player
+	BitmapBounds        util.Rect        // Bounds of the Visibility and Remembered bitmaps
 	inMemoryChunks      bitmap.Bitmap    // Bitmap of all chunks loaded into memory
 	inMemoryChunksCount int              // Running count of in-memory chunks to avoid excessive calls to bitmap.Count()
 	chunksGenerated     bitmap.Bitmap    // Bitmap of all chunks that have been generated
@@ -489,9 +486,9 @@ func (m *CityMap) StepPlayer(d util.Direction) bool {
 
 // MakeVisibilitySets constructs bitmaps representing the current and remembered
 // visibility of each position within the bounds relative to the player. This is
-// a no-op if the bounds do not contain the player. Subsequent calls to
-// MakeVisibilitySets reuse the same bitmaps.
-func (m *CityMap) MakeVisibilitySets(b util.Rect) (vis, rem bitmap.Bitmap) {
+// a no-op if the bounds do not contain the player. Visibility sets are stored
+// in Visibility and Remembered members.
+func (m *CityMap) MakeVisibilitySets(b util.Rect) {
 	var dp util.Point
 	// Process one line of visibility calculations
 	fn := func(ps []util.Point) {
@@ -509,12 +506,12 @@ func (m *CityMap) MakeVisibilitySets(b util.Rect) (vis, rem bitmap.Bitmap) {
 			}
 			// Skip processing points that have already been marked visible
 			idx := uint32((p.Y-b.TL.Y)*b.Width() + (p.X - b.TL.X))
-			if vis.Contains(idx) {
+			if m.Visibility.Contains(idx) {
 				continue
 			}
 			// Set this point as visible
-			vis.Set(idx)
-			// Set all neighbors as visible if they block vis, this fixes wall
+			m.Visibility.Set(idx)
+			// Set all neighbors as visible if they block vis this fixes wall
 			// looking issues
 			for dp.Y = p.Y - 1; dp.Y <= p.Y+1; dp.Y++ {
 				if dp.Y < b.TL.Y || dp.Y > b.BR.Y {
@@ -526,17 +523,16 @@ func (m *CityMap) MakeVisibilitySets(b util.Rect) (vis, rem bitmap.Bitmap) {
 					}
 					c := m.GetChunk(dp)
 					if c.BlocksVis.Contains(c.relOfs(dp)) {
-						vis.Set(uint32((dp.Y-b.TL.Y)*b.Width() + (dp.X - b.TL.X)))
+						m.Visibility.Set(uint32((dp.Y-b.TL.Y)*b.Width() + (dp.X - b.TL.X)))
 					}
 				}
 			}
 		}
 	}
 	// Setup return values for reuse
-	vis = visBuf
-	rem = remBuf
-	vis.Clear()
-	rem.Clear()
+	m.BitmapBounds = b
+	m.Visibility.Clear()
+	m.Remebered.Clear()
 	// Sanity checks
 	if !b.Contains(m.Player.Position) {
 		return
@@ -569,20 +565,26 @@ func (m *CityMap) MakeVisibilitySets(b util.Rect) (vis, rem bitmap.Bitmap) {
 			idx := uint32((p.Y-b.TL.Y)*b.Width() + (p.X - b.TL.X))
 			c := m.GetChunk(p)
 			cIdx := c.relOfs(p)
-			if vis.Contains(idx) {
+			if m.Visibility.Contains(idx) {
 				c.HasSeen.Set(cIdx)
 			}
 			if c.HasSeen.Contains(cIdx) {
-				rem.Set(idx)
+				m.Remebered.Set(idx)
 			}
 		}
 	}
-	return
 }
 
 // CanSeePlayerFrom returns true if there is line of sight between the given
 // point and the player.
 func (m *CityMap) CanSeePlayerFrom(p util.Point) bool {
+	// Position is on-screen, use visibility set
+	if m.BitmapBounds.Contains(p) {
+		idx := (p.Y-m.BitmapBounds.TL.Y)*m.BitmapBounds.Width() + (p.X - m.BitmapBounds.TL.X)
+		return m.Visibility.Contains(uint32(idx))
+	}
+	// Position is off-screen, use a ray trace as the asymmetry won't be
+	// noticeable
 	for _, p := range util.Ray(p, m.Player.Position) {
 		c := m.GetChunk(p)
 		if c.BlocksVis.Contains(c.relOfs(p)) {
