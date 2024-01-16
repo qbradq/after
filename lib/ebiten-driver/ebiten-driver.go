@@ -1,3 +1,5 @@
+// Package ebitendriver implements a [termui.TerminalDriver] with
+// a graphical terminal emulator using Ebitengine as the backing library.
 package ebitendriver
 
 import (

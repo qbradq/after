@@ -1,3 +1,5 @@
+// Package events implements late-bound function execution for items
+// and actors.
 package events
 
 import (

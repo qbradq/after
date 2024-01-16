@@ -1,3 +1,5 @@
+// Package tcelldriver implements a [termui.TerminalDriver] for a tty
+// using tcell as the backing library.
 package tcelldriver
 
 import (

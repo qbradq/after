@@ -1,3 +1,5 @@
+// Package game - in concert with packages events and ai - implements the
+// game simulation.
 package game
 
 import (

@@ -1,3 +1,5 @@
+// Package termui implements drawing and ui elements over drivers.
+// See [TerminalDriver].
 package termui
 
 import (

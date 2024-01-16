@@ -1,3 +1,4 @@
+// Package citygen implements city generators. See [game.CityMap].
 package citygen
 
 import (
