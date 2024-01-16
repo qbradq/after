@@ -16,7 +16,7 @@ var GetChunkGen func(string) ChunkGen
 // Logger implementers can consume colored log messages.
 type Logger interface {
 	// Log adds a line to the log.
-	Log(termui.Color, string)
+	Log(termui.Color, string, ...any)
 }
 
 // Global log consumer

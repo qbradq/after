@@ -1,6 +1,7 @@
 package termgui
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/mitchellh/go-wordwrap"
@@ -25,7 +26,8 @@ type LogMode struct {
 }
 
 // Log adds a line to the log.
-func (m *LogMode) Log(c termui.Color, s string) {
+func (m *LogMode) Log(c termui.Color, s string, args ...any) {
+	s = fmt.Sprintf(s, args...)
 	m.lines = append(m.lines, logLine{
 		c: c,
 		s: s,

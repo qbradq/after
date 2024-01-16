@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/qbradq/after/internal/game"
-	"github.com/qbradq/after/lib/termui"
 )
 
 // Zombie configures an AIModel to act as a zombie with very slow reaction
@@ -64,7 +63,7 @@ func init() {
 		return time.Duration(float64(time.Second) * a.WalkSpeed)
 	})
 	regFn("zmActAttack", func(ai *AIModel, a *game.Actor, m *game.CityMap) time.Duration {
-		game.Log.Log(termui.ColorRed, "You got attacked!")
+		m.Player.Damage(a.MinDamage, a.MaxDamage, m.Now, a)
 		return time.Second
 	})
 }

@@ -76,7 +76,6 @@ func (m *GameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 				m.InTarget = false
 				return nil
 			}
-			m.CityMap.Player.Position = m.CityMap.TileBounds.Bound(m.CityMap.Player.Position)
 			m.MapMode.Center = m.CityMap.Player.Position
 			m.MapMode.CursorPos = m.CityMap.Player.Position
 			m.MapMode.CursorRange = 0
@@ -107,7 +106,24 @@ func (m *GameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 				}
 				return nil
 			}
-			m.CityMap.Player.Position = m.CityMap.TileBounds.Bound(m.CityMap.Player.Position)
+			m.MapMode.Center = m.CityMap.Player.Position
+			m.MapMode.CursorPos = m.CityMap.Player.Position
+			m.MapMode.CursorRange = 1
+			return nil
+		case 'a':
+			m.InTarget = true
+			m.MapMode.Callback = func(p util.Point, b bool) error {
+				m.InTarget = false
+				if !b {
+					return nil
+				}
+				a := m.CityMap.ActorAt(p)
+				if a != nil {
+					a.Damage(m.CityMap.Player.MinDamage, m.CityMap.Player.MaxDamage, m.CityMap.Now, &m.CityMap.Player.Actor)
+					m.CityMap.PlayerTookTurn(time.Second)
+				}
+				return nil
+			}
 			m.MapMode.Center = m.CityMap.Player.Position
 			m.MapMode.CursorPos = m.CityMap.Player.Position
 			m.MapMode.CursorRange = 1
@@ -123,14 +139,22 @@ func (m *GameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 	if dir != util.DirectionInvalid {
 		if !m.CityMap.StepPlayer(dir) {
 			// Bump handling
-			np := m.CityMap.Player.Position.Add(util.DirectionOffsets[dir])
-			items := m.CityMap.ItemsAt(np)
-			if len(items) > 0 {
-				err := events.ExecuteItemEvent("Use", items[len(items)-1], &m.CityMap.Player.Actor, m.CityMap)
-				if err != nil {
-					panic(err)
-				}
+			np := m.CityMap.Player.Position.Step(dir)
+			a := m.CityMap.ActorAt(np)
+			if a != nil {
+				a.Damage(m.CityMap.Player.MinDamage, m.CityMap.Player.MaxDamage, m.CityMap.Now, &m.CityMap.Player.Actor)
 				m.CityMap.PlayerTookTurn(time.Second)
+				s.FlushEvents()
+			} else {
+				items := m.CityMap.ItemsAt(np)
+				if len(items) > 0 {
+					err := events.ExecuteItemEvent("Use", items[len(items)-1], &m.CityMap.Player.Actor, m.CityMap)
+					if err != nil {
+						panic(err)
+					}
+					m.CityMap.PlayerTookTurn(time.Second)
+					s.FlushEvents()
+				}
 			}
 		} else {
 			s.FlushEvents()

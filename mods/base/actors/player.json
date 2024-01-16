@@ -6,6 +6,8 @@
         "Fg": "White",
         "Bg": "Black",
         "WalkSpeed": 1,
-        "SightRange": 64
+        "SightRange": 64,
+        "MinDamage": 0.125,
+        "MaxDamage": 0.25
     }
 }

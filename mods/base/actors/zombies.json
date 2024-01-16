@@ -6,7 +6,9 @@
         "Fg": "White",
         "Bg": "Black",
         "WalkSpeed": 1.5,
-        "SightRange": 32
+        "SightRange": 32,
+        "MinDamage": 0.125,
+        "MaxDamage": 0.25
     },
     "ZombieChild": {
         "Name": "zombie child",
@@ -15,6 +17,8 @@
         "Fg": "White",
         "Bg": "Black",
         "WalkSpeed": 2,
-        "SightRange": 24
+        "SightRange": 24,
+        "MinDamage": 0.0625,
+        "MaxDamage": 0.125
     }
 }
