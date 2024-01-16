@@ -37,7 +37,7 @@ func DrawStringLeft(s TerminalDriver, b util.Rect, t string, style Style) {
 
 // DrawStringRight draws a string right-justified.
 func DrawStringRight(s TerminalDriver, b util.Rect, text string, style Style) {
-	sx := b.TL.X + (b.Width() - len(text))
+	sx := b.TL.X + (b.Width() - len(text)) - 1
 	si := 0
 	if sx < b.TL.X {
 		si += b.TL.X - sx

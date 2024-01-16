@@ -16,6 +16,7 @@ type GameMode struct {
 	LogMode   *LogMode      // Log display
 	MapMode   *MapMode      // Map display
 	Minimap   *Minimap      // Small mini-map
+	Status    *StatusPanel  // Status panel
 	ModeStack []termui.Mode // Internal stack of mode that overlay the main game mode, like the escape menu or inventory screen
 	Quit      bool          // If true we should quit
 	InTarget  bool          // If true we are in targeting mode
@@ -34,6 +35,9 @@ func NewGameMode(m *game.CityMap) *GameMode {
 		Minimap: &Minimap{
 			CityMap:     m,
 			CursorStyle: 1,
+		},
+		Status: &StatusPanel{
+			CityMap: m,
 		},
 	}
 	game.Log = gm.LogMode
@@ -178,8 +182,8 @@ func (m *GameMode) Draw(s termui.TerminalDriver) {
 	m.Minimap.Bounds = util.NewRectXYWH(sw-22, 0, 21, 21)
 	m.Minimap.Center = util.NewPoint(m.CityMap.Player.Position.X/game.ChunkWidth, m.CityMap.Player.Position.Y/game.ChunkHeight)
 	m.Minimap.Draw(s)
-	termui.DrawBox(s, util.NewRectXYWH(sw-38, 0, 16, 21), termui.CurrentTheme.Normal)
-	termui.DrawStringCenter(s, util.NewRectXYWH(sw-38, 0, 16, 1), "Placeholder", termui.CurrentTheme.Normal)
+	m.Status.Position = util.NewPoint(sw-38, 0)
+	m.Status.Draw(s)
 	// Render the mode stack
 	for _, m := range m.ModeStack {
 		m.Draw(s)

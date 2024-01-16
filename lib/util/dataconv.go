@@ -3,6 +3,7 @@ package util
 import (
 	"encoding/binary"
 	"io"
+	"math"
 	"time"
 )
 
@@ -56,6 +57,11 @@ func PutUint64(w io.Writer, v uint64) {
 	var b [8]byte
 	binary.BigEndian.PutUint64(b[:], v)
 	w.Write(b[:])
+}
+
+// PutFloat writes a 64-bit floating-point value.
+func PutFloat(w io.Writer, v float64) {
+	PutUint64(w, math.Float64bits(v))
 }
 
 // PutPoint writes a Point value to the writer.
@@ -125,10 +131,15 @@ func GetUint32(r io.Reader) uint32 {
 }
 
 // GetUint64 returns the next unsigned 64-bit integer in the data buffer.
-func GetUint64(r io.Reader) uint32 {
+func GetUint64(r io.Reader) uint64 {
 	var buf = []byte{0, 0, 0, 0, 0, 0, 0, 0}
 	r.Read(buf)
-	return binary.BigEndian.Uint32(buf)
+	return binary.BigEndian.Uint64(buf)
+}
+
+// GetFloat returns the next 64-bit floating-point value.
+func GetFloat(r io.Reader) float64 {
+	return math.Float64frombits(GetUint64(r))
 }
 
 // GetPoint returns the next Point value in the data buffer.
