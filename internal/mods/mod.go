@@ -1,3 +1,5 @@
+// Package mods provides facilities for loading game modifications. Game
+// modifications define every tile, chunk, item and actor in the game.
 package mods
 
 import (
