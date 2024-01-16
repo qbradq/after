@@ -1,3 +1,5 @@
+// Package pixeldriver implements a [termui.TerminalDriver] with
+// a graphical terminal emulator using Pixel2 as the backing library.
 package pixeldriver
 
 import (
