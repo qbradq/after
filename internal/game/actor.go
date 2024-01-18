@@ -153,23 +153,35 @@ func (a *Actor) TargetedDamage(which BodyPartCode, min, max float64, t time.Time
 	p := a.BodyParts[which]
 	d := util.RandomF(min, max) * BodyPartInfo[which].DamageMod
 	bs := ""
+	os := "the"
 	p.Health -= d
 	if p.Health < 0 {
 		p.Health = 0
-		p.Broken = true
-		p.BrokenUntil = t.Add(time.Hour * 24 * 14) // Takes two weeks for broken limbs to mend or zombies to get up
-		bs = " BREAKING IT"
-		if which == BodyPartHead || which == BodyPartBody {
-			a.Dead = true
-			bs += ". KILLING BLOW!"
+		if !p.Broken {
+			p.Broken = true
+			bs = " BREAKING IT"
+			if which != BodyPartHead && which != BodyPartBody && which != BodyPartHand {
+				bs = " BREAKING THEM"
+			}
+			if which == BodyPartHead || which == BodyPartBody {
+				a.Dead = true
+				bs += ". KILLING BLOW!"
+			}
+		} else {
+			os = "their broken"
+			if a.IsPlayer {
+				os = "your broken"
+			}
 		}
+		p.BrokenUntil = t.Add(time.Hour * 24 * 14) // Takes two weeks for broken limbs to mend or zombies to get up
 	}
 	a.BodyParts[which] = p
 	if a.IsPlayer {
 		Log.Log(
 			termui.ColorRed,
-			"%s hit YOU in the %s%s %d%%",
+			"%s hit YOU in %s %s%s %d%%",
 			from.Name,
+			os,
 			BodyPartInfo[which].Name,
 			bs,
 			int(d*100),
@@ -177,8 +189,9 @@ func (a *Actor) TargetedDamage(which BodyPartCode, min, max float64, t time.Time
 	} else if from.IsPlayer {
 		Log.Log(
 			termui.ColorLime,
-			"YOU hit %s in the %s%s %d%%",
+			"YOU hit %s in %s %s%s %d%%",
 			a.Name,
+			os,
 			BodyPartInfo[which].Name,
 			bs,
 			int(d*100),
@@ -186,9 +199,10 @@ func (a *Actor) TargetedDamage(which BodyPartCode, min, max float64, t time.Time
 	} else {
 		Log.Log(
 			termui.ColorYellow,
-			"%s hit %s in the %s%s %d%%",
+			"%s hit %s in %s %s%s %d%%",
 			from.Name,
 			a.Name,
+			os,
 			BodyPartInfo[which].Name,
 			bs,
 			int(d*100),
@@ -221,8 +235,8 @@ func (a *Actor) Damage(min, max float64, t time.Time, from *Actor) float64 {
 // WalkSpeed returns the current walking speed of this mobile.
 func (a *Actor) WalkSpeed() float64 {
 	// Broken legs mean we crawl
-	if a.BodyParts[BodyPartLegs].Broken {
-		return a.Speed * 0.25
+	if a.BodyParts[BodyPartLegs].Broken || a.BodyParts[BodyPartFeet].Broken {
+		return a.Speed * 4
 	}
 	// Otherwise we walk
 	return a.Speed

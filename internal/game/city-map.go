@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/kelindar/bitmap"
+	"github.com/qbradq/after/lib/termui"
 	"github.com/qbradq/after/lib/util"
 )
 
@@ -485,7 +486,7 @@ func (m *CityMap) StepPlayer(d util.Direction) bool {
 		return false
 	}
 	m.Player.Position = np
-	m.PlayerTookTurn(time.Second)
+	m.PlayerTookTurn(time.Duration(float64(time.Second) * m.Player.WalkSpeed()))
 	return true
 }
 
@@ -713,4 +714,7 @@ func (m *CityMap) Update(p util.Point, d time.Duration) {
 // duration as well as anything else that should happen after the player's turn.
 func (m *CityMap) PlayerTookTurn(d time.Duration) {
 	m.Update(m.Player.Position, d)
+	if m.Player.Dead {
+		Log.Log(termui.ColorYellow, "YOU ARE DEAD! Press Escape to return to the main menu.")
+	}
 }

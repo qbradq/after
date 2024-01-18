@@ -46,6 +46,16 @@ func NewGameMode(m *game.CityMap) *GameMode {
 }
 
 func (m *GameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
+	// Check every event for end game conditions
+	if m.CityMap.Player.Dead {
+		if ev, ok := e.(*termui.EventKey); ok {
+			if ev.Key == '\033' {
+				return termui.ErrorQuit
+			}
+		}
+		return nil
+	}
+	// Normal input processing
 	dir := util.DirectionInvalid
 	switch ev := e.(type) {
 	case *termui.EventKey:
