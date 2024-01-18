@@ -23,7 +23,7 @@ type tileExpression struct {
 }
 
 // evaluate implements the evaluator interface.
-func (e *tileExpression) evaluate(c *game.Chunk, p util.Point, t time.Time) {
+func (e *tileExpression) evaluate(c *game.Chunk, p util.Point, now time.Time) {
 	c.Tiles[p.Y*game.ChunkWidth+p.X] = game.TileDefs[e.r]
 }
 
@@ -33,7 +33,7 @@ type tileGenExpression struct {
 }
 
 // evaluate implements the evaluator interface.
-func (e *tileGenExpression) evaluate(c *game.Chunk, p util.Point, t time.Time) {
+func (e *tileGenExpression) evaluate(c *game.Chunk, p util.Point, now time.Time) {
 	c.Tiles[p.Y*game.ChunkWidth+p.X] = e.r.Generate()
 }
 
@@ -44,9 +44,9 @@ type itemExpression struct {
 }
 
 // evaluate implements the evaluator interface.
-func (e *itemExpression) evaluate(c *game.Chunk, p util.Point, t time.Time) {
+func (e *itemExpression) evaluate(c *game.Chunk, p util.Point, now time.Time) {
 	if util.Random(0, e.y) < e.x {
-		i := game.NewItem(e.r)
+		i := game.NewItem(e.r, now)
 		i.Position = p
 		c.PlaceItemRelative(i)
 	}
@@ -59,9 +59,9 @@ type itemGenExpression struct {
 }
 
 // evaluate implements the evaluator interface.
-func (e *itemGenExpression) evaluate(c *game.Chunk, p util.Point, t time.Time) {
+func (e *itemGenExpression) evaluate(c *game.Chunk, p util.Point, now time.Time) {
 	if util.Random(0, e.y) < e.x {
-		i := e.r.Generate()
+		i := e.r.Generate(now)
 		i.Position = p
 		c.PlaceItemRelative(i)
 	}
@@ -73,9 +73,9 @@ type actorExpression struct {
 	x, y int    // rng parameters
 }
 
-func (e *actorExpression) evaluate(c *game.Chunk, p util.Point, t time.Time) {
+func (e *actorExpression) evaluate(c *game.Chunk, p util.Point, now time.Time) {
 	if util.Random(0, e.y) < e.x {
-		a := game.NewActor(e.r, t)
+		a := game.NewActor(e.r, now)
 		a.Position = p
 		c.PlaceActorRelative(a)
 	}
@@ -88,9 +88,9 @@ type actorGenExpression struct {
 	x, y int      // rng parameters
 }
 
-func (e *actorGenExpression) evaluate(c *game.Chunk, p util.Point, t time.Time) {
+func (e *actorGenExpression) evaluate(c *game.Chunk, p util.Point, now time.Time) {
 	if util.Random(0, e.y) < e.x {
-		a := e.r.Generate(t)
+		a := e.r.Generate(now)
 		a.Position = p
 		c.PlaceActorRelative(a)
 	}

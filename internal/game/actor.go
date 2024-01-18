@@ -14,6 +14,11 @@ type AIModel interface {
 	// Act is responsible for taking the next action for the actor and returning
 	// the duration until the next call to Act().
 	Act(*Actor, *CityMap) time.Duration
+	// PeriodicUpdate is responsible for handling periodic updates. The passed
+	// duration may be very long in the case of reloading a chunk from disk.
+	// Periodic update functions are expected to execute in linear time no
+	// matter how long the duration.
+	PeriodicUpdate(*Actor, *CityMap, time.Duration)
 	// Write writes the internal state of the model to the writer.
 	Write(io.Writer)
 }
@@ -41,14 +46,18 @@ const (
 	BodyPartCount
 )
 
-// BodyPartNames is a mapping of BodyPartCode to 4-character body part name.
-var BodyPartNames = []string{
-	"Head",
-	"Body",
-	"Arms",
-	"Legs",
-	"Hand",
-	"Feet",
+// BodyPartInfo is a mapping of BodyPartCode to static information about a
+// body part.
+var BodyPartInfo = []struct {
+	Name      string
+	DamageMod float64
+}{
+	{"Head", 2.5},
+	{"Body", 0.5},
+	{"Arms", 1.0},
+	{"Legs", 1.0},
+	{"Hand", 1.5},
+	{"Feet", 1.5},
 }
 
 // BodyPart encapsulates information about an actor's body part.
@@ -75,7 +84,7 @@ type Actor struct {
 	Rune       string       // Display rune
 	Fg         termui.Color // Display foreground color
 	Bg         termui.Color // Display background color
-	WalkSpeed  float64      // Number of seconds between steps at walking pace
+	Speed      float64      // Number of seconds between steps at walking pace
 	SightRange int          // Distance this actor can see
 	MinDamage  float64      // Minimum damage done by normal attacks
 	MaxDamage  float64      // Maximum damage done by normal attacks
@@ -142,34 +151,46 @@ func (a *Actor) Write(w io.Writer) {
 // Returns the amount of damage done.
 func (a *Actor) TargetedDamage(which BodyPartCode, min, max float64, t time.Time, from *Actor) float64 {
 	p := a.BodyParts[which]
-	d := util.RandomF(min, max)
+	d := util.RandomF(min, max) * BodyPartInfo[which].DamageMod
+	bs := ""
 	p.Health -= d
 	if p.Health < 0 {
 		p.Health = 0
 		p.Broken = true
-		p.BrokenUntil = t.Add(time.Hour * 24 * 14)
+		p.BrokenUntil = t.Add(time.Hour * 24 * 14) // Takes two weeks for broken limbs to mend or zombies to get up
+		bs = " BREAKING IT"
+		if which == BodyPartHead || which == BodyPartBody {
+			a.Dead = true
+			bs += ". KILLING BLOW!"
+		}
 	}
 	a.BodyParts[which] = p
 	if a.IsPlayer {
 		Log.Log(
 			termui.ColorRed,
-			"%s hit YOU for %d points of damage.",
+			"%s hit YOU in the %s%s %d%%",
 			from.Name,
+			BodyPartInfo[which].Name,
+			bs,
 			int(d*100),
 		)
 	} else if from.IsPlayer {
 		Log.Log(
 			termui.ColorLime,
-			"YOU hit %s for %d points of damage.",
+			"YOU hit %s in the %s%s %d%%",
 			a.Name,
+			BodyPartInfo[which].Name,
+			bs,
 			int(d*100),
 		)
 	} else {
 		Log.Log(
 			termui.ColorYellow,
-			"%s hit %s for %d points of damage.",
+			"%s hit %s in the %s%s %d%%",
 			from.Name,
 			a.Name,
+			BodyPartInfo[which].Name,
+			bs,
 			int(d*100),
 		)
 	}
@@ -195,4 +216,23 @@ func (a *Actor) Damage(min, max float64, t time.Time, from *Actor) float64 {
 		which = BodyPartBody
 	}
 	return a.TargetedDamage(which, min, max, t, from)
+}
+
+// WalkSpeed returns the current walking speed of this mobile.
+func (a *Actor) WalkSpeed() float64 {
+	// Broken legs mean we crawl
+	if a.BodyParts[BodyPartLegs].Broken {
+		return a.Speed * 0.25
+	}
+	// Otherwise we walk
+	return a.Speed
+}
+
+// DropCorpse drops a corpse item for this actor.
+func (a *Actor) DropCorpse(m *CityMap) {
+	i := NewItem("Corpse", m.Now)
+	i.SArg = a.TemplateID
+	i.TArg = m.Now.Add(time.Hour * 24 * 14) // Takes two weeks for a corpse to resurrect
+	i.Position = a.Position
+	m.PlaceItem(i)
 }

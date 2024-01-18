@@ -8,8 +8,8 @@ import (
 )
 
 func init() {
-	rie("OpenDoor", openDoor)
-	rie("CloseDoor", closeDoor)
+	rue("OpenDoor", openDoor)
+	rue("CloseDoor", closeDoor)
 }
 
 func openDoor(i *game.Item, src *game.Actor, m *game.CityMap) error {
@@ -28,7 +28,7 @@ func openDoor(i *game.Item, src *game.Actor, m *game.CityMap) error {
 			for _, item := range items {
 				if item.TemplateID == i.TemplateID {
 					m.RemoveItem(item)
-					ni := game.NewItem("Open" + item.TemplateID)
+					ni := game.NewItem("Open"+item.TemplateID, m.Now)
 					ni.Position = item.Position
 					m.PlaceItem(ni)
 				}
@@ -56,7 +56,7 @@ func closeDoor(i *game.Item, src *game.Actor, m *game.CityMap) error {
 				if item.TemplateID == i.TemplateID {
 					m.RemoveItem(item)
 					s, _ := strings.CutPrefix(i.TemplateID, "Open")
-					ni := game.NewItem(s)
+					ni := game.NewItem(s, m.Now)
 					ni.Position = item.Position
 					m.PlaceItem(ni)
 				}

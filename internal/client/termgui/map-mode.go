@@ -218,8 +218,15 @@ func (m *MapMode) drawMap(s termui.TerminalDriver, mtl util.Point, mb util.Rect)
 			ns := termui.StyleDefault.
 				Background(a.Bg).
 				Foreground(a.Fg)
+			r := rune(a.Rune[0])
+			if a.Dead {
+				r = '%'
+				ns = termui.StyleDefault.
+					Background(termui.ColorBlack).
+					Foreground(termui.ColorOlive)
+			}
 			s.SetCell(sp, termui.Glyph{
-				Rune:  rune(a.Rune[0]),
+				Rune:  r,
 				Style: ns,
 			})
 		}

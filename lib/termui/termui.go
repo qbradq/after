@@ -4,7 +4,6 @@ package termui
 
 import (
 	"errors"
-	"log"
 	"time"
 
 	"github.com/qbradq/after/lib/util"
@@ -64,7 +63,7 @@ func RunMode(s TerminalDriver, m Mode) {
 				if errors.Is(err, ErrorQuit) {
 					return
 				}
-				log.Fatal(err)
+				panic(err)
 			}
 			updateTime := time.Since(start)
 			start = time.Now()

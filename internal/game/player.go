@@ -3,6 +3,8 @@ package game
 import (
 	"io"
 	"time"
+
+	"github.com/qbradq/after/lib/util"
 )
 
 // Player implements the player's special actor.
@@ -25,6 +27,7 @@ func NewPlayer(now time.Time) *Player {
 func NewPlayerFromReader(r io.Reader) *Player {
 	a := NewActorFromReader(r)
 	a.IsPlayer = true
+	a.Name = util.GetString(r)
 	p := &Player{
 		Actor: *a,
 	}
@@ -34,4 +37,5 @@ func NewPlayerFromReader(r io.Reader) *Player {
 // Write writes the player to the writer.
 func (a *Player) Write(w io.Writer) {
 	a.Actor.Write(w)
+	util.PutString(w, a.Name) // Persist the player's name
 }

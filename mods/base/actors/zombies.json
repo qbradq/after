@@ -5,7 +5,7 @@
         "Rune": "Z",
         "Fg": "White",
         "Bg": "Black",
-        "WalkSpeed": 1.5,
+        "Speed": 1.5,
         "SightRange": 32,
         "MinDamage": 0.125,
         "MaxDamage": 0.25
@@ -16,7 +16,7 @@
         "Rune": "z",
         "Fg": "White",
         "Bg": "Black",
-        "WalkSpeed": 2,
+        "Speed": 2,
         "SightRange": 24,
         "MinDamage": 0.0625,
         "MaxDamage": 0.125

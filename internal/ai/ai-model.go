@@ -15,27 +15,42 @@ func init() {
 	game.NewAIModelFromReader = NewAIModelFromReader
 }
 
-// aiFn is the function signature all AI functions take.
-type aiFn func(*AIModel, *game.Actor, *game.CityMap) time.Duration
+// actFn is the function signature all "act" functions take.
+type actFn func(*AIModel, *game.Actor, *game.CityMap) time.Duration
 
-// Global registry of AI functions.
-var aiFns = map[string]aiFn{}
+// Global registry of "act" functions.
+var actFns = map[string]actFn{}
 
-// regFn registers an AI function by name.
-func regFn(name string, fn aiFn) {
-	if _, found := aiFns[name]; found {
-		panic(fmt.Errorf("duplicate AI function %s", name))
+// regActFn registers an "act" function by name.
+func regActFn(name string, fn actFn) {
+	if _, found := actFns[name]; found {
+		panic(fmt.Errorf("duplicate act function %s", name))
 	}
-	aiFns[name] = fn
+	actFns[name] = fn
+}
+
+// puFn is the function signature all "periodic" functions take.
+type puFn func(*AIModel, *game.Actor, *game.CityMap, time.Duration)
+
+// Global registry of "periodic" functions.
+var puFns = map[string]puFn{}
+
+// regPUFn registers an "periodic" function by name.
+func regPUFn(name string, fn puFn) {
+	if _, found := puFns[name]; found {
+		panic(fmt.Errorf("duplicate periodic function %s", name))
+	}
+	puFns[name] = fn
 }
 
 // AIModel implements the thinking AI of CPU-controlled actors.
 type AIModel struct {
-	POI  util.Point    // Point of interest
-	Path game.Path     // Path from current position to poi
-	tid  string        // Template ID
-	act  string        // Act makes the actor take its next action and returns the delay until that actor's next Act() call.
-	cd   time.Duration // General-purpose cool-down counter
+	POI      util.Point    // Point of interest
+	Path     game.Path     // Path from current position to poi
+	tid      string        // Template ID
+	act      string        // Act makes the actor take its next action and returns the delay until that actor's next Act() call.
+	periodic string        // Responsible for all periodic updates
+	cd       time.Duration // General-purpose cool-down counter
 }
 
 // aiModelConstructor functions construct AIModel objects pre-configured for a
@@ -97,9 +112,17 @@ func (ai *AIModel) Write(w io.Writer) {
 	w.Write(b)
 }
 
-// Act is responsible for calling act().
+// Act is responsible for calling the "act" function.
 func (ai *AIModel) Act(a *game.Actor, m *game.CityMap) time.Duration {
-	return aiFns[ai.act](ai, a, m)
+	if a.Dead {
+		return time.Hour
+	}
+	return actFns[ai.act](ai, a, m)
+}
+
+// PeriodicUpdate is responsible for calling the "periodic" function.
+func (ai *AIModel) PeriodicUpdate(a *game.Actor, m *game.CityMap, d time.Duration) {
+	puFns[ai.periodic](ai, a, m, d)
 }
 
 func (ai *AIModel) setPOI(p util.Point, a *game.Actor, m *game.CityMap) {

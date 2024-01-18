@@ -98,9 +98,9 @@ func (m *GameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 				}
 				items := m.CityMap.ItemsAt(p)
 				if len(items) > 0 {
-					err := events.ExecuteItemEvent("Use", items[len(items)-1], &m.CityMap.Player.Actor, m.CityMap)
+					err := events.ExecuteItemUseEvent("Use", items[len(items)-1], &m.CityMap.Player.Actor, m.CityMap)
 					if err != nil {
-						panic(err)
+						return err
 					}
 					m.CityMap.PlayerTookTurn(time.Second)
 				}
@@ -148,9 +148,9 @@ func (m *GameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 			} else {
 				items := m.CityMap.ItemsAt(np)
 				if len(items) > 0 {
-					err := events.ExecuteItemEvent("Use", items[len(items)-1], &m.CityMap.Player.Actor, m.CityMap)
+					err := events.ExecuteItemUseEvent("Use", items[len(items)-1], &m.CityMap.Player.Actor, m.CityMap)
 					if err != nil {
-						panic(err)
+						return err
 					}
 					m.CityMap.PlayerTookTurn(time.Second)
 					s.FlushEvents()

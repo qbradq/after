@@ -36,11 +36,11 @@ func (m *StatusPanel) Draw(s termui.TerminalDriver) {
 	if m.CityMap.Player.Dead {
 		termui.DrawStringCenter(s, b, "Dead", termui.CurrentTheme.Normal.Foreground(termui.ColorRed))
 	} else {
-		termui.DrawStringCenter(s, b, "Normal", termui.CurrentTheme.Normal)
+		termui.DrawStringCenter(s, b, "Normal", termui.CurrentTheme.Normal.Foreground(termui.ColorSilver))
 	}
 	b.TL.Y++
 	for _, part := range m.CityMap.Player.BodyParts {
-		termui.DrawStringLeft(s, b, game.BodyPartNames[part.Which], termui.CurrentTheme.Normal)
+		termui.DrawStringLeft(s, b, game.BodyPartInfo[part.Which].Name, termui.CurrentTheme.Normal)
 		nb := b
 		nb.TL.X += 5
 		// Body part is broken, don't display internal HP until fully healed

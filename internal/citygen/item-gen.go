@@ -3,6 +3,7 @@ package citygen
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/qbradq/after/internal/game"
 	"github.com/qbradq/after/lib/util"
@@ -29,9 +30,9 @@ func (g *ItemGen) UnmarshalJSON(in []byte) error {
 	return nil
 }
 
-// Generate returns a pointer to the selected tile def after procedural
+// Generate returns a new item created from the generator.
 // generation.
-func (g ItemGen) Generate() *game.Item {
+func (g ItemGen) Generate(now time.Time) *game.Item {
 	r := g[util.Random(0, len(g))]
-	return game.NewItem(r)
+	return game.NewItem(r, now)
 }

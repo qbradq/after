@@ -4,26 +4,49 @@ package events
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/qbradq/after/internal/game"
 )
 
-// itemEvent is the signature of item event handlers
-type itemEvent func(*game.Item, *game.Actor, *game.CityMap) error
-
-// Global registry of item events
-var itemEvents = map[string]itemEvent{}
-
-// rie registers an item event by name.
-func rie(name string, fn itemEvent) {
-	if _, found := itemEvents[name]; found {
-		panic(fmt.Errorf("duplicate event name %s", name))
-	}
-	itemEvents[name] = fn
+func init() {
+	game.ExecuteItemUpdateEvent = ExecuteItemUpdateEvent
 }
 
-// ExecuteItemEvent executes the named item event for the item if any.
-func ExecuteItemEvent(name string, i *game.Item, src *game.Actor, m *game.CityMap) error {
+// useEvent is the signature of item event handlers. These handlers are used for
+// the player interacting with an item in the game.
+type useEvent func(*game.Item, *game.Actor, *game.CityMap) error
+
+// Global registry of item use events.
+var useEvents = map[string]useEvent{}
+
+// rue registers an item use event by name.
+func rue(name string, fn useEvent) {
+	if _, found := useEvents[name]; found {
+		panic(fmt.Errorf("duplicate item use event name %s", name))
+	}
+	useEvents[name] = fn
+}
+
+// updateEvent is the signature of item update event handlers. These handlers
+// are used for the periodic update of all items. The handler may be called with
+// very high values for d in the event of a chunk reload. The handler is
+// expected to execute in linear time no mater the value of d.
+type updateEvent func(*game.Item, *game.CityMap, time.Duration) error
+
+// Global registry of item update events.
+var updateEvents = map[string]updateEvent{}
+
+// rpue registers an item periodic update event by name.
+func rpue(name string, fn updateEvent) {
+	if _, found := updateEvents[name]; found {
+		panic(fmt.Errorf("duplicate item update event name %s", name))
+	}
+	updateEvents[name] = fn
+}
+
+// ExecuteItemUseEvent executes the named item use event for the item if any.
+func ExecuteItemUseEvent(name string, i *game.Item, src *game.Actor, m *game.CityMap) error {
 	// Sanity checks
 	if i == nil {
 		return nil
@@ -33,10 +56,30 @@ func ExecuteItemEvent(name string, i *game.Item, src *game.Actor, m *game.CityMa
 	if len(hn) == 0 {
 		return nil
 	}
-	h := itemEvents[hn]
+	h := useEvents[hn]
 	if h == nil {
-		panic(fmt.Errorf("item template %s, event %s references non-existent item event %s",
-			i.TemplateID, name, hn))
+		return fmt.Errorf("item template %s, event %s references non-existent item use function %s",
+			i.TemplateID, name, hn)
 	}
 	return h(i, src, m)
+}
+
+// ExecuteItemUpdateEvent executes the named item update event for the item if
+// any.
+func ExecuteItemUpdateEvent(name string, i *game.Item, m *game.CityMap, d time.Duration) error {
+	// Sanity checks
+	if i == nil {
+		return nil
+	}
+	hn := i.Events[name]
+	// No handler named for this event
+	if len(hn) == 0 {
+		return nil
+	}
+	h := updateEvents[hn]
+	if h == nil {
+		return fmt.Errorf("item template %s, event %s references non-existent item update function %s",
+			i.TemplateID, name, hn)
+	}
+	return h(i, m, d)
 }

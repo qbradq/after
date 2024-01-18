@@ -404,9 +404,14 @@ func (m *CityMap) ItemsWithin(b util.Rect) []*Item {
 	return m.itemsWithinCache
 }
 
-// AddActor adds the actor to the city at it's current location.
-func (m *CityMap) AddActor(a *Actor) {
+// PlaceActor adds the actor to the city at it's current location.
+func (m *CityMap) PlaceActor(a *Actor) {
 	m.GetChunk(a.Position).PlaceActor(a)
+	if m.updateBounds.Contains(a.Position) {
+		// Chunk is within the current update set so we'll have to manually push
+		// them onto the action queue
+		heap.Push(&m.aq, a)
+	}
 }
 
 // RemoveActor removes the actor from the city at it's current location.
@@ -657,8 +662,49 @@ func (m *CityMap) Update(p util.Point, d time.Duration) {
 				heap.Push(&m.aq, a)
 				break
 			}
-			a.NextThink = a.NextThink.Add(a.AIModel.Act(a, m))
+			d := a.AIModel.Act(a, m)
+			a.NextThink = a.NextThink.Add(d)
+			a.AIModel.PeriodicUpdate(a, m, d)
 			heap.Push(&m.aq, a)
+		}
+	}
+	// Update all items in the update radius
+	for p.Y = m.updateBounds.TL.Y; p.Y <= m.updateBounds.BR.Y; p.Y += ChunkHeight {
+		for p.X = m.updateBounds.TL.X; p.X <= m.updateBounds.BR.X; p.X += ChunkWidth {
+			c := m.GetChunk(p)
+			for _, i := range c.Items {
+				ExecuteItemUpdateEvent("Update", i, m, d)
+			}
+		}
+	}
+	// Post-update cleanup of dead actors that need to turn into corpses and
+	// destroyed items that need to be removed
+	var actorsToRemove []*Actor
+	var itemsToRemove []*Item
+	for p.Y = m.loadBounds.TL.Y; p.Y <= m.loadBounds.BR.Y; p.Y += ChunkHeight {
+		for p.X = m.loadBounds.TL.X; p.X <= m.loadBounds.BR.X; p.X += ChunkWidth {
+			// Remove dead actors
+			actorsToRemove = actorsToRemove[:0]
+			c := m.GetChunk(p)
+			for _, a := range c.Actors {
+				if a.Dead {
+					a.DropCorpse(m)
+					actorsToRemove = append(actorsToRemove, a)
+				}
+			}
+			for _, a := range actorsToRemove {
+				c.RemoveActor(a)
+			}
+			// Remove destroyed items
+			itemsToRemove = itemsToRemove[:0]
+			for _, i := range c.Items {
+				if i.Destroyed {
+					itemsToRemove = append(itemsToRemove, i)
+				}
+			}
+			for _, i := range itemsToRemove {
+				m.RemoveItem(i)
+			}
 		}
 	}
 }

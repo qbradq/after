@@ -1,0 +1,11 @@
+{
+    "Corpse": {
+        "Name": "corpse",
+        "Rune": "%",
+        "Fg": "Olive",
+        "Bg": "Black",
+        "Events": {
+            "Update": "ResurrectCorpse"
+        }
+    }
+}
