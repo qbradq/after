@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	s := ebitendriver.NewDriver()
+	s := ebitendriver.New()
 	s.Init()
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)

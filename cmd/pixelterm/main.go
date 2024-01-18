@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	s := pixeldriver.NewDriver()
+	s := pixeldriver.New()
 	s.Init()
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)

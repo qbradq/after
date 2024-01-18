@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	s := &tcelldriver.Driver{}
+	s := tcelldriver.New()
 	s.Init()
 	defer s.Fini()
 	c := make(chan os.Signal, 1)

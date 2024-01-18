@@ -19,6 +19,8 @@ type TerminalDriver interface {
 	Init() error
 	// Fini is responsible for all cleanup operations.
 	Fini()
+	// Quit forces the driver to exit.
+	Quit()
 	// SetCell sets a single cell of the screen.
 	SetCell(util.Point, Glyph)
 	// GetCell returns the glyph at the given point on the screen.
