@@ -6,6 +6,7 @@
         "Bg": "Black",
         "BlocksVis": true,
         "BlocksWalk": true,
+        "Fixed": true,
         "Events": {
             "Use": "OpenDoor"
         }
@@ -15,6 +16,7 @@
         "Rune": "-",
         "Fg": "Yellow",
         "Bg": "Black",
+        "Fixed": true,
         "Events": {
             "Use": "CloseDoor"
         }
@@ -25,6 +27,7 @@
         "Fg": "Aqua",
         "Bg": "Black",
         "BlocksWalk": true,
+        "Fixed": true,
         "Events": {
             "Use": "OpenDoor"
         }
@@ -35,6 +38,7 @@
         "Fg": "Aqua",
         "Bg": "Black",
         "BlocksWalk": true,
+        "Fixed": true,
         "Events": {
             "Use": "CloseDoor"
         }
@@ -46,6 +50,7 @@
         "Bg": "Black",
         "BlocksVis": true,
         "BlocksWalk": true,
+        "Fixed": true,
         "Events": {
             "Use": "OpenDoor"
         }
@@ -55,16 +60,10 @@
         "Rune": "-",
         "Fg": "Yellow",
         "Bg": "Black",
+        "Fixed": true,
         "Events": {
             "Use": "CloseDoor"
         }
-    },
-    "Sink": {
-        "Name": "sink",
-        "Rune": "}",
-        "Fg": "Silver",
-        "Bg": "Black",
-        "BlocksWalk": true
     },
     "GarageDoor": {
         "Name": "garage door",
@@ -73,6 +72,7 @@
         "Bg": "Black",
         "BlocksVis": true,
         "BlocksWalk": true,
+        "Fixed": true,
         "Events": {
             "Use": "OpenDoor"
         }
@@ -82,6 +82,7 @@
         "Rune": "-",
         "Fg": "Silver",
         "Bg": "Black",
+        "Fixed": true,
         "Events": {
             "Use": "CloseDoor"
         }

@@ -1,0 +1,9 @@
+{
+    "Crowbar": {
+        "Name": "crowbar",
+        "Rune": "/",
+        "Fg": "Silver",
+        "Bg": "Black",
+        "Weapon": true
+    }
+}

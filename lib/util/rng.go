@@ -27,3 +27,16 @@ func RandomF(min, max float64) float64 {
 func RandomBool() bool {
 	return rng.Intn(2) != 0
 }
+
+// RandomValue returns a random value from the slice.
+func RandomValue[T any](s []T) T {
+	return s[Random(0, len(s))]
+}
+
+// RandomPoint returns a random point within the rect.
+func RandomPoint(b Rect) Point {
+	return Point{
+		X: Random(b.TL.X, b.BR.X+1),
+		Y: Random(b.TL.Y, b.BR.Y+1),
+	}
+}

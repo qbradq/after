@@ -22,14 +22,18 @@ type Item struct {
 	SArg       string     // Generic string argument
 	TArg       time.Time  // Generic time argument
 	// Reconstructed values
-	Events     map[string]string // Map of event names to event handler names
-	Name       string            // Descriptive name
-	Rune       string            // Display rune
-	Fg         termui.Color      // Display foreground color
-	Bg         termui.Color      // Display background color
-	BlocksVis  bool              // If true this item blocks visibility
-	BlocksWalk bool              // If true this item blocks walking
-	Destroyed  bool              // If true something has happened to this item to cause it to be destroyed, it will be removed from the world at the end of the next update cycle
+	Events       map[string]string // Map of event names to event handler names
+	Name         string            // Descriptive name
+	Rune         string            // Display rune
+	Fg           termui.Color      // Display foreground color
+	Bg           termui.Color      // Display background color
+	BlocksVis    bool              // If true this item blocks visibility
+	BlocksWalk   bool              // If true this item blocks walking
+	Destroyed    bool              // If true something has happened to this item to cause it to be destroyed, it will be removed from the world at the end of the next update cycle
+	Fixed        bool              // If true the item cannot be moved at all
+	Wearable     bool              // If true this item can be worn as a piece of clothing
+	WornBodyPart BodyPartCode      // Code of the body part this item is worn on
+	Weapon       bool              // If true this item can be wielded as a weapon
 }
 
 // NewItem creates a new item from the named template.

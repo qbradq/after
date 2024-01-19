@@ -1,0 +1,10 @@
+{
+    "TeeShirt": {
+        "Name": "tee shirt",
+        "Rune": "&",
+        "Fg": "Blue",
+        "Bg": "Black",
+        "Wearable": true,
+        "WornBodyPart": "Body"
+    }
+}

@@ -96,6 +96,11 @@ func PutBytes(w io.Writer, d []byte) {
 	w.Write(d)
 }
 
+// GetBool returns the next boolean value in the data buffer.
+func GetBool(r io.Reader) bool {
+	return GetByte(r) != 0
+}
+
 // GetString returns the next null-terminated string in the data buffer.
 func GetString(r io.Reader) string {
 	var buf = []byte{0}

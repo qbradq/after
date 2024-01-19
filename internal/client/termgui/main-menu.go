@@ -38,9 +38,7 @@ func NewMainMenu(s termui.TerminalDriver) *MainMenu {
 					if err := game.NewSave("debug-"+time.Now().Format(time.DateTime), debugMods); err != nil {
 						panic(err)
 					}
-					m := citygen.CityGens["Interstate Town"]()
-					m.Player = game.NewPlayer(m.Now)
-					m.Player.Position = util.NewPoint(10*game.ChunkWidth+game.ChunkWidth/2, 15*game.ChunkHeight+game.ChunkHeight/2)
+					m := citygen.Generate("Interstate Town", "Test")
 					m.SaveCityPlan()
 					m.Update(m.Player.Position, 0)
 					m.FullSave()

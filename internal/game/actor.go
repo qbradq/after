@@ -33,43 +33,6 @@ var NewAIModel func(string) AIModel
 // Map of all actor definitions from all mods.
 var ActorDefs = map[string]*Actor{}
 
-// BodyPartCode is a code that indicates a player's body part.
-type BodyPartCode uint8
-
-const (
-	BodyPartHead BodyPartCode = iota
-	BodyPartBody
-	BodyPartArms
-	BodyPartLegs
-	BodyPartHand
-	BodyPartFeet
-	BodyPartCount
-)
-
-// BodyPartInfo is a mapping of BodyPartCode to static information about a
-// body part.
-var BodyPartInfo = []struct {
-	Name      string
-	DamageMod float64
-}{
-	{"Head", 2.5},
-	{"Body", 0.5},
-	{"Arms", 1.0},
-	{"Legs", 1.0},
-	{"Hand", 1.5},
-	{"Feet", 1.5},
-}
-
-// BodyPart encapsulates information about an actor's body part.
-type BodyPart struct {
-	// Persistent
-	Health      float64   // Health between [0.0-1.0]
-	BrokenUntil time.Time // When this body part will heal
-	// Reconstituted values
-	Which  BodyPartCode // Indicates which body part we describe
-	Broken bool         // If true the body part is currently broken
-}
-
 // Actor represents a moving, thinking actor on the map.
 type Actor struct {
 	// Persistent values
@@ -78,6 +41,9 @@ type Actor struct {
 	AIModel    AIModel                 // AIModel for the actor
 	NextThink  time.Time               // Time of the next think
 	BodyParts  [BodyPartCount]BodyPart // Status of all body parts
+	Equipment  [BodyPartCount]*Item    // All items equipped to the body, if any
+	Inventory  []*Item                 // All items held in inventory, if any
+	Weapon     *Item                   // The item wielded as a weapon, if any
 	// Reconstructed values
 	AITemplate string       // AI template name
 	Name       string       // Descriptive name
@@ -130,6 +96,15 @@ func NewActorFromReader(r io.Reader) *Actor {
 		}
 		a.BodyParts[i] = p
 	}
+	for i := range a.Equipment { // Equipped items
+		if util.GetBool(r) {
+			a.Equipment[i] = NewItemFromReader(r)
+		}
+	}
+	a.Inventory = make([]*Item, util.GetUint16(r)) // Inventory
+	for i := range a.Inventory {
+		a.Inventory[i] = NewItemFromReader(r)
+	}
 	return a
 }
 
@@ -143,6 +118,18 @@ func (a *Actor) Write(w io.Writer) {
 	for _, p := range a.BodyParts { // Body part status
 		util.PutFloat(w, p.Health)
 		util.PutTime(w, p.BrokenUntil)
+	}
+	for _, i := range a.Equipment { // Equipped items
+		if i == nil {
+			util.PutBool(w, false)
+		} else {
+			util.PutBool(w, true)
+			i.Write(w)
+		}
+	}
+	util.PutUint16(w, uint16(len(a.Inventory))) // Inventory item count
+	for _, i := range a.Inventory {             // Inventory items
+		i.Write(w)
 	}
 }
 
@@ -249,4 +236,37 @@ func (a *Actor) DropCorpse(m *CityMap) {
 	i.TArg = m.Now.Add(time.Hour * 24 * 14) // Takes two weeks for a corpse to resurrect
 	i.Position = a.Position
 	m.PlaceItem(i)
+}
+
+// WearItem attempts to wear the item as clothing. On failure a string is
+// returned describing why the action failed as a complete, punctuated sentence.
+// On success an empty string is returned.
+func (a *Actor) WearItem(i *Item) string {
+	if !i.Wearable {
+		return "That item is not wearable."
+	}
+	if a.Equipment[i.WornBodyPart] != nil {
+		return "An item is already being worn there."
+	}
+	a.Equipment[i.WornBodyPart] = i
+	return ""
+}
+
+// WieldItem attempts to wield the item as a weapon. On failure a string is
+// returned describing why the action failed as a complete, punctuated sentence.
+// On success an empty string is returned.
+func (a *Actor) WieldItem(i *Item) string {
+	if !i.Weapon {
+		return "That item is not a weapon."
+	}
+	if a.Weapon != nil {
+		return "An item is already being wielded as a weapon."
+	}
+	a.Weapon = i
+	return ""
+}
+
+// AddItemToInventory adds the item to the actor's inventory.
+func (a *Actor) AddItemToInventory(i *Item) {
+	a.Inventory = append(a.Inventory, i)
 }

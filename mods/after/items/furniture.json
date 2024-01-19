@@ -3,65 +3,83 @@
         "Name": "chair",
         "Rune": "_",
         "Fg": "Yellow",
-        "Bg": "Black"
+        "Bg": "Black",
+        "Fixed": true
     },
     "Couch": {
         "Name": "couch",
         "Rune": "_",
         "Fg": "Purple",
-        "Bg": "Black"
+        "Bg": "Black",
+        "Fixed": true
     },
     "Table": {
         "Name": "table",
         "Rune": "[",
         "Fg": "Yellow",
         "Bg": "Black",
-        "BlocksWalk": true
+        "BlocksWalk": true,
+        "Fixed": true
     },
     "Counter": {
         "Name": "counter",
         "Rune": "[",
         "Fg": "Yellow",
         "Bg": "Black",
-        "BlocksWalk": true
+        "BlocksWalk": true,
+        "Fixed": true
     },
     "Bed": {
         "Name": "bed",
         "Rune": "[",
         "Fg": "White",
-        "Bg": "Black"
+        "Bg": "Black",
+        "Fixed": true
     },
     "Drawers": {
         "Name": "drawers",
         "Rune": "[",
         "Fg": "Yellow",
         "Bg": "Black",
-        "BlocksWalk": true
+        "BlocksWalk": true,
+        "Fixed": true
     },
     "Oven": {
         "Name": "oven",
         "Rune": "0",
         "Fg": "Silver",
         "Bg": "Black",
-        "BlocksWalk": true
+        "BlocksWalk": true,
+        "Fixed": true
     },
     "Refrigerator": {
         "Name": "refrigerator",
         "Rune": "[",
         "Fg": "Blue",
         "Bg": "Black",
-        "BlocksWalk": true
+        "BlocksWalk": true,
+        "Fixed": true
     },
     "Toilet": {
         "Name": "toilet",
         "Rune": "_",
         "Fg": "White",
-        "Bg": "Black"
+        "Bg": "Black",
+        "Fixed": true
     },
     "Tub": {
         "Name": "tub",
         "Rune": "]",
         "Fg": "White",
-        "Bg": "Black"
+        "Bg": "Black",
+        "Fixed": true
+    },
+    "Sink": {
+        "Name": "sink",
+        "Rune": "}",
+        "Fg": "Silver",
+        "Bg": "Black",
+        "BlocksWalk": true,
+        "Fixed": true
     }
 }

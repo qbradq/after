@@ -21,3 +21,11 @@ func reg(name string, g CityGen) {
 	}
 	CityGens[name] = g
 }
+
+// Generate generates a new CityMap for use with the named city generator and
+// scenario.
+func Generate(cityGen, scenario string) *game.CityMap {
+	m := CityGens[cityGen]()
+	Scenarios[scenario].Execute(m)
+	return m
+}

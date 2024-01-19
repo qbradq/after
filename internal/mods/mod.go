@@ -63,6 +63,7 @@ func UnloadAllMods() {
 	citygen.TileGens = map[string]citygen.TileGen{}
 	citygen.ItemGens = map[string]citygen.ItemGen{}
 	citygen.ChunkGens = map[string]*citygen.ChunkGen{}
+	citygen.Scenarios = map[string]*citygen.Scenario{}
 	game.ItemDefs = map[string]*game.Item{}
 	game.ActorDefs = map[string]*game.Actor{}
 }
@@ -82,36 +83,37 @@ func LoadMods(ids []string) error {
 	}
 	// ItemGens
 	for _, id := range ids {
-		mod := mods[id]
-		if err := mod.loadItemGens(); err != nil {
+		if err := mods[id].loadItemGens(); err != nil {
 			return err
 		}
 	}
 	// Actors
 	for _, id := range ids {
-		mod := mods[id]
-		if err := mod.loadActors(); err != nil {
+		if err := mods[id].loadActors(); err != nil {
 			return err
 		}
 	}
 	// Tiles
 	for _, id := range ids {
-		mod := mods[id]
-		if err := mod.loadTiles(); err != nil {
+		if err := mods[id].loadTiles(); err != nil {
 			return err
 		}
 	}
 	// TileGens
 	for _, id := range ids {
-		mod := mods[id]
-		if err := mod.loadTileGens(); err != nil {
+		if err := mods[id].loadTileGens(); err != nil {
 			return err
 		}
 	}
 	// ChunkGens
 	for _, id := range ids {
-		mod := mods[id]
-		if err := mod.loadChunkGens(); err != nil {
+		if err := mods[id].loadChunkGens(); err != nil {
+			return err
+		}
+	}
+	// Scenarios
+	for _, id := range ids {
+		if err := mods[id].loadScenarios(); err != nil {
 			return err
 		}
 	}
@@ -309,6 +311,35 @@ func (m *Mod) loadItemGens() error {
 				return fmt.Errorf("duplicate item generator definition %s", k)
 			}
 			citygen.ItemGens[k] = gen
+		}
+	}
+	return nil
+}
+
+// loadScenarios loads the mod's scenario definitions.
+func (m *Mod) loadScenarios() error {
+	files, err := os.ReadDir(path.Join(m.Path, "scenarios"))
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return err
+		}
+		return nil
+	}
+	for _, f := range files {
+		d, err := os.ReadFile(path.Join(m.Path, "scenarios", f.Name()))
+		if err != nil {
+			return err
+		}
+		var defs map[string]*citygen.Scenario
+		err = json.Unmarshal(d, &defs)
+		if err != nil {
+			return err
+		}
+		for k, def := range defs {
+			if _, found := citygen.Scenarios[k]; found {
+				return fmt.Errorf("duplicate scenario definition %s", k)
+			}
+			citygen.Scenarios[k] = def
 		}
 	}
 	return nil
