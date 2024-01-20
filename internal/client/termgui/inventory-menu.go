@@ -9,12 +9,14 @@ import (
 // InventoryMenu implements a menu to select one item from the inventory or
 // set of currently equipped items.
 type InventoryMenu struct {
-	Actor    *game.Actor            // Pointer to the actor who's inventory we are exploring
-	List     termui.List            // List used for the display and input
-	Selected func(*game.Item, bool) // Function called on valid selection, the first argument will never be nil and the second argument is true if the item is currently equipped by the actor
-	items    []*game.Item           // Last list of items
-	names    []string               // Last list of names
-	fii      int                    // First inventory index
+	Actor            *game.Actor            // Pointer to the actor who's inventory we are exploring
+	List             termui.List            // List used for the display and input
+	Selected         func(*game.Item, bool) // Function called on valid selection, the first argument will never be nil and the second argument is true if the item is currently equipped by the actor
+	IncludeEquipment bool                   // If true the actor's current equipment will be included in the list of items separated from the inventory by a horizontal bar
+	items            []*game.Item           // Last list of items
+	names            []string               // Last list of names
+	fii              int                    // First inventory index
+	ld               util.Point             // List dimensions without box
 }
 
 // NewInventoryMenu configures a new InventoryMenu ready for use.
@@ -40,30 +42,42 @@ func NewInventoryMenu(a *game.Actor, t string) *InventoryMenu {
 }
 
 func (m *InventoryMenu) PopulateList() {
+	m.ld.X = len(m.List.Title) + 2
 	m.items = m.items[:0]
 	m.names = m.names[:0]
-	for _, i := range m.Actor.Equipment {
-		if i == nil {
-			continue
+	m.fii = 0
+	if m.IncludeEquipment {
+		for _, i := range m.Actor.Equipment {
+			if i == nil {
+				continue
+			}
+			m.names = append(m.names, i.Name)
+			m.items = append(m.items, i)
+			if m.ld.X < len(i.Name) {
+				m.ld.X = len(i.Name)
+			}
 		}
-		m.names = append(m.names, i.Name)
-		m.items = append(m.items, i)
-	}
-	if m.Actor.Weapon != nil {
-		m.names = append(m.names, m.Actor.Weapon.Name)
-		m.items = append(m.items, m.Actor.Weapon)
-	}
-	m.fii = len(m.items) + 1
-	if len(m.items) == 0 {
-		m.fii = 0
-	} else {
-		m.names = append(m.names, "_hbar_")
-		m.items = append(m.items, nil)
+		if m.Actor.Weapon != nil {
+			m.names = append(m.names, m.Actor.Weapon.Name)
+			m.items = append(m.items, m.Actor.Weapon)
+			if m.ld.X < len(m.Actor.Weapon.Name) {
+				m.ld.X = len(m.Actor.Weapon.Name)
+			}
+		}
+		m.fii = len(m.items) + 1
+		if len(m.items) > 0 {
+			m.names = append(m.names, "_hbar_")
+			m.items = append(m.items, nil)
+		}
 	}
 	for _, i := range m.Actor.Inventory {
 		m.names = append(m.names, i.Name)
 		m.items = append(m.items, i)
+		if m.ld.X < len(i.Name) {
+			m.ld.X = len(i.Name)
+		}
 	}
+	m.ld.Y = len(m.items)
 	m.List.CursorPos = 0
 }
 
@@ -81,8 +95,10 @@ func (m *InventoryMenu) HandleEvent(s termui.TerminalDriver, e any) error {
 
 // Draw implements the termui.Mode interface.
 func (m *InventoryMenu) Draw(s termui.TerminalDriver) {
-	_, h := s.Size()
-	m.List.Bounds = util.NewRectWH(60, h-6)
+	w, h := s.Size()
+	sb := util.NewRectWH(w, h)
+	lb := sb.CenterRect(m.ld.X+2, m.ld.Y+2)
+	m.List.Bounds = sb.Contain(lb)
 	m.List.Items = m.names
 	m.List.Draw(s)
 }

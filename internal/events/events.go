@@ -46,22 +46,23 @@ func rpue(name string, fn updateEvent) {
 }
 
 // ExecuteItemUseEvent executes the named item use event for the item if any.
-func ExecuteItemUseEvent(name string, i *game.Item, src *game.Actor, m *game.CityMap) error {
+// The second return parameter is true if the event handler was called.
+func ExecuteItemUseEvent(name string, i *game.Item, src *game.Actor, m *game.CityMap) (error, bool) {
 	// Sanity checks
 	if i == nil {
-		return nil
+		return nil, false
 	}
 	hn := i.Events[name]
 	// No handler named for this event
 	if len(hn) == 0 {
-		return nil
+		return nil, false
 	}
 	h := useEvents[hn]
 	if h == nil {
 		return fmt.Errorf("item template %s, event %s references non-existent item use function %s",
-			i.TemplateID, name, hn)
+			i.TemplateID, name, hn), false
 	}
-	return h(i, src, m)
+	return h(i, src, m), true
 }
 
 // ExecuteItemUpdateEvent executes the named item update event for the item if

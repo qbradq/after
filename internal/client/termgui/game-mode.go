@@ -110,11 +110,13 @@ func (m *GameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 				}
 				items := m.CityMap.ItemsAt(p)
 				if len(items) > 0 {
-					err := events.ExecuteItemUseEvent("Use", items[len(items)-1], &m.CityMap.Player.Actor, m.CityMap)
+					err, used := events.ExecuteItemUseEvent("Use", items[len(items)-1], &m.CityMap.Player.Actor, m.CityMap)
 					if err != nil {
 						return err
 					}
-					m.CityMap.PlayerTookTurn(time.Second)
+					if used {
+						m.CityMap.PlayerTookTurn(time.Second)
+					}
 				}
 				return nil
 			}
@@ -176,16 +178,60 @@ func (m *GameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 						m.LogMode.Log(termui.ColorAqua, "Wore %s.", i.Name)
 					} else {
 						m.LogMode.Log(termui.ColorYellow, "That item is not wearable.")
+						m.CityMap.Player.AddItemToInventory(i)
 						return
 					}
 				}
 				m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second) * m.CityMap.Player.ActSpeed()))
 			}
+			m.Inventory.IncludeEquipment = true
+			m.Inventory.PopulateList()
+			m.ModeStack = append(m.ModeStack, m.Inventory)
+			return nil
+		case 'd': // Drop item from inventory
+			m.Inventory.Selected = func(i *game.Item, equipped bool) {
+				if !m.CityMap.Player.RemoveItemFromInventory(i) {
+					return
+				}
+				i.Position = m.CityMap.Player.Position
+				m.CityMap.PlaceItem(i)
+				m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second) * m.CityMap.Player.ActSpeed()))
+			}
+			m.Inventory.IncludeEquipment = false
+			m.Inventory.PopulateList()
+			m.ModeStack = append(m.ModeStack, m.Inventory)
+			return nil
+		case 't': // targeted Throw from inventory
+			fallthrough
+		case 'D': // targeted Drop from inventory
+			m.Inventory.Selected = func(i *game.Item, equipped bool) {
+				m.InTarget = true
+				m.MapMode.Callback = func(p util.Point, confirmed bool) error {
+					m.InTarget = false
+					if !confirmed {
+						return nil
+					}
+					if !m.CityMap.Player.RemoveItemFromInventory(i) {
+						return nil
+					}
+					i.Position = p
+					m.CityMap.PlaceItem(i)
+					m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second) * m.CityMap.Player.ActSpeed()))
+					return nil
+				}
+				m.MapMode.Center = m.CityMap.Player.Position
+				m.MapMode.CursorPos = m.CityMap.Player.Position
+				m.MapMode.CursorRange = 10 // 30 feet is average for a well-trained highschool athlete throwing shot put, so this is pretty generous
+			}
+			m.Inventory.IncludeEquipment = false
 			m.Inventory.PopulateList()
 			m.ModeStack = append(m.ModeStack, m.Inventory)
 			return nil
 		case '\033':
 			m.ModeStack = append(m.ModeStack, NewEscapeMenu(m))
+			return nil
+		default:
+			// Unhandled key, just ignore it
 			return nil
 		}
 	case *termui.EventQuit:
@@ -204,11 +250,13 @@ func (m *GameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 			} else {
 				items := m.CityMap.ItemsAt(np)
 				if len(items) > 0 {
-					err := events.ExecuteItemUseEvent("Use", items[len(items)-1], &m.CityMap.Player.Actor, m.CityMap)
+					err, used := events.ExecuteItemUseEvent("Use", items[len(items)-1], &m.CityMap.Player.Actor, m.CityMap)
 					if err != nil {
 						return err
 					}
-					m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second) * m.CityMap.Player.ActSpeed()))
+					if used {
+						m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second) * m.CityMap.Player.ActSpeed()))
+					}
 					s.FlushEvents()
 				}
 			}
