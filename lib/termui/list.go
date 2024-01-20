@@ -14,8 +14,8 @@ type List struct {
 	Selected  func(TerminalDriver, int) error // The function that is called if the user selects an item
 }
 
-// HandleInput implements the Mode interface.
-func (m *List) HandleInput(s TerminalDriver, e any) error {
+// HandleEvent implements the Mode interface.
+func (m *List) HandleEvent(s TerminalDriver, e any) error {
 	// State sanitation
 	if m.CursorPos < 0 {
 		m.CursorPos = 0

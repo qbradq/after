@@ -12,15 +12,16 @@ import (
 
 // GameMode implements the top-level client interface.
 type GameMode struct {
-	CityMap   *game.CityMap // The city we are playing
-	LogMode   *LogMode      // Log display
-	MapMode   *MapMode      // Map display
-	Minimap   *Minimap      // Small mini-map
-	Status    *StatusPanel  // Status panel
-	ModeStack []termui.Mode // Internal stack of mode that overlay the main game mode, like the escape menu or inventory screen
-	Quit      bool          // If true we should quit
-	InTarget  bool          // If true we are in targeting mode
-	Debug     bool          // If true display debug information
+	CityMap   *game.CityMap  // The city we are playing
+	LogMode   *LogMode       // Log display
+	MapMode   *MapMode       // Map display
+	Minimap   *Minimap       // Small mini-map
+	Status    *StatusPanel   // Status panel
+	Inventory *InventoryMenu // Inventory menu
+	ModeStack []termui.Mode  // Internal stack of mode that overlay the main game mode, like the escape menu or inventory screen
+	Quit      bool           // If true we should quit
+	InTarget  bool           // If true we are in targeting mode
+	Debug     bool           // If true display debug information
 }
 
 // NewGameMode returns a new game mode.
@@ -39,6 +40,7 @@ func NewGameMode(m *game.CityMap) *GameMode {
 		Status: &StatusPanel{
 			CityMap: m,
 		},
+		Inventory: NewInventoryMenu(&m.Player.Actor, "Wear / Un Wear Items"),
 	}
 	game.Log = gm.LogMode
 	game.Log.Log(termui.ColorTeal, "Welcome to the Aftermath!")
@@ -60,27 +62,27 @@ func (m *GameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 	switch ev := e.(type) {
 	case *termui.EventKey:
 		switch ev.Key {
-		case 'u':
+		case 'u': // Walk North East
 			dir = util.DirectionNorthEast
-		case 'y':
+		case 'y': // Walk North West
 			dir = util.DirectionNorthWest
-		case 'n':
+		case 'n': // Walk South East
 			dir = util.DirectionSouthEast
-		case 'b':
+		case 'b': // Walk South West
 			dir = util.DirectionSouthWest
-		case 'l':
+		case 'l': // Walk East
 			dir = util.DirectionEast
-		case 'h':
+		case 'h': // Walk West
 			dir = util.DirectionWest
-		case 'j':
+		case 'j': // Walk South
 			dir = util.DirectionSouth
-		case 'k':
+		case 'k': // Walk North
 			dir = util.DirectionNorth
-		case '.':
+		case '.': // Wait one second
 			m.CityMap.PlayerTookTurn(time.Second)
 			s.FlushEvents()
 			return nil
-		case 'x':
+		case 'x': // eXamine surroundings
 			m.InTarget = true
 			m.MapMode.Callback = func(p util.Point, b bool) error {
 				m.InTarget = false
@@ -90,7 +92,7 @@ func (m *GameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 			m.MapMode.CursorPos = m.CityMap.Player.Position
 			m.MapMode.CursorRange = 0
 			return nil
-		case 'm':
+		case 'm': // Minimap
 			termui.RunMode(s, &Minimap{
 				CityMap:     m.CityMap,
 				Bounds:      util.NewRectWH(s.Size()),
@@ -99,7 +101,7 @@ func (m *GameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 				DrawInfo:    true,
 			})
 			return nil
-		case 'U':
+		case 'U': // Use item in surroundings
 			m.InTarget = true
 			m.MapMode.Callback = func(p util.Point, b bool) error {
 				m.InTarget = false
@@ -120,7 +122,7 @@ func (m *GameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 			m.MapMode.CursorPos = m.CityMap.Player.Position
 			m.MapMode.CursorRange = 1
 			return nil
-		case 'a':
+		case 'a': // Attack
 			m.InTarget = true
 			m.MapMode.Callback = func(p util.Point, b bool) error {
 				m.InTarget = false
@@ -138,6 +140,50 @@ func (m *GameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 			m.MapMode.CursorPos = m.CityMap.Player.Position
 			m.MapMode.CursorRange = 1
 			return nil
+		case 'w': // Wear / Un-wear / Wield / Un-wield equipment
+			m.Inventory.Selected = func(i *game.Item, equipped bool) {
+				if equipped {
+					if i.Weapon {
+						if !m.CityMap.Player.UnWieldItem(i) {
+							return
+						}
+						m.CityMap.Player.AddItemToInventory(i)
+						m.LogMode.Log(termui.ColorAqua, "Stopped wielding %s.", i.Name)
+					} else {
+						if !m.CityMap.Player.UnWearItem(i) {
+							return
+						}
+						m.CityMap.Player.AddItemToInventory(i)
+						m.LogMode.Log(termui.ColorAqua, "Took off %s.", i.Name)
+					}
+				} else {
+					if !m.CityMap.Player.RemoveItemFromInventory(i) {
+						return
+					}
+					if i.Weapon {
+						if r := m.CityMap.Player.WieldItem(i); r != "" {
+							m.LogMode.Log(termui.ColorYellow, r)
+							m.CityMap.Player.AddItemToInventory(i)
+							return
+						}
+						m.LogMode.Log(termui.ColorAqua, "Wielded %s.", i.Name)
+					} else if i.Wearable {
+						if r := m.CityMap.Player.WearItem(i); r != "" {
+							m.LogMode.Log(termui.ColorYellow, r)
+							m.CityMap.Player.AddItemToInventory(i)
+							return
+						}
+						m.LogMode.Log(termui.ColorAqua, "Wore %s.", i.Name)
+					} else {
+						m.LogMode.Log(termui.ColorYellow, "That item is not wearable.")
+						return
+					}
+				}
+				m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second) * m.CityMap.Player.ActSpeed()))
+			}
+			m.Inventory.PopulateList()
+			m.ModeStack = append(m.ModeStack, m.Inventory)
+			return nil
 		case '\033':
 			m.ModeStack = append(m.ModeStack, NewEscapeMenu(m))
 			return nil
@@ -153,7 +199,7 @@ func (m *GameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 			a := m.CityMap.ActorAt(np)
 			if a != nil {
 				a.Damage(m.CityMap.Player.MinDamage, m.CityMap.Player.MaxDamage, m.CityMap.Now, &m.CityMap.Player.Actor)
-				m.CityMap.PlayerTookTurn(time.Second)
+				m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second) * m.CityMap.Player.ActSpeed()))
 				s.FlushEvents()
 			} else {
 				items := m.CityMap.ItemsAt(np)
@@ -162,7 +208,7 @@ func (m *GameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 					if err != nil {
 						return err
 					}
-					m.CityMap.PlayerTookTurn(time.Second)
+					m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second) * m.CityMap.Player.ActSpeed()))
 					s.FlushEvents()
 				}
 			}

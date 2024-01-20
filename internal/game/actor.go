@@ -279,3 +279,38 @@ func (a *Actor) WieldItem(i *Item) string {
 func (a *Actor) AddItemToInventory(i *Item) {
 	a.Inventory = append(a.Inventory, i)
 }
+
+// UnWearItem takes off the item, returning true on success.
+func (a *Actor) UnWearItem(i *Item) bool {
+	if a.Equipment[i.WornBodyPart] != i {
+		return false
+	}
+	a.Equipment[i.WornBodyPart] = nil
+	return true
+}
+
+// UnWieldItem drops the weapon, returning true on success.
+func (a *Actor) UnWieldItem(i *Item) bool {
+	if a.Weapon != i {
+		return false
+	}
+	a.Weapon = nil
+	return true
+}
+
+// RemoveItemFromInventory removes the item from inventory, returning true on
+// success.
+func (a *Actor) RemoveItemFromInventory(item *Item) bool {
+	idx := -1
+	for i, invItem := range a.Inventory {
+		if invItem == item {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return false
+	}
+	a.Inventory = append(a.Inventory[:idx], a.Inventory[idx+1:]...)
+	return true
+}

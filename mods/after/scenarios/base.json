@@ -6,6 +6,9 @@
         "Equipment": [
             "TeeShirt"
         ],
+        "Inventory": [
+            "Soap"
+        ],
         "Weapon": "Crowbar"
     }
 }

@@ -1,0 +1,8 @@
+{
+    "Soap": {
+        "Name": "bar of soap",
+        "Rune": "&",
+        "Fg": "White",
+        "Bg": "Black"
+    }
+}

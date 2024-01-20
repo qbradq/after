@@ -57,7 +57,7 @@ func (m *LoadMenu) HandleEvent(s termui.TerminalDriver, e any) error {
 	case *termui.EventQuit:
 		return termui.ErrorQuit
 	}
-	return m.list.HandleInput(s, e)
+	return m.list.HandleEvent(s, e)
 }
 
 // Draw implements the termui.Mode interface.
