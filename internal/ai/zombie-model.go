@@ -17,8 +17,9 @@ func init() {
 		}
 	})
 	regActFn("zmActIdle", func(ai *AIModel, a *game.Actor, m *game.CityMap) time.Duration {
+		// Wait for the player to step into view
 		if !ai.targetPlayer(a, m) {
-			return time.Second * 10 // Up to 10 second delay for visual reactions
+			return time.Duration(float64(time.Second) * a.ActSpeed())
 		}
 		// Begin approaching the player
 		ai.cd = time.Minute
@@ -62,7 +63,7 @@ func init() {
 			}
 			// Couldn't step in any direction even close to toward the POI, just
 			// stand there looking dumb
-			return time.Second
+			return time.Duration(float64(time.Second) * a.ActSpeed())
 		}
 		// Already at the POI or out of path steps, just wait there
 		if len(ai.Path) == 0 || a.Position.Distance(ai.POI) < 1 {
@@ -71,7 +72,7 @@ func init() {
 				ai.cd = 0
 				ai.act = "zmActIdle"
 			}
-			return time.Second
+			return time.Duration(float64(time.Second) * a.ActSpeed())
 		}
 		// Need to get closer, try to approach
 		if m.StepActor(a, ai.Path[0]) {
@@ -98,6 +99,6 @@ func init() {
 	})
 	regActFn("zmActAttack", func(ai *AIModel, a *game.Actor, m *game.CityMap) time.Duration {
 		m.Player.Damage(a.MinDamage, a.MaxDamage, m.Now, a)
-		return time.Second
+		return time.Duration(float64(time.Second) * a.ActSpeed())
 	})
 }

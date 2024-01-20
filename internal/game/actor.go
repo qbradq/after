@@ -219,14 +219,23 @@ func (a *Actor) Damage(min, max float64, t time.Time, from *Actor) float64 {
 	return a.TargetedDamage(which, min, max, t, from)
 }
 
-// WalkSpeed returns the current walking speed of this mobile.
+// WalkSpeed returns the current walking speed of this mobile in seconds.
 func (a *Actor) WalkSpeed() float64 {
-	// Broken legs mean we crawl
+	// Broken legs or feet mean we crawl
 	if a.BodyParts[BodyPartLegs].Broken || a.BodyParts[BodyPartFeet].Broken {
 		return a.Speed * 4
 	}
 	// Otherwise we walk
 	return a.Speed
+}
+
+// ActSpeed returns the current action speed of this mobile in seconds.
+func (a *Actor) ActSpeed() float64 {
+	// Broken arms or hands mean it's very difficult to take actions
+	if a.BodyParts[BodyPartArms].Broken || a.BodyParts[BodyPartHand].Broken {
+		return 4
+	}
+	return 1
 }
 
 // DropCorpse drops a corpse item for this actor.

@@ -33,11 +33,23 @@ func (m *StatusPanel) Draw(s termui.TerminalDriver) {
 	termui.DrawStringCenter(s, b, m.CityMap.Player.Name, termui.CurrentTheme.Normal.Foreground(termui.ColorAqua))
 	b.TL.Y++
 	// Overall status display
-	if m.CityMap.Player.Dead {
-		termui.DrawStringCenter(s, b, "Dead", termui.CurrentTheme.Normal.Foreground(termui.ColorRed))
-	} else {
-		termui.DrawStringCenter(s, b, "Normal", termui.CurrentTheme.Normal.Foreground(termui.ColorSilver))
+	ss := "Normal"
+	sss := termui.CurrentTheme.Normal.Foreground(termui.ColorSilver)
+	if m.CityMap.Player.BodyParts[game.BodyPartArms].Broken ||
+		m.CityMap.Player.BodyParts[game.BodyPartHand].Broken {
+		ss = "Mangled"
+		sss = sss.Foreground(termui.ColorYellow)
 	}
+	if m.CityMap.Player.BodyParts[game.BodyPartLegs].Broken ||
+		m.CityMap.Player.BodyParts[game.BodyPartFeet].Broken {
+		ss = "Crippled"
+		sss = sss.Foreground(termui.ColorYellow)
+	}
+	if m.CityMap.Player.Dead {
+		ss = "Dead"
+		sss = sss.Foreground(termui.ColorRed)
+	}
+	termui.DrawStringCenter(s, b, ss, sss)
 	b.TL.Y++
 	for _, part := range m.CityMap.Player.BodyParts {
 		termui.DrawStringLeft(s, b, game.BodyPartInfo[part.Which].Name, termui.CurrentTheme.Normal)
