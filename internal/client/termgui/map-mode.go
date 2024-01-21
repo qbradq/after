@@ -10,8 +10,8 @@ import (
 // mapModeCallback is a callback function for the map mode cursor select.
 type mapModeCallback func(util.Point, bool) error
 
-// MapMode implements the main play area of the client.
-type MapMode struct {
+// mapMode implements the main play area of the client.
+type mapMode struct {
 	CityMap     *game.CityMap   // City we are running
 	Bounds      util.Rect       // Area of the map display on the screen
 	Center      util.Point      // Centerpoint of the map display in absolute map coordinates
@@ -23,7 +23,7 @@ type MapMode struct {
 	DrawPaths   bool            // If true, draw the paths of all actors on screen
 }
 
-func (m *MapMode) topLeft() util.Point {
+func (m *mapMode) topLeft() util.Point {
 	// Calculate top-left corner
 	ret := util.NewPoint(m.Center.X-m.Bounds.Width()/2,
 		m.Center.Y-m.Bounds.Height()/2)
@@ -43,7 +43,7 @@ func (m *MapMode) topLeft() util.Point {
 }
 
 // HandleEvent implements the termui.Mode interface.
-func (m *MapMode) HandleEvent(s termui.TerminalDriver, e any) error {
+func (m *mapMode) HandleEvent(s termui.TerminalDriver, e any) error {
 	switch ev := e.(type) {
 	case *termui.EventKey:
 		switch ev.Key {
@@ -95,7 +95,7 @@ func (m *MapMode) HandleEvent(s termui.TerminalDriver, e any) error {
 }
 
 // Draw implements the termui.Mode interface.
-func (m *MapMode) Draw(s termui.TerminalDriver) {
+func (m *mapMode) Draw(s termui.TerminalDriver) {
 	mtl := m.topLeft()
 	mb := util.NewRectXYWH(mtl.X, mtl.Y, m.Bounds.Width(), m.Bounds.Height())
 	m.CityMap.EnsureLoaded(mb.Divide(game.ChunkWidth))
@@ -105,7 +105,7 @@ func (m *MapMode) Draw(s termui.TerminalDriver) {
 	}
 }
 
-func (m *MapMode) drawPaths(s termui.TerminalDriver, mtl util.Point, mb util.Rect) {
+func (m *mapMode) drawPaths(s termui.TerminalDriver, mtl util.Point, mb util.Rect) {
 	// Draws a single path step
 	fn := func(p util.Point, r int) {
 		sp := util.NewPoint(p.X-mtl.X+m.Bounds.TL.X, p.Y-mtl.Y+m.Bounds.TL.Y)
@@ -150,7 +150,7 @@ func (m *MapMode) drawPaths(s termui.TerminalDriver, mtl util.Point, mb util.Rec
 	}
 }
 
-func (m *MapMode) drawMap(s termui.TerminalDriver, mtl util.Point, mb util.Rect) {
+func (m *mapMode) drawMap(s termui.TerminalDriver, mtl util.Point, mb util.Rect) {
 	m.CityMap.MakeVisibilitySets(mb)
 	var p util.Point
 	var idx uint32

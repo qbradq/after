@@ -43,7 +43,7 @@ func NewMainMenu(s termui.TerminalDriver) *MainMenu {
 					m.Update(m.Player.Position, 0)
 					m.FullSave()
 					game.SaveTileRefs()
-					termui.RunMode(s, NewGameMode(m))
+					termui.RunMode(s, newGameMode(m))
 					game.CloseSave()
 				case 1:
 					game.LoadSaveInfo()

@@ -5,15 +5,15 @@ import (
 	"github.com/qbradq/after/lib/util"
 )
 
-// EscapeMenu implements the system menu that appears when you press escape.
-type EscapeMenu struct {
-	m    *GameMode   // Game mode back reference
+// escapeMenu implements the system menu that appears when you press escape.
+type escapeMenu struct {
+	m    *gameMode   // Game mode back reference
 	list termui.List // Menu list
 }
 
-// NewEscapeMenu returns a new EscapeMenu ready for use.
-func NewEscapeMenu(m *GameMode) *EscapeMenu {
-	ret := &EscapeMenu{
+// newEscapeMenu returns a new EscapeMenu ready for use.
+func newEscapeMenu(m *gameMode) *escapeMenu {
+	ret := &escapeMenu{
 		m: m,
 		list: termui.List{
 			Boxed: true,
@@ -28,17 +28,17 @@ func NewEscapeMenu(m *GameMode) *EscapeMenu {
 					return termui.ErrorQuit
 				case 2:
 					m.CityMap.FullSave()
-					m.Quit = true
+					m.quit = true
 					return termui.ErrorQuit
 				case 4:
-					m.Debug = !m.Debug
+					m.debug = !m.debug
 					return termui.ErrorQuit
 				}
 				return nil
 			},
 		},
 	}
-	if m.Debug {
+	if m.debug {
 		ret.list.Items = append(ret.list.Items, "Disable Debug Display")
 	} else {
 		ret.list.Items = append(ret.list.Items, "Enable Debug Display")
@@ -47,7 +47,7 @@ func NewEscapeMenu(m *GameMode) *EscapeMenu {
 }
 
 // HandleEvent implements the termui.Mode interface.
-func (m *EscapeMenu) HandleEvent(s termui.TerminalDriver, e any) error {
+func (m *escapeMenu) HandleEvent(s termui.TerminalDriver, e any) error {
 	switch ev := e.(type) {
 	case *termui.EventKey:
 		if ev.Key == '\033' {
@@ -60,7 +60,7 @@ func (m *EscapeMenu) HandleEvent(s termui.TerminalDriver, e any) error {
 }
 
 // Draw implements the termui.Mode interface.
-func (m *EscapeMenu) Draw(s termui.TerminalDriver) {
+func (m *escapeMenu) Draw(s termui.TerminalDriver) {
 	w, h := s.Size()
 	m.list.Bounds = util.NewRectWH(w, h).CenterRect(27, 7)
 	m.list.Draw(s)

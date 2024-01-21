@@ -17,6 +17,9 @@ type List struct {
 // HandleEvent implements the Mode interface.
 func (m *List) HandleEvent(s TerminalDriver, e any) error {
 	// State sanitation
+	if len(m.Items) < 1 {
+		return ErrorQuit
+	}
 	if m.CursorPos < 0 {
 		m.CursorPos = 0
 	}

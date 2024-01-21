@@ -18,15 +18,15 @@ type logLine struct {
 	s string
 }
 
-// LogMode implements a log window.
-type LogMode struct {
+// logMode implements a log window.
+type logMode struct {
 	Bounds util.Rect // Screen bounds of the log display
 	lines  []logLine // Contents of the log
 	lso    int       // Line scroll offset
 }
 
 // Log adds a line to the log.
-func (m *LogMode) Log(c termui.Color, s string, args ...any) {
+func (m *logMode) Log(c termui.Color, s string, args ...any) {
 	s = fmt.Sprintf(s, args...)
 	m.lines = append(m.lines, logLine{
 		c: c,
@@ -38,7 +38,7 @@ func (m *LogMode) Log(c termui.Color, s string, args ...any) {
 }
 
 // HandleEvent implements the termui.Mode interface.
-func (m *LogMode) HandleEvent(s termui.TerminalDriver, e any) error {
+func (m *logMode) HandleEvent(s termui.TerminalDriver, e any) error {
 	switch e.(type) {
 	case *termui.EventQuit:
 		return termui.ErrorQuit
@@ -47,7 +47,7 @@ func (m *LogMode) HandleEvent(s termui.TerminalDriver, e any) error {
 }
 
 // Draw implements the termui.Mode interface.
-func (m *LogMode) Draw(s termui.TerminalDriver) {
+func (m *logMode) Draw(s termui.TerminalDriver) {
 	ty := m.Bounds.BR.Y
 	for i := (len(m.lines) - 1) - m.lso; i >= 0 && ty >= m.Bounds.TL.Y; i-- {
 		l := m.lines[i]

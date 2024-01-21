@@ -10,44 +10,48 @@ import (
 	"github.com/qbradq/after/lib/util"
 )
 
-// GameMode implements the top-level client interface.
-type GameMode struct {
-	CityMap   *game.CityMap  // The city we are playing
-	LogMode   *LogMode       // Log display
-	MapMode   *MapMode       // Map display
-	Minimap   *Minimap       // Small mini-map
-	Status    *StatusPanel   // Status panel
-	Inventory *InventoryMenu // Inventory menu
-	ModeStack []termui.Mode  // Internal stack of mode that overlay the main game mode, like the escape menu or inventory screen
-	Quit      bool           // If true we should quit
-	InTarget  bool           // If true we are in targeting mode
-	Debug     bool           // If true display debug information
+// gameMode implements the top-level client interface.
+type gameMode struct {
+	CityMap    *game.CityMap  // The city we are playing
+	logMode    *logMode       // Log display
+	mapMode    *mapMode       // Map display
+	minimap    *minimap       // Small mini-map
+	status     *statusPanel   // Status panel
+	inventory  *inventoryMenu // Inventory menu
+	escapeMenu *escapeMenu    // Escape menu
+	itemList   *itemList      // Item list menu
+	modeStack  []termui.Mode  // Internal stack of mode that overlay the main game mode, like the escape menu or inventory screen
+	quit       bool           // If true we should quit
+	inTarget   bool           // If true we are in targeting mode
+	debug      bool           // If true display debug information
 }
 
-// NewGameMode returns a new game mode.
-func NewGameMode(m *game.CityMap) *GameMode {
-	gm := &GameMode{
+// newGameMode returns a new game mode.
+func newGameMode(m *game.CityMap) *gameMode {
+	gm := &gameMode{
 		CityMap: m,
-		LogMode: &LogMode{},
-		MapMode: &MapMode{
+		logMode: &logMode{},
+		mapMode: &mapMode{
 			CityMap: m,
 			Center:  m.Player.Position,
 		},
-		Minimap: &Minimap{
+		minimap: &minimap{
 			CityMap:     m,
 			CursorStyle: 1,
 		},
-		Status: &StatusPanel{
+		status: &statusPanel{
 			CityMap: m,
 		},
-		Inventory: NewInventoryMenu(&m.Player.Actor, "Wear / Un Wear Items"),
+		inventory: newInventoryMenu(&m.Player.Actor),
+		itemList:  newItemList(),
 	}
-	game.Log = gm.LogMode
-	game.Log.Log(termui.ColorTeal, "Welcome to the Aftermath!")
+	gm.escapeMenu = newEscapeMenu(gm)
+	game.Log = gm.logMode
+	game.Log.Log(termui.ColorTeal, "Welcome to the aftermath!")
 	return gm
 }
 
-func (m *GameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
+func (m *gameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 	// Check every event for end game conditions
 	if m.CityMap.Player.Dead {
 		if ev, ok := e.(*termui.EventKey); ok {
@@ -83,17 +87,17 @@ func (m *GameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 			s.FlushEvents()
 			return nil
 		case 'x': // eXamine surroundings
-			m.InTarget = true
-			m.MapMode.Callback = func(p util.Point, b bool) error {
-				m.InTarget = false
+			m.inTarget = true
+			m.mapMode.Callback = func(p util.Point, b bool) error {
+				m.inTarget = false
 				return nil
 			}
-			m.MapMode.Center = m.CityMap.Player.Position
-			m.MapMode.CursorPos = m.CityMap.Player.Position
-			m.MapMode.CursorRange = 0
+			m.mapMode.Center = m.CityMap.Player.Position
+			m.mapMode.CursorPos = m.CityMap.Player.Position
+			m.mapMode.CursorRange = 0
 			return nil
 		case 'm': // Minimap
-			termui.RunMode(s, &Minimap{
+			termui.RunMode(s, &minimap{
 				CityMap:     m.CityMap,
 				Bounds:      util.NewRectWH(s.Size()),
 				Center:      util.NewPoint(m.CityMap.Player.Position.X/game.ChunkWidth, m.CityMap.Player.Position.Y/game.ChunkHeight),
@@ -102,9 +106,9 @@ func (m *GameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 			})
 			return nil
 		case 'U': // Use item in surroundings
-			m.InTarget = true
-			m.MapMode.Callback = func(p util.Point, b bool) error {
-				m.InTarget = false
+			m.inTarget = true
+			m.mapMode.Callback = func(p util.Point, b bool) error {
+				m.inTarget = false
 				if !b {
 					return nil
 				}
@@ -120,14 +124,14 @@ func (m *GameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 				}
 				return nil
 			}
-			m.MapMode.Center = m.CityMap.Player.Position
-			m.MapMode.CursorPos = m.CityMap.Player.Position
-			m.MapMode.CursorRange = 1
+			m.mapMode.Center = m.CityMap.Player.Position
+			m.mapMode.CursorPos = m.CityMap.Player.Position
+			m.mapMode.CursorRange = 1
 			return nil
 		case 'a': // Attack
-			m.InTarget = true
-			m.MapMode.Callback = func(p util.Point, b bool) error {
-				m.InTarget = false
+			m.inTarget = true
+			m.mapMode.Callback = func(p util.Point, b bool) error {
+				m.inTarget = false
 				if !b {
 					return nil
 				}
@@ -138,25 +142,25 @@ func (m *GameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 				}
 				return nil
 			}
-			m.MapMode.Center = m.CityMap.Player.Position
-			m.MapMode.CursorPos = m.CityMap.Player.Position
-			m.MapMode.CursorRange = 1
+			m.mapMode.Center = m.CityMap.Player.Position
+			m.mapMode.CursorPos = m.CityMap.Player.Position
+			m.mapMode.CursorRange = 1
 			return nil
 		case 'w': // Wear / Un-wear / Wield / Un-wield equipment
-			m.Inventory.Selected = func(i *game.Item, equipped bool) {
+			m.inventory.Selected = func(i *game.Item, equipped bool) {
 				if equipped {
 					if i.Weapon {
 						if !m.CityMap.Player.UnWieldItem(i) {
 							return
 						}
 						m.CityMap.Player.AddItemToInventory(i)
-						m.LogMode.Log(termui.ColorAqua, "Stopped wielding %s.", i.Name)
+						m.logMode.Log(termui.ColorAqua, "Stopped wielding %s.", i.Name)
 					} else {
 						if !m.CityMap.Player.UnWearItem(i) {
 							return
 						}
 						m.CityMap.Player.AddItemToInventory(i)
-						m.LogMode.Log(termui.ColorAqua, "Took off %s.", i.Name)
+						m.logMode.Log(termui.ColorAqua, "Took off %s.", i.Name)
 					}
 				} else {
 					if !m.CityMap.Player.RemoveItemFromInventory(i) {
@@ -164,32 +168,34 @@ func (m *GameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 					}
 					if i.Weapon {
 						if r := m.CityMap.Player.WieldItem(i); r != "" {
-							m.LogMode.Log(termui.ColorYellow, r)
+							m.logMode.Log(termui.ColorYellow, r)
 							m.CityMap.Player.AddItemToInventory(i)
 							return
 						}
-						m.LogMode.Log(termui.ColorAqua, "Wielded %s.", i.Name)
+						m.logMode.Log(termui.ColorAqua, "Wielded %s.", i.Name)
 					} else if i.Wearable {
 						if r := m.CityMap.Player.WearItem(i); r != "" {
-							m.LogMode.Log(termui.ColorYellow, r)
+							m.logMode.Log(termui.ColorYellow, r)
 							m.CityMap.Player.AddItemToInventory(i)
 							return
 						}
-						m.LogMode.Log(termui.ColorAqua, "Wore %s.", i.Name)
+						m.logMode.Log(termui.ColorAqua, "Wore %s.", i.Name)
 					} else {
-						m.LogMode.Log(termui.ColorYellow, "That item is not wearable.")
+						m.logMode.Log(termui.ColorYellow, "That item is not wearable.")
 						m.CityMap.Player.AddItemToInventory(i)
 						return
 					}
 				}
 				m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second) * m.CityMap.Player.ActSpeed()))
 			}
-			m.Inventory.IncludeEquipment = true
-			m.Inventory.PopulateList()
-			m.ModeStack = append(m.ModeStack, m.Inventory)
+			m.inventory.Title = "Wear / Un Wear Item"
+			m.inventory.IncludeEquipment = true
+			if m.inventory.PopulateList() > 0 {
+				m.modeStack = append(m.modeStack, m.inventory)
+			}
 			return nil
 		case 'd': // Drop item from inventory
-			m.Inventory.Selected = func(i *game.Item, equipped bool) {
+			m.inventory.Selected = func(i *game.Item, equipped bool) {
 				if !m.CityMap.Player.RemoveItemFromInventory(i) {
 					return
 				}
@@ -197,17 +203,19 @@ func (m *GameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 				m.CityMap.PlaceItem(i)
 				m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second) * m.CityMap.Player.ActSpeed()))
 			}
-			m.Inventory.IncludeEquipment = false
-			m.Inventory.PopulateList()
-			m.ModeStack = append(m.ModeStack, m.Inventory)
+			m.inventory.IncludeEquipment = false
+			m.inventory.Title = "Drop Item"
+			if m.inventory.PopulateList() > 0 {
+				m.modeStack = append(m.modeStack, m.inventory)
+			}
 			return nil
 		case 't': // targeted Throw from inventory
 			fallthrough
 		case 'D': // targeted Drop from inventory
-			m.Inventory.Selected = func(i *game.Item, equipped bool) {
-				m.InTarget = true
-				m.MapMode.Callback = func(p util.Point, confirmed bool) error {
-					m.InTarget = false
+			m.inventory.Selected = func(i *game.Item, equipped bool) {
+				m.inTarget = true
+				m.mapMode.Callback = func(p util.Point, confirmed bool) error {
+					m.inTarget = false
 					if !confirmed {
 						return nil
 					}
@@ -219,16 +227,41 @@ func (m *GameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 					m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second) * m.CityMap.Player.ActSpeed()))
 					return nil
 				}
-				m.MapMode.Center = m.CityMap.Player.Position
-				m.MapMode.CursorPos = m.CityMap.Player.Position
-				m.MapMode.CursorRange = 10 // 30 feet is average for a well-trained highschool athlete throwing shot put, so this is pretty generous
+				m.mapMode.Center = m.CityMap.Player.Position
+				m.mapMode.CursorPos = m.CityMap.Player.Position
+				m.mapMode.CursorRange = 10 // 30 feet is average for a well-trained highschool athlete throwing shot put, so this is pretty generous
 			}
-			m.Inventory.IncludeEquipment = false
-			m.Inventory.PopulateList()
-			m.ModeStack = append(m.ModeStack, m.Inventory)
+			m.inventory.IncludeEquipment = false
+			m.inventory.Title = "Drop / Throw Item"
+			if m.inventory.PopulateList() > 0 {
+				m.modeStack = append(m.modeStack, m.inventory)
+			}
 			return nil
+		case ',': // get items at feet (,)
+			items := m.CityMap.ItemsAt(m.CityMap.Player.Position)
+			if len(items) < 1 {
+				return nil
+			} else if len(items) == 1 {
+				i := items[0]
+				m.CityMap.RemoveItem(i)
+				m.CityMap.Player.AddItemToInventory(i)
+				m.logMode.Log(termui.ColorAqua, "You picked up %s.", i.Name)
+				m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second) * m.CityMap.Player.ActSpeed()))
+				return nil
+			} else {
+				m.itemList.Selected = func(i *game.Item) {
+					m.CityMap.RemoveItem(i)
+					m.CityMap.Player.AddItemToInventory(i)
+					m.logMode.Log(termui.ColorAqua, "You picked up %s.", i.Name)
+					m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second) * m.CityMap.Player.ActSpeed()))
+				}
+				m.itemList.Title = "Get Item"
+				m.itemList.SetItems(items)
+				m.modeStack = append(m.modeStack, m.itemList)
+				return nil
+			}
 		case '\033':
-			m.ModeStack = append(m.ModeStack, NewEscapeMenu(m))
+			m.modeStack = append(m.modeStack, newEscapeMenu(m))
 			return nil
 		default:
 			// Unhandled key, just ignore it
@@ -268,52 +301,52 @@ func (m *GameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 }
 
 // HandleEvent implements the termui.Mode interface.
-func (m *GameMode) HandleEvent(s termui.TerminalDriver, e any) error {
-	if len(m.ModeStack) > 0 {
-		err := m.ModeStack[len(m.ModeStack)-1].HandleEvent(s, e)
-		if m.Quit {
+func (m *gameMode) HandleEvent(s termui.TerminalDriver, e any) error {
+	if len(m.modeStack) > 0 {
+		err := m.modeStack[len(m.modeStack)-1].HandleEvent(s, e)
+		if m.quit {
 			return termui.ErrorQuit
 		}
 		if errors.Is(err, termui.ErrorQuit) {
-			m.ModeStack = m.ModeStack[:len(m.ModeStack)-1]
+			m.modeStack = m.modeStack[:len(m.modeStack)-1]
 			return nil
 		}
 		return err
 	}
-	m.LogMode.HandleEvent(s, e)
-	if m.InTarget {
-		return m.MapMode.HandleEvent(s, e)
+	m.logMode.HandleEvent(s, e)
+	if m.inTarget {
+		return m.mapMode.HandleEvent(s, e)
 	} else {
 		return m.handleEventInternal(s, e)
 	}
 }
 
 // Draw implements the termui.Mode interface.
-func (m *GameMode) Draw(s termui.TerminalDriver) {
+func (m *gameMode) Draw(s termui.TerminalDriver) {
 	// Draw the root window elements
 	termui.DrawClear(s)
 	sw, sh := s.Size()
-	m.LogMode.Bounds = util.NewRectXYWH(sw-38, 21, 38, sh-21)
-	m.LogMode.Draw(s)
-	m.MapMode.Bounds = util.NewRectXYWH(0, 0, sw-39, sh)
-	if m.InTarget {
-		m.MapMode.CursorStyle = 2
-		m.MapMode.DrawInfo = true
+	m.logMode.Bounds = util.NewRectXYWH(sw-38, 21, 38, sh-21)
+	m.logMode.Draw(s)
+	m.mapMode.Bounds = util.NewRectXYWH(0, 0, sw-39, sh)
+	if m.inTarget {
+		m.mapMode.CursorStyle = 2
+		m.mapMode.DrawInfo = true
 	} else {
-		m.MapMode.Center = m.CityMap.Player.Position
-		m.MapMode.CursorStyle = 0
-		m.MapMode.DrawInfo = false
+		m.mapMode.Center = m.CityMap.Player.Position
+		m.mapMode.CursorStyle = 0
+		m.mapMode.DrawInfo = false
 	}
-	m.MapMode.DrawPaths = m.Debug
-	m.MapMode.Draw(s)
+	m.mapMode.DrawPaths = m.debug
+	m.mapMode.Draw(s)
 	termui.DrawVLine(s, util.NewPoint(sw-39, 0), sh, termui.CurrentTheme.Normal)
-	m.Minimap.Bounds = util.NewRectXYWH(sw-22, 0, 21, 21)
-	m.Minimap.Center = util.NewPoint(m.CityMap.Player.Position.X/game.ChunkWidth, m.CityMap.Player.Position.Y/game.ChunkHeight)
-	m.Minimap.Draw(s)
-	m.Status.Position = util.NewPoint(sw-38, 0)
-	m.Status.Draw(s)
+	m.minimap.Bounds = util.NewRectXYWH(sw-22, 0, 21, 21)
+	m.minimap.Center = util.NewPoint(m.CityMap.Player.Position.X/game.ChunkWidth, m.CityMap.Player.Position.Y/game.ChunkHeight)
+	m.minimap.Draw(s)
+	m.status.Position = util.NewPoint(sw-38, 0)
+	m.status.Draw(s)
 	// Render the mode stack
-	for _, m := range m.ModeStack {
+	for _, m := range m.modeStack {
 		m.Draw(s)
 	}
 }

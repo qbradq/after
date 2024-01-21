@@ -6,8 +6,8 @@ import (
 	"github.com/qbradq/after/lib/util"
 )
 
-// Minimap implements a termui.Mode that displays the minimap
-type Minimap struct {
+// minimap implements a termui.Mode that displays the minimap
+type minimap struct {
 	CityMap     *game.CityMap // The city we are displaying
 	Bounds      util.Rect     // Bounds of the minimap display on screen
 	Center      util.Point    // Current centerpoint of the display
@@ -15,7 +15,7 @@ type Minimap struct {
 	CursorStyle int           // Cursor style
 }
 
-func (m *Minimap) topLeft() util.Point {
+func (m *minimap) topLeft() util.Point {
 	// Calculate top-left corner
 	ret := util.NewPoint(m.Center.X-m.Bounds.Width()/2,
 		m.Center.Y-m.Bounds.Height()/2)
@@ -34,13 +34,13 @@ func (m *Minimap) topLeft() util.Point {
 	return ret
 }
 
-func (m *Minimap) pointToScreen(p util.Point) util.Point {
+func (m *minimap) pointToScreen(p util.Point) util.Point {
 	tl := m.topLeft()
 	return util.NewPoint(p.X-tl.X, p.Y-tl.Y)
 }
 
 // HandleEvent implements the termui.Mode interface.
-func (m *Minimap) HandleEvent(s termui.TerminalDriver, e any) error {
+func (m *minimap) HandleEvent(s termui.TerminalDriver, e any) error {
 	// State update
 	switch ev := e.(type) {
 	case *termui.EventKey:
@@ -76,7 +76,7 @@ func (m *Minimap) HandleEvent(s termui.TerminalDriver, e any) error {
 }
 
 // Draw implements the termui.Mode interface.
-func (m *Minimap) Draw(s termui.TerminalDriver) {
+func (m *minimap) Draw(s termui.TerminalDriver) {
 	// Render the minimap and cursor
 	mmtl := m.topLeft()
 	for iy := 0; iy < m.Bounds.Height(); iy++ {

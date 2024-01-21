@@ -8,15 +8,15 @@ import (
 	"github.com/qbradq/after/lib/util"
 )
 
-// StatusPanel implements a 16x21 window that displays information about the
+// statusPanel implements a 16x21 window that displays information about the
 // player and current state of the city.
-type StatusPanel struct {
+type statusPanel struct {
 	Position util.Point    // Position of the top-left corner of the 16x21 panel
 	CityMap  *game.CityMap // City map we are displaying information about
 }
 
 // HandleEvent implements the termui.Mode interface.
-func (m *StatusPanel) HandleEvent(s termui.TerminalDriver, e any) error {
+func (m *statusPanel) HandleEvent(s termui.TerminalDriver, e any) error {
 	switch e.(type) {
 	case *termui.EventQuit:
 		return termui.ErrorQuit
@@ -25,7 +25,7 @@ func (m *StatusPanel) HandleEvent(s termui.TerminalDriver, e any) error {
 }
 
 // Draw implements the termui.Mode interface.
-func (m *StatusPanel) Draw(s termui.TerminalDriver) {
+func (m *statusPanel) Draw(s termui.TerminalDriver) {
 	b := util.Rect{
 		TL: m.Position,
 		BR: m.Position.Add(util.Point{X: 15, Y: 20}),
