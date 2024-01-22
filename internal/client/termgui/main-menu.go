@@ -13,7 +13,7 @@ import (
 
 // MainMenu implements the main program menu.
 type MainMenu struct {
-	list termui.List // Main menu item list
+	list *termui.List // Main menu item list
 }
 
 var debugMods = []string{"Base"}
@@ -21,7 +21,7 @@ var debugMods = []string{"Base"}
 // NewMainMenu returns a new MainMenu object.
 func NewMainMenu(s termui.TerminalDriver) *MainMenu {
 	return &MainMenu{
-		list: termui.List{
+		list: &termui.List{
 			Boxed: true,
 			Title: "Main Menu",
 			Items: []string{
@@ -35,19 +35,23 @@ func NewMainMenu(s termui.TerminalDriver) *MainMenu {
 					if err := mods.LoadMods(debugMods); err != nil {
 						panic(err)
 					}
-					if err := game.NewSave("debug-"+time.Now().Format(time.DateTime), debugMods); err != nil {
-						panic(err)
+					sl := newScenarioList()
+					sl.Selected = func(sn string) {
+						if err := game.NewSave("debug-"+time.Now().Format(time.DateTime), debugMods); err != nil {
+							panic(err)
+						}
+						m := citygen.Generate("Interstate Town", sn)
+						m.SaveCityPlan()
+						m.Update(m.Player.Position, 0)
+						m.FullSave()
+						game.SaveTileRefs()
+						termui.RunMode(s, newGameMode(m))
+						game.CloseSave()
 					}
-					m := citygen.Generate("Interstate Town", "Test")
-					m.SaveCityPlan()
-					m.Update(m.Player.Position, 0)
-					m.FullSave()
-					game.SaveTileRefs()
-					termui.RunMode(s, newGameMode(m))
-					game.CloseSave()
+					termui.RunMode(s, sl)
 				case 1:
 					game.LoadSaveInfo()
-					termui.RunMode(s, NewLoadMenu(s))
+					termui.RunMode(s, newLoadMenu(s))
 				case 2:
 					return termui.ErrorQuit
 				}

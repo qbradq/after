@@ -52,6 +52,29 @@ func newGameMode(m *game.CityMap) *gameMode {
 }
 
 func (m *gameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
+	fn := func(items []*game.Item) {
+		if len(items) < 1 {
+			return
+		} else if len(items) == 1 {
+			i := items[0]
+			m.CityMap.RemoveItem(i)
+			m.CityMap.Player.AddItemToInventory(i)
+			m.logMode.Log(termui.ColorAqua, "You picked up %s.", i.Name)
+			m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second) * m.CityMap.Player.ActSpeed()))
+			return
+		} else {
+			m.itemList.Selected = func(i *game.Item) {
+				m.CityMap.RemoveItem(i)
+				m.CityMap.Player.AddItemToInventory(i)
+				m.logMode.Log(termui.ColorAqua, "You picked up %s.", i.Name)
+				m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second) * m.CityMap.Player.ActSpeed()))
+			}
+			m.itemList.Title = "Get Item"
+			m.itemList.SetItems(items)
+			m.modeStack = append(m.modeStack, m.itemList)
+			return
+		}
+	}
 	// Check every event for end game conditions
 	if m.CityMap.Player.Dead {
 		if ev, ok := e.(*termui.EventKey); ok {
@@ -238,28 +261,21 @@ func (m *gameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 			}
 			return nil
 		case ',': // get items at feet (,)
-			items := m.CityMap.ItemsAt(m.CityMap.Player.Position)
-			if len(items) < 1 {
-				return nil
-			} else if len(items) == 1 {
-				i := items[0]
-				m.CityMap.RemoveItem(i)
-				m.CityMap.Player.AddItemToInventory(i)
-				m.logMode.Log(termui.ColorAqua, "You picked up %s.", i.Name)
-				m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second) * m.CityMap.Player.ActSpeed()))
-				return nil
-			} else {
-				m.itemList.Selected = func(i *game.Item) {
-					m.CityMap.RemoveItem(i)
-					m.CityMap.Player.AddItemToInventory(i)
-					m.logMode.Log(termui.ColorAqua, "You picked up %s.", i.Name)
-					m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second) * m.CityMap.Player.ActSpeed()))
+			fn(m.CityMap.ItemsAt(m.CityMap.Player.Position))
+		case 'g': // Get items within reach
+			m.inTarget = true
+			m.mapMode.Callback = func(p util.Point, confirmed bool) error {
+				m.inTarget = false
+				if !confirmed {
+					return nil
 				}
-				m.itemList.Title = "Get Item"
-				m.itemList.SetItems(items)
-				m.modeStack = append(m.modeStack, m.itemList)
+				fn(m.CityMap.ItemsAt(p))
 				return nil
 			}
+			m.mapMode.Center = m.CityMap.Player.Position
+			m.mapMode.CursorPos = m.CityMap.Player.Position
+			m.mapMode.CursorRange = 1
+			return nil
 		case '\033':
 			m.modeStack = append(m.modeStack, newEscapeMenu(m))
 			return nil

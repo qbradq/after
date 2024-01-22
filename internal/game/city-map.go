@@ -418,6 +418,20 @@ func (m *CityMap) PlaceActor(a *Actor) {
 // RemoveActor removes the actor from the city at it's current location.
 func (m *CityMap) RemoveActor(a *Actor) {
 	m.GetChunk(a.Position).RemoveActor(a)
+	if m.updateBounds.Contains(a.Position) {
+		// Chunk is within the current update set so we'll have to manually
+		// remove them from the action queue
+		idx := -1
+		for i, aqa := range m.aq {
+			if aqa == a {
+				idx = i
+				break
+			}
+		}
+		if idx >= 0 {
+			heap.Remove(&m.aq, idx)
+		}
+	}
 }
 
 // ActorAt returns the actor at the given position or nil.

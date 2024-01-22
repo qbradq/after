@@ -12,8 +12,8 @@ type LoadMenu struct {
 	list termui.List // List of saves
 }
 
-// NewLoadMenu creates a new load menu for use.
-func NewLoadMenu(s termui.TerminalDriver) *LoadMenu {
+// newLoadMenu creates a new load menu for use.
+func newLoadMenu(s termui.TerminalDriver) *LoadMenu {
 	var lm *LoadMenu
 	var items []string
 	var saveInfos []*game.SaveInfo

@@ -37,6 +37,7 @@ const (
 // Chunk represents the smallest unit of city planning and contains the tiles,
 // items and actors within its bounds.
 type Chunk struct {
+	Position          util.Point    // Position of the chunk on the city map in chunks
 	Ref               uint32        // Reference index for the chunk
 	Bounds            util.Rect     // Bounds of the chunk
 	Generator         ChunkGen      // The chunk generator responsible for procedural generation
@@ -63,6 +64,7 @@ type Chunk struct {
 // See Load().
 func NewChunk(x, y int, r uint32) *Chunk {
 	c := &Chunk{
+		Position:          util.NewPoint(x, y),
 		Ref:               r,
 		Bounds:            util.NewRectXYWH(x*ChunkWidth, y*ChunkHeight, ChunkWidth, ChunkHeight),
 		Name:              "an error",

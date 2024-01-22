@@ -19,6 +19,7 @@ type Scenario struct {
 	Equipment         []itemStatement // Item and item generator expressions to equip to the player on spawn
 	Inventory         []itemStatement // Item and item generator expressions to add to the player's inventory on spawn
 	Weapon            itemStatement   // Item or item generator expression of the item to wield as a weapon
+	SafeZoneRadius    int             // Radius of the "safe zone" surrounding the starting chunk which has all actors removed at spawn
 }
 
 // Execute sets up the city map and player according to the parameters of the
@@ -62,6 +63,16 @@ func (s *Scenario) Execute(m *game.CityMap) {
 		}
 	}
 	c := util.RandomValue[*game.Chunk](cs)
+	// Safe zone implementation
+	if s.SafeZoneRadius > 0 {
+		// Load all the chunks we need to modify
+		r := util.NewRectFromRadius(c.Position, s.SafeZoneRadius)
+		m.EnsureLoaded(r)
+		// Clean out all actors from the safe zone
+		for _, a := range m.ActorsWithin(r.Multiply(game.ChunkWidth)) {
+			m.RemoveActor(a)
+		}
+	}
 	// Load the chunk and scan for a valid location for the player
 	m.LoadChunk(c, m.Now)
 	for i := 0; i < 512; i++ {

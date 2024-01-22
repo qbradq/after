@@ -14,6 +14,11 @@ type List struct {
 	Selected  func(TerminalDriver, int) error // The function that is called if the user selects an item
 }
 
+// CurrentSelection returns the string under the current cursor position.
+func (m *List) CurrentSelection() string {
+	return m.Items[m.CursorPos]
+}
+
 // HandleEvent implements the Mode interface.
 func (m *List) HandleEvent(s TerminalDriver, e any) error {
 	// State sanitation

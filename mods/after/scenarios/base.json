@@ -4,11 +4,32 @@
         "Description": "This is a test scenario to facilitate development. You will spawn inside a large room containing a few zombies with basic clothing and supplies.",
         "StartingChunkType": "Test",
         "Equipment": [
-            "TeeShirt"
+            "Shirts",
+            "Pants",
+            "Shoes",
+            "Hats@1n6",
+            "Gloves@1n16"
         ],
         "Inventory": [
             "Soap"
         ],
         "Weapon": "Crowbar"
+    },
+    "SafeAtHome": {
+        "Name": "Safe at Home",
+        "Description": "You hunkered down and stayed quite for weeks now hiding in your home from the aftermath. At least you are safe for now.",
+        "StartingChunkType": "House",
+        "Equipment": [
+            "Shirts",
+            "Pants",
+            "Shoes",
+            "Hats@1n6",
+            "Gloves@1n16"
+        ],
+        "Inventory": [
+            "Soap"
+        ],
+        "Weapon": "Crowbar",
+        "SafeZoneRadius": 5
     }
 }

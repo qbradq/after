@@ -1,0 +1,29 @@
+{
+    "Shirts": {
+        "TeeShirt": 1,
+        "Shirt": 1,
+        "PoloShirt": 1,
+        "Blouse": 1
+    },
+    "Pants": {
+        "Pants": 1,
+        "CargoPants": 1,
+        "DressPants": 1,
+        "Shorts": 1,
+        "CargoShorts": 1,
+        "AthleticShorts": 1
+    },
+    "Shoes": {
+        "Shoes": 1,
+        "TennisShoes": 1,
+        "Slippers": 1,
+        "Sandals": 1
+    },
+    "Hats": {
+        "SportsCap": 1,
+        "CowboyHat": 1
+    },
+    "Gloves": {
+        "Gloves": 1
+    }
+}

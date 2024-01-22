@@ -6,5 +6,133 @@
         "Bg": "Black",
         "Wearable": true,
         "WornBodyPart": "Body"
+    },
+    "Shirt": {
+        "Name": "shirt",
+        "Rune": "&",
+        "Fg": "Green",
+        "Bg": "Black",
+        "Wearable": true,
+        "WornBodyPart": "Body"
+    },
+    "PoloShirt": {
+        "Name": "polo shirt",
+        "Rune": "&",
+        "Fg": "Fuchsia",
+        "Bg": "Black",
+        "Wearable": true,
+        "WornBodyPart": "Body"
+    },
+    "Blouse": {
+        "Name": "blouse",
+        "Rune": "&",
+        "Fg": "Purple",
+        "Bg": "Black",
+        "Wearable": true,
+        "WornBodyPart": "Body"
+    },
+    "Pants": {
+        "Name": "pants",
+        "Rune": "&",
+        "Fg": "Yellow",
+        "Bg": "Black",
+        "Wearable": true,
+        "WornBodyPart": "Legs"
+    },
+    "CargoPants": {
+        "Name": "cargo pants",
+        "Rune": "&",
+        "Fg": "Olive",
+        "Bg": "Black",
+        "Wearable": true,
+        "WornBodyPart": "Legs"
+    },
+    "DressPants": {
+        "Name": "dress pants",
+        "Rune": "&",
+        "Fg": "Gray",
+        "Bg": "Black",
+        "Wearable": true,
+        "WornBodyPart": "Legs"
+    },
+    "Shorts": {
+        "Name": "shorts",
+        "Rune": "&",
+        "Fg": "Lime",
+        "Bg": "Black",
+        "Wearable": true,
+        "WornBodyPart": "Legs"
+    },
+    "CargoShorts": {
+        "Name": "cargo shorts",
+        "Rune": "&",
+        "Fg": "Olive",
+        "Bg": "Black",
+        "Wearable": true,
+        "WornBodyPart": "Legs"
+    },
+    "AthleticShorts": {
+        "Name": "athletic shorts",
+        "Rune": "&",
+        "Fg": "Red",
+        "Bg": "Black",
+        "Wearable": true,
+        "WornBodyPart": "Legs"
+    },
+    "Shoes": {
+        "Name": "shoes",
+        "Rune": "&",
+        "Fg": "Gray",
+        "Bg": "Black",
+        "Wearable": true,
+        "WornBodyPart": "Feet"
+    },
+    "TennisShoes": {
+        "Name": "tennis shoes",
+        "Rune": "&",
+        "Fg": "White",
+        "Bg": "Black",
+        "Wearable": true,
+        "WornBodyPart": "Feet"
+    },
+    "Slippers": {
+        "Name": "slippers",
+        "Rune": "&",
+        "Fg": "Silver",
+        "Bg": "Black",
+        "Wearable": true,
+        "WornBodyPart": "Feet"
+    },
+    "Sandals": {
+        "Name": "sandals",
+        "Rune": "&",
+        "Fg": "Aqua",
+        "Bg": "Black",
+        "Wearable": true,
+        "WornBodyPart": "Feet"
+    },
+    "SportsCap": {
+        "Name": "sports cap",
+        "Rune": "&",
+        "Fg": "Blue",
+        "Bg": "Black",
+        "Wearable": true,
+        "WornBodyPart": "Head"
+    },
+    "CowboyHat": {
+        "Name": "cowboy hat",
+        "Rune": "&",
+        "Fg": "Yellow",
+        "Bg": "Black",
+        "Wearable": true,
+        "WornBodyPart": "Head"
+    },
+    "Gloves": {
+        "Name": "gloves",
+        "Rune": "&",
+        "Fg": "Gray",
+        "Bg": "Black",
+        "Wearable": true,
+        "WornBodyPart": "Hand"
     }
 }
