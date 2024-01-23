@@ -19,6 +19,7 @@
         "Fg": "Yellow",
         "Bg": "Black",
         "BlocksWalk": true,
+        "Climbable": true,
         "Fixed": true
     },
     "Counter": {
@@ -27,6 +28,7 @@
         "Fg": "Yellow",
         "Bg": "Black",
         "BlocksWalk": true,
+        "Climbable": true,
         "Fixed": true
     },
     "Bed": {
@@ -42,6 +44,7 @@
         "Fg": "Yellow",
         "Bg": "Black",
         "BlocksWalk": true,
+        "Climbable": true,
         "Fixed": true
     },
     "Oven": {
@@ -50,6 +53,7 @@
         "Fg": "Silver",
         "Bg": "Black",
         "BlocksWalk": true,
+        "Climbable": true,
         "Fixed": true
     },
     "Refrigerator": {
@@ -80,6 +84,7 @@
         "Fg": "Silver",
         "Bg": "Black",
         "BlocksWalk": true,
+        "Climbable": true,
         "Fixed": true
     }
 }

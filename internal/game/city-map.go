@@ -406,8 +406,8 @@ func (m *CityMap) ItemsWithin(b util.Rect) []*Item {
 }
 
 // PlaceActor adds the actor to the city at it's current location.
-func (m *CityMap) PlaceActor(a *Actor) {
-	m.GetChunk(a.Position).PlaceActor(a)
+func (m *CityMap) PlaceActor(a *Actor, climbing bool) {
+	m.GetChunk(a.Position).PlaceActor(a, climbing)
 	if m.updateBounds.Contains(a.Position) {
 		// Chunk is within the current update set so we'll have to manually push
 		// them onto the action queue
@@ -462,32 +462,35 @@ func (m *CityMap) ActorsWithin(b util.Rect) []*Actor {
 	return m.actorsWithinCache
 }
 
-// StepActor attempts to move the actor in the given direction, returning true
-// on success.
-func (m *CityMap) StepActor(a *Actor, d util.Direction) bool {
+// StepActor attempts to move the actor in the given direction. The first return
+// value is true if the actor was able to step on the location. The second
+// return value is true only if the first return value is false and the actor
+// successfully climbed to the location.
+func (m *CityMap) StepActor(a *Actor, climbing bool, d util.Direction) (bool, bool) {
 	if d == util.DirectionInvalid {
-		return false
+		return false, false
 	}
 	np := a.Position.Add(util.DirectionOffsets[d.Bound()])
 	if !m.TileBounds.Contains(np) {
-		return false
+		return false, false
 	}
 	op := a.Position
 	oc := m.GetChunk(op)
 	nc := m.GetChunk(np)
 	oc.RemoveActor(a)
 	a.Position = np
-	if !nc.PlaceActor(a) {
+	ws, cs := nc.PlaceActor(a, climbing)
+	if !ws && !cs {
 		a.Position = op
-		oc.PlaceActor(a)
-		return false
+		oc.PlaceActor(a, true)
+		return false, false
 	}
-	return true
+	return ws, cs
 }
 
-// StepPlayer attempts to move the player's actor in the given direction,
+// StepPlayer attempts to move the player's actor in the given direction
 // returning true on success.
-func (m *CityMap) StepPlayer(d util.Direction) bool {
+func (m *CityMap) StepPlayer(climbing bool, d util.Direction) bool {
 	if d == util.DirectionInvalid {
 		return false
 	}
@@ -496,12 +499,34 @@ func (m *CityMap) StepPlayer(d util.Direction) bool {
 		return false
 	}
 	nc := m.GetChunk(np)
-	if !nc.CanStep(&m.Player.Actor, np) {
+	ws, cs := nc.CanStep(&m.Player.Actor, np)
+	if !ws && !cs {
+		return false
+	}
+	if cs && !climbing {
 		return false
 	}
 	m.Player.Position = np
-	m.PlayerTookTurn(time.Duration(float64(time.Second) * m.Player.WalkSpeed()))
+	dur := time.Duration(float64(time.Second) * m.Player.WalkSpeed())
+	if cs {
+		dur *= 4
+	}
+	m.PlayerTookTurn(dur)
 	return true
+}
+
+// PlayerCanClimb returns true if the player can climb in the given direction.
+func (m *CityMap) PlayerCanClimb(d util.Direction) bool {
+	if d == util.DirectionInvalid {
+		return false
+	}
+	np := m.Player.Position.Add(util.DirectionOffsets[d.Bound()])
+	if !m.TileBounds.Contains(np) {
+		return false
+	}
+	nc := m.GetChunk(np)
+	ws, cs := nc.CanStep(&m.Player.Actor, np)
+	return ws || cs
 }
 
 // MakeVisibilitySets constructs bitmaps representing the current and remembered
@@ -512,9 +537,9 @@ func (m *CityMap) MakeVisibilitySets(b util.Rect) {
 	var dp util.Point
 	// Process one line of visibility calculations
 	fn := func(ps []util.Point) {
-		// Range over the points
+		// Range over the points excluding the first
 		done := false
-		for _, p := range ps {
+		for _, p := range ps[1:] {
 			// Bail if we've already hit a non-visible position
 			if done {
 				break
@@ -557,6 +582,9 @@ func (m *CityMap) MakeVisibilitySets(b util.Rect) {
 	if !b.Contains(m.Player.Position) {
 		return
 	}
+	// Mark the starting location as visible always
+	p := m.Player.Position
+	m.Visibility.Set(uint32((p.Y-b.TL.Y)*b.Width() + (p.X - b.TL.X)))
 	// Cast rays to the boarders of the rect
 	for i := 0; i < b.Width(); i++ {
 		fn(util.Ray(m.Player.Position, util.Point{
@@ -579,7 +607,6 @@ func (m *CityMap) MakeVisibilitySets(b util.Rect) {
 		}))
 	}
 	// Construct remembered set for chunks and return value
-	var p util.Point
 	for p.Y = b.TL.Y; p.Y <= b.BR.Y; p.Y++ {
 		for p.X = b.TL.X; p.X <= b.BR.X; p.X++ {
 			idx := uint32((p.Y-b.TL.Y)*b.Width() + (p.X - b.TL.X))

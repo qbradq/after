@@ -38,6 +38,7 @@
         "Fg": "Aqua",
         "Bg": "Black",
         "BlocksWalk": true,
+        "Climbable": true,
         "Fixed": true,
         "Events": {
             "Use": "CloseDoor"
@@ -50,6 +51,7 @@
         "Bg": "Black",
         "BlocksVis": true,
         "BlocksWalk": true,
+        "Climbable": true,
         "Fixed": true,
         "Events": {
             "Use": "OpenDoor"

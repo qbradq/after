@@ -12,18 +12,19 @@ import (
 
 // gameMode implements the top-level client interface.
 type gameMode struct {
-	CityMap    *game.CityMap  // The city we are playing
-	logMode    *logMode       // Log display
-	mapMode    *mapMode       // Map display
-	minimap    *minimap       // Small mini-map
-	status     *statusPanel   // Status panel
-	inventory  *inventoryMenu // Inventory menu
-	escapeMenu *escapeMenu    // Escape menu
-	itemList   *itemList      // Item list menu
-	modeStack  []termui.Mode  // Internal stack of mode that overlay the main game mode, like the escape menu or inventory screen
-	quit       bool           // If true we should quit
-	inTarget   bool           // If true we are in targeting mode
-	debug      bool           // If true display debug information
+	CityMap       *game.CityMap  // The city we are playing
+	logMode       *logMode       // Log display
+	mapMode       *mapMode       // Map display
+	minimap       *minimap       // Small mini-map
+	status        *statusPanel   // Status panel
+	inventory     *inventoryMenu // Inventory menu
+	escapeMenu    *escapeMenu    // Escape menu
+	itemList      *itemList      // Item list menu
+	confirmDialog *confirmDialog // Confirmation dialog
+	modeStack     []termui.Mode  // Internal stack of mode that overlay the main game mode, like the escape menu or inventory screen
+	quit          bool           // If true we should quit
+	inTarget      bool           // If true we are in targeting mode
+	debug         bool           // If true display debug information
 }
 
 // newGameMode returns a new game mode.
@@ -42,8 +43,9 @@ func newGameMode(m *game.CityMap) *gameMode {
 		status: &statusPanel{
 			CityMap: m,
 		},
-		inventory: newInventoryMenu(&m.Player.Actor),
-		itemList:  newItemList(),
+		inventory:     newInventoryMenu(&m.Player.Actor),
+		itemList:      newItemList(),
+		confirmDialog: newConfirmDialog(),
 	}
 	gm.escapeMenu = newEscapeMenu(gm)
 	game.Log = gm.logMode
@@ -275,6 +277,23 @@ func (m *gameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 			m.mapMode.Center = m.CityMap.Player.Position
 			m.mapMode.CursorPos = m.CityMap.Player.Position
 			m.mapMode.CursorRange = 1
+			m.logMode.Log(termui.ColorPurple, "Get where?")
+			return nil
+		case 'c': // Climb
+			m.inTarget = true
+			m.mapMode.Callback = func(p util.Point, confirmed bool) error {
+				m.inTarget = false
+				if !confirmed {
+					return nil
+				}
+				d := m.CityMap.Player.Position.DirectionTo(p)
+				m.CityMap.StepPlayer(true, d)
+				return nil
+			}
+			m.mapMode.Center = m.CityMap.Player.Position
+			m.mapMode.CursorPos = m.CityMap.Player.Position
+			m.mapMode.CursorRange = 1
+			m.logMode.Log(termui.ColorPurple, "Climb where?")
 			return nil
 		case '\033':
 			m.modeStack = append(m.modeStack, newEscapeMenu(m))
@@ -288,8 +307,18 @@ func (m *gameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 	}
 	dir = dir.Bound()
 	if dir != util.DirectionInvalid {
-		if !m.CityMap.StepPlayer(dir) {
+		if !m.CityMap.StepPlayer(false, dir) {
 			// Bump handling
+			if m.CityMap.PlayerCanClimb(dir) {
+				// Offer to climb over whatever is blocking us
+				m.confirmDialog.Title = "Confirm Climb"
+				m.confirmDialog.Prompt = "Do you wish to climb?"
+				m.confirmDialog.Confirmed = func() {
+					m.CityMap.StepPlayer(true, dir)
+				}
+				m.modeStack = append(m.modeStack, m.confirmDialog)
+				return nil
+			}
 			np := m.CityMap.Player.Position.Step(dir)
 			a := m.CityMap.ActorAt(np)
 			if a != nil {

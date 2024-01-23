@@ -55,6 +55,7 @@ type Chunk struct {
 	HasSeen           bitmap.Bitmap // Bitmap of all spaces that have been previously viewed by the player
 	BlocksWalk        bitmap.Bitmap // Bitmap of all spaces that are blocked for walking
 	BlocksVis         bitmap.Bitmap // Bitmap of all spaces that are blocked for visibility
+	BlocksClimb       bitmap.Bitmap // Bitmap of all spaces that can be climbed
 	bitmapsDirty      bool          // If true the BlocksWalk and BlocksVis bitmaps need to be rebuilt before use
 
 }
@@ -129,6 +130,7 @@ func (c *Chunk) RebuildBitmaps() {
 	// Clear bitmaps
 	c.BlocksVis.Clear()
 	c.BlocksWalk.Clear()
+	c.BlocksClimb.Clear()
 	// Consider tiles
 	for i, t := range c.Tiles {
 		if t.BlocksVis {
@@ -136,6 +138,9 @@ func (c *Chunk) RebuildBitmaps() {
 		}
 		if t.BlocksWalk {
 			c.BlocksWalk.Set(uint32(i))
+			if !t.Climbable {
+				c.BlocksClimb.Set(uint32(i))
+			}
 		}
 	}
 	// Consider items
@@ -145,11 +150,15 @@ func (c *Chunk) RebuildBitmaps() {
 		}
 		if i.BlocksWalk {
 			c.BlocksWalk.Set(c.relOfs(i.Position))
+			if !i.Climbable {
+				c.BlocksClimb.Set(c.relOfs(i.Position))
+			}
 		}
 	}
 	// Consider actors
 	for _, a := range c.Actors {
 		c.BlocksWalk.Set(c.relOfs(a.Position))
+		c.BlocksClimb.Set(c.relOfs(a.Position))
 	}
 	c.bitmapsDirty = false
 }
@@ -206,23 +215,34 @@ func (c *Chunk) RemoveItem(i *Item) {
 	}
 }
 
-// PlaceActorRelative adds the actor to the chunk and adjusts the
-// position from chunk-relative to absolute.
+// PlaceActorRelative adds the actor to the chunk and adjusts the position from
+// chunk-relative to absolute. This function always allows standing on climbable
+// locations.
 func (c *Chunk) PlaceActorRelative(a *Actor) {
 	a.Position.X += c.Bounds.TL.X
 	a.Position.Y += c.Bounds.TL.Y
-	c.PlaceActor(a)
+	c.PlaceActor(a, true)
 }
 
 // PlaceActor places the actor within the chunk. This is a no-op if the
-// current position lies outside the chunk. Returns true on success.
-func (c *Chunk) PlaceActor(a *Actor) bool {
-	if !c.CanStep(a, a.Position) {
-		return false
+// current position lies outside the chunk. If the climbing parameter is true
+// the locations that allow climbing are also considered. The first return value
+// is true if the actor can step on the location. The second return value is
+// true only if the first return value is false and the location allowed
+// climbing.
+func (c *Chunk) PlaceActor(a *Actor, climbing bool) (bool, bool) {
+	cw, cc := c.CanStep(a, a.Position)
+	if !cw {
+		if cc && climbing {
+			c.Actors = append(c.Actors, a)
+			c.BlocksWalk.Set(c.relOfs(a.Position))
+			return false, true
+		}
+		return false, false
 	}
 	c.Actors = append(c.Actors, a)
 	c.BlocksWalk.Set(c.relOfs(a.Position))
-	return true
+	return true, false
 }
 
 // RemoveActor removes the Actor from the chunk. This is a no-op if the
@@ -248,21 +268,23 @@ func (c *Chunk) RemoveActor(a *Actor) {
 	c.bitmapsDirty = true
 }
 
-// CanStep returns true if the location is valid for an actor.
-func (c *Chunk) CanStep(a *Actor, p util.Point) bool {
+// CanStep returns true if the location is valid for an actor to step. The
+// second return value is true only if the first return value is false and the
+// location allows climbing.
+func (c *Chunk) CanStep(a *Actor, p util.Point) (bool, bool) {
 	if !c.Bounds.Contains(p) {
-		return false
+		return false, false
 	}
 	if c.bitmapsDirty {
 		c.RebuildBitmaps()
 	}
 	if c.BlocksWalk.Contains(c.relOfs(p)) {
-		return false
+		return false, !c.BlocksClimb.Contains(c.relOfs(p))
 	}
 	for _, a := range c.Actors {
 		if a.Position == p {
-			return false
+			return false, false
 		}
 	}
-	return true
+	return true, false
 }

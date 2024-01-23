@@ -11,6 +11,19 @@ import (
 // TileDefs is the global TileRef-to-*TileDef reference.
 var TileDefs []*TileDef
 
+// TileDef represents all of the data associated with a single tile.
+type TileDef struct {
+	BackRef    TileRef      // The TileRef that indexes this TileDef within TileDefs, used to accelerate saving
+	ID         string       // The unique ID of the tile
+	Name       string       // Descriptive name of the tile
+	Rune       string       // Map display rune
+	Fg         termui.Color // Foreground display color
+	Bg         termui.Color // Background display color
+	BlocksVis  bool         // If true this tile blocks visibility
+	BlocksWalk bool         // If true this tile blocks walking
+	Climbable  bool         // If true this tile may be (c)limbed over even if it blocks walk
+}
+
 // TileRefs is the global string-to-TileRef reference.
 var TileRefs = map[string]TileRef{}
 
@@ -92,16 +105,4 @@ func LoadTileRefs() {
 		TileCrossRefs[k] = t
 		TileCrossRefForRef[r] = k
 	}
-}
-
-// TileDef represents all of the data associated with a single tile.
-type TileDef struct {
-	BackRef    TileRef      // The TileRef that indexes this TileDef within TileDefs, used to accelerate saving
-	ID         string       // The unique ID of the tile
-	Name       string       // Descriptive name of the tile
-	Rune       string       // Map display rune
-	Fg         termui.Color // Foreground display color
-	Bg         termui.Color // Background display color
-	BlocksVis  bool         // If true this tile blocks visibility
-	BlocksWalk bool         // If true this tile blocks walking
 }

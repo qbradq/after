@@ -36,7 +36,7 @@ func init() {
 		// No path to the POI found, just try to randomly advance towards it
 		if len(ai.Path) == 0 && a.Position.Distance(ai.POI) > 1 {
 			d := a.Position.DirectionTo(ai.POI)
-			if m.StepActor(a, d) {
+			if ws, cs := m.StepActor(a, true, d); ws || cs {
 				return time.Duration(float64(time.Second) * a.WalkSpeed())
 			}
 			o1s := 1
@@ -46,19 +46,19 @@ func init() {
 				o2s *= -1
 			}
 			d = (d + util.Direction((o1s * 1))).Bound()
-			if m.StepActor(a, d) {
+			if ws, cs := m.StepActor(a, true, d); ws || cs {
 				return time.Duration(float64(time.Second) * a.WalkSpeed())
 			}
 			d = (d + util.Direction((o2s * 2))).Bound()
-			if m.StepActor(a, d) {
+			if ws, cs := m.StepActor(a, true, d); ws || cs {
 				return time.Duration(float64(time.Second) * a.WalkSpeed())
 			}
 			d = (d + util.Direction((o1s * 3))).Bound()
-			if m.StepActor(a, d) {
+			if ws, cs := m.StepActor(a, true, d); ws || cs {
 				return time.Duration(float64(time.Second) * a.WalkSpeed())
 			}
 			d = (d + util.Direction((o2s * 4))).Bound()
-			if m.StepActor(a, d) {
+			if ws, cs := m.StepActor(a, true, d); ws || cs {
 				return time.Duration(float64(time.Second) * a.WalkSpeed())
 			}
 			// Couldn't step in any direction even close to toward the POI, just
@@ -75,25 +75,25 @@ func init() {
 			return time.Duration(float64(time.Second) * a.ActSpeed())
 		}
 		// Need to get closer, try to approach
-		if m.StepActor(a, ai.Path[0]) {
+		if ws, cs := m.StepActor(a, true, ai.Path[0]); ws || cs {
+			// Step was successful, advance the path
+			ai.Path = ai.Path[1:]
+			return time.Duration(float64(time.Second) * a.WalkSpeed())
+		}
+		// Our path is blocked, try to path around it
+		ai.Path = ai.Path[:0]
+		game.NewPath(a.Position, ai.POI, m, &ai.Path)
+		if len(ai.Path) == 0 {
+			// No path right now, just wait
+			return time.Second
+		}
+		if ws, cs := m.StepActor(a, true, ai.Path[0]); ws || cs {
 			// Step was successful, advance the path
 			ai.Path = ai.Path[1:]
 		} else {
-			// Our path is blocked, try to path around it
-			ai.Path = ai.Path[:0]
-			game.NewPath(a.Position, ai.POI, m, &ai.Path)
-			if len(ai.Path) == 0 {
-				// No path right now, just wait
-				return time.Second
-			}
-			if m.StepActor(a, ai.Path[0]) {
-				// Step was successful, advance the path
-				ai.Path = ai.Path[1:]
-			} else {
-				// Step was not successful, something has gone terribly wrong in
-				// path-finding
-				panic("invalid path")
-			}
+			// Step was not successful, something has gone terribly wrong in
+			// path-finding
+			panic("invalid path")
 		}
 		return time.Duration(float64(time.Second) * a.WalkSpeed())
 	})

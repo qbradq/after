@@ -29,6 +29,7 @@ type Item struct {
 	Bg           termui.Color      // Display background color
 	BlocksVis    bool              // If true this item blocks visibility
 	BlocksWalk   bool              // If true this item blocks walking
+	Climbable    bool              // If true this item may be climbed over
 	Destroyed    bool              // If true something has happened to this item to cause it to be destroyed, it will be removed from the world at the end of the next update cycle
 	Fixed        bool              // If true the item cannot be moved at all
 	Wearable     bool              // If true this item can be worn as a piece of clothing
