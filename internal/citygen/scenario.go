@@ -13,13 +13,13 @@ var Scenarios = map[string]*Scenario{}
 // Scenario controls the generation of the player, their equipment, inventory
 // and placement within the city.
 type Scenario struct {
-	Name              string          // Descriptive name of the scenario
-	Description       string          // Full descriptive text for the scenario
-	StartingChunkType string          // Type of chunk to select for the starting location
-	Equipment         []itemStatement // Item and item generator expressions to equip to the player on spawn
-	Inventory         []itemStatement // Item and item generator expressions to add to the player's inventory on spawn
-	Weapon            itemStatement   // Item or item generator expression of the item to wield as a weapon
-	SafeZoneRadius    int             // Radius of the "safe zone" surrounding the starting chunk which has all actors removed at spawn
+	Name              string               // Descriptive name of the scenario
+	Description       string               // Full descriptive text for the scenario
+	StartingChunkType string               // Type of chunk to select for the starting location
+	Equipment         []game.ItemStatement // Item and item generator expressions to equip to the player on spawn
+	Inventory         []game.ItemStatement // Item and item generator expressions to add to the player's inventory on spawn
+	Weapon            game.ItemStatement   // Item or item generator expression of the item to wield as a weapon
+	SafeZoneRadius    int                  // Radius of the "safe zone" surrounding the starting chunk which has all actors removed at spawn
 }
 
 // Execute sets up the city map and player according to the parameters of the
@@ -28,7 +28,7 @@ func (s *Scenario) Execute(m *game.CityMap) {
 	m.Player = game.NewPlayer(m.Now)
 	// Starting equipment
 	for _, statement := range s.Equipment {
-		i := statement.evaluate(m.Now)
+		i := statement.Evaluate(m.Now)
 		if i == nil {
 			continue
 		}
@@ -39,7 +39,7 @@ func (s *Scenario) Execute(m *game.CityMap) {
 	}
 	// Starting inventory
 	for _, statement := range s.Inventory {
-		i := statement.evaluate(m.Now)
+		i := statement.Evaluate(m.Now)
 		if i == nil {
 			continue
 		}
@@ -47,7 +47,7 @@ func (s *Scenario) Execute(m *game.CityMap) {
 	}
 	// Starting weapon
 	if len(s.Weapon) != 0 {
-		i := s.Weapon.evaluate(m.Now)
+		i := s.Weapon.Evaluate(m.Now)
 		if i != nil {
 			r := m.Player.WieldItem(i)
 			if r != "" {

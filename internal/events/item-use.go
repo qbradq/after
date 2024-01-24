@@ -28,7 +28,7 @@ func openDoor(i *game.Item, src *game.Actor, m *game.CityMap) error {
 			for _, item := range items {
 				if item.TemplateID == i.TemplateID {
 					m.RemoveItem(item)
-					ni := game.NewItem("Open"+item.TemplateID, m.Now)
+					ni := game.NewItem("Open"+item.TemplateID, m.Now, false)
 					ni.Position = item.Position
 					m.PlaceItem(ni)
 				}
@@ -56,7 +56,7 @@ func closeDoor(i *game.Item, src *game.Actor, m *game.CityMap) error {
 				if item.TemplateID == i.TemplateID {
 					m.RemoveItem(item)
 					s, _ := strings.CutPrefix(i.TemplateID, "Open")
-					ni := game.NewItem(s, m.Now)
+					ni := game.NewItem(s, m.Now, false)
 					ni.Position = item.Position
 					m.PlaceItem(ni)
 				}

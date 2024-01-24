@@ -30,14 +30,23 @@ func newItemList() *itemList {
 	return ret
 }
 
-// SetItems sets the list of items the list selects from.
-func (m *itemList) SetItems(items []*game.Item) {
+// SetItems sets the list of items the list selects from. If the container
+// parameter is non-nil it will be considered for inclusion in the list.
+func (m *itemList) SetItems(items []*game.Item, container *game.Item) {
 	m.items = items
+	m.list.Items = m.list.Items[:0]
 	m.ld.X = len(m.Title) + 2
 	m.ld.Y = len(items)
-	m.list.Items = m.list.Items[:0]
+	if container != nil && container.Container && !container.Fixed {
+		m.items = append([]*game.Item{container, nil}, items...)
+		m.list.Items = append(m.list.Items, "-"+container.Name, "_hbar_")
+	}
 	for _, i := range items {
-		m.list.Items = append(m.list.Items, i.Name)
+		n := " " + i.Name
+		if i.Container && len(i.Inventory) > 0 {
+			n = "+" + i.Name
+		}
+		m.list.Items = append(m.list.Items, n)
 		if m.ld.X < len(i.Name) {
 			m.ld.X = len(i.Name)
 		}

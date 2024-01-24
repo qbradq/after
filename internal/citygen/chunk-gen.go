@@ -19,15 +19,15 @@ var ChunkGens = map[string]*ChunkGen{}
 // item and actor placements. Note that the zero value is *not sane*. Only get
 // ChunkGen objects from the ChunkGens map.
 type ChunkGen struct {
-	ID      string                  // Unique id of the generator
-	Name    string                  // Descriptive name of the chunk
-	Width   int                     // Width of the chunk generator in chunks
-	Height  int                     // Height of the chunk generator in chunks
-	Minimap []string                // Minimap
-	Fg      termui.Color            // Foreground color
-	Bg      termui.Color            // Background color
-	Maps    [][]string              // List of maps of characters that define how to procedurally generate each tile, the map is selected at random
-	Tiles   map[string]genStatement // Mapping of map characters to value generator statements
+	ID      string                       // Unique id of the generator
+	Name    string                       // Descriptive name of the chunk
+	Width   int                          // Width of the chunk generator in chunks
+	Height  int                          // Height of the chunk generator in chunks
+	Minimap []string                     // Minimap
+	Fg      termui.Color                 // Foreground color
+	Bg      termui.Color                 // Background color
+	Maps    [][]string                   // List of maps of characters that define how to procedurally generate each tile, the map is selected at random
+	Tiles   map[string]game.GenStatement // Mapping of map characters to value generator statements
 }
 
 // GetID returns the unique identifier of the generator.
@@ -72,7 +72,7 @@ func (g *ChunkGen) Generate(c *game.Chunk, m *game.CityMap) {
 		for sp.X = c.ChunkGenOffset.X * game.ChunkWidth; sp.X < (c.ChunkGenOffset.X+1)*game.ChunkWidth; sp.X++ {
 			r := string(genMap[sp.Y][sp.X])
 			rp := fn(dp, c.Facing)
-			g.Tiles[r].evaluate(c, rp, m.Now)
+			g.Tiles[r].Evaluate(c, rp, m.Now)
 			dp.X++
 		}
 		dp.Y++

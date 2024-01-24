@@ -1,11 +1,10 @@
-package citygen
+package game
 
 import (
 	"encoding/json"
 	"fmt"
 	"time"
 
-	"github.com/qbradq/after/internal/game"
 	"github.com/qbradq/after/lib/util"
 )
 
@@ -19,7 +18,7 @@ func (g *ActorGen) UnmarshalJSON(in []byte) error {
 	var src = map[string]int{}
 	json.Unmarshal(in, &src)
 	for k, n := range src {
-		_, found := game.ActorDefs[k]
+		_, found := ActorDefs[k]
 		if !found {
 			panic(fmt.Errorf("ActorGen referenced non-existent actor %s", k))
 		}
@@ -32,7 +31,7 @@ func (g *ActorGen) UnmarshalJSON(in []byte) error {
 
 // Generate returns a pointer to the selected tile def after procedural
 // generation.
-func (g ActorGen) Generate(t time.Time) *game.Actor {
+func (g ActorGen) Generate(t time.Time) *Actor {
 	r := g[util.Random(0, len(g))]
-	return game.NewActor(r, t)
+	return NewActor(r, t)
 }

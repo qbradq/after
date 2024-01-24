@@ -22,14 +22,25 @@
         "Climbable": true,
         "Fixed": true
     },
-    "Counter": {
-        "Name": "counter",
+    "KitchenCounter": {
+        "Name": "kitchen counter",
         "Rune": "[",
         "Fg": "Yellow",
         "Bg": "Black",
         "BlocksWalk": true,
         "Climbable": true,
-        "Fixed": true
+        "Fixed": true,
+        "Container": true
+    },
+    "BathroomCounter": {
+        "Name": "bathroom counter",
+        "Rune": "[",
+        "Fg": "Yellow",
+        "Bg": "Black",
+        "BlocksWalk": true,
+        "Climbable": true,
+        "Fixed": true,
+        "Container": true
     },
     "Bed": {
         "Name": "bed",
@@ -45,7 +56,22 @@
         "Bg": "Black",
         "BlocksWalk": true,
         "Climbable": true,
-        "Fixed": true
+        "Fixed": true,
+        "Container": true,
+        "Contents": [
+            "Shirts@1n4",
+            "Shirts@1n4",
+            "Shirts@1n4",
+            "Shirts@1n4",
+            "Pants@1n4",
+            "Pants@1n4",
+            "Pants@1n4",
+            "Pants@1n4",
+            "Shoes@1n2",
+            "Shoes@1n2",
+            "Hats@1n4",
+            "Gloves@1n8"
+        ]
     },
     "Oven": {
         "Name": "oven",
@@ -54,7 +80,8 @@
         "Bg": "Black",
         "BlocksWalk": true,
         "Climbable": true,
-        "Fixed": true
+        "Fixed": true,
+        "Container": true
     },
     "Refrigerator": {
         "Name": "refrigerator",
@@ -62,7 +89,8 @@
         "Fg": "Blue",
         "Bg": "Black",
         "BlocksWalk": true,
-        "Fixed": true
+        "Fixed": true,
+        "Container": true
     },
     "Toilet": {
         "Name": "toilet",

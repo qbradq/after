@@ -60,8 +60,8 @@ func UnloadAllMods() {
 	game.TileRefs = map[string]game.TileRef{}
 	game.TileCrossRefs = []*game.TileDef{}
 	game.TileCrossRefForRef = map[game.TileRef]game.TileCrossRef{}
-	citygen.TileGens = map[string]citygen.TileGen{}
-	citygen.ItemGens = map[string]citygen.ItemGen{}
+	game.TileGens = map[string]game.TileGen{}
+	game.ItemGens = map[string]game.ItemGen{}
 	citygen.ChunkGens = map[string]*citygen.ChunkGen{}
 	citygen.Scenarios = map[string]*citygen.Scenario{}
 	game.ItemDefs = map[string]*game.Item{}
@@ -84,6 +84,12 @@ func LoadMods(ids []string) error {
 	// ItemGens
 	for _, id := range ids {
 		if err := mods[id].loadItemGens(); err != nil {
+			return err
+		}
+	}
+	// Compile content statements
+	for _, i := range game.ItemDefs {
+		if err := i.CacheContentStatements(); err != nil {
 			return err
 		}
 	}
@@ -167,16 +173,16 @@ func (m *Mod) loadTileGens() error {
 		if err != nil {
 			return err
 		}
-		var gens map[string]citygen.TileGen
+		var gens map[string]game.TileGen
 		err = json.Unmarshal(d, &gens)
 		if err != nil {
 			return err
 		}
 		for k, gen := range gens {
-			if _, found := citygen.TileGens[k]; found {
+			if _, found := game.TileGens[k]; found {
 				return fmt.Errorf("duplicate tile generator %s", k)
 			}
-			citygen.TileGens[k] = gen
+			game.TileGens[k] = gen
 		}
 	}
 	return nil
@@ -301,16 +307,16 @@ func (m *Mod) loadItemGens() error {
 		if err != nil {
 			return err
 		}
-		var gens map[string]citygen.ItemGen
+		var gens map[string]game.ItemGen
 		err = json.Unmarshal(d, &gens)
 		if err != nil {
 			panic(err)
 		}
 		for k, gen := range gens {
-			if _, found := citygen.ItemGens[k]; found {
+			if _, found := game.ItemGens[k]; found {
 				return fmt.Errorf("duplicate item generator definition %s", k)
 			}
-			citygen.ItemGens[k] = gen
+			game.ItemGens[k] = gen
 		}
 	}
 	return nil

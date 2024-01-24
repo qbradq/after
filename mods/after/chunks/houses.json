@@ -60,7 +60,7 @@
             "_": "Floor;Chair",
             "{": "Floor;Couch",
             "[": "Floor;Table",
-            "]": "Floor;Counter",
+            "]": "Floor;KitchenCounter",
             "}": "Floor;Sink",
             ")": "Floor;Bed",
             "(": "Floor;Drawers",
@@ -68,6 +68,7 @@
             "1": "Floor;Refrigerator",
             "2": "Floor;Toilet",
             "3": "Floor;Tub",
+            "4": "Floor;BathroomCounter",
             "Z": "Floor;Zombie@1n2",
             "z": "Floor;Zombie@1n5"
         }

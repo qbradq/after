@@ -167,7 +167,7 @@ func (m *mapMode) drawMap(s termui.TerminalDriver, mtl util.Point, mb util.Rect)
 					Rune:  rune(t.Rune[0]),
 					Style: ns,
 				})
-			} else if m.CityMap.Remebered.Contains(idx) {
+			} else if m.CityMap.Remembered.Contains(idx) {
 				t := m.CityMap.GetTile(p)
 				ns := termui.StyleDefault.
 					Foreground(termui.ColorGray)
@@ -199,7 +199,7 @@ func (m *mapMode) drawMap(s termui.TerminalDriver, mtl util.Point, mb util.Rect)
 				Rune:  rune(i.Rune[0]),
 				Style: ns,
 			})
-		} else if m.CityMap.Remebered.Contains(idx) {
+		} else if m.CityMap.Remembered.Contains(idx) {
 			sp := util.NewPoint((p.X-mtl.X)+m.Bounds.TL.X, (p.Y-mtl.Y)+m.Bounds.TL.Y)
 			ns := termui.StyleDefault.
 				Foreground(termui.ColorGray)
@@ -306,7 +306,7 @@ func (m *mapMode) drawMap(s termui.TerminalDriver, mtl util.Point, mb util.Rect)
 			if len(items) == 0 {
 				termui.DrawStringCenter(s, r, "Nothing", termui.CurrentTheme.Normal.Foreground(termui.ColorGray))
 			}
-		} else if m.CityMap.Remebered.Contains(idx) {
+		} else if m.CityMap.Remembered.Contains(idx) {
 			t := m.CityMap.GetTile(m.CursorPos)
 			h := 2
 			w := len("Remembered")

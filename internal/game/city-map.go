@@ -38,7 +38,7 @@ type CityMap struct {
 	TileBounds util.Rect // Bounds of the city map in tiles
 	// Working variables
 	Visibility          bitmap.Bitmap    // Last visibility set calcualted for the player
-	Remebered           bitmap.Bitmap    // Last remembered set calculated for the player
+	Remembered          bitmap.Bitmap    // Last remembered set calculated for the player
 	BitmapBounds        util.Rect        // Bounds of the Visibility and Remembered bitmaps
 	inMemoryChunks      bitmap.Bitmap    // Bitmap of all chunks loaded into memory
 	inMemoryChunksCount int              // Running count of in-memory chunks to avoid excessive calls to bitmap.Count()
@@ -437,6 +437,9 @@ func (m *CityMap) RemoveActor(a *Actor) {
 // ActorAt returns the actor at the given position or nil.
 func (m *CityMap) ActorAt(p util.Point) *Actor {
 	c := m.GetChunk(p)
+	if c == nil {
+		return nil
+	}
 	for _, a := range c.Actors {
 		if a.Position == p {
 			return a
@@ -577,7 +580,7 @@ func (m *CityMap) MakeVisibilitySets(b util.Rect) {
 	// Setup return values for reuse
 	m.BitmapBounds = b
 	m.Visibility.Clear()
-	m.Remebered.Clear()
+	m.Remembered.Clear()
 	// Sanity checks
 	if !b.Contains(m.Player.Position) {
 		return
@@ -616,7 +619,7 @@ func (m *CityMap) MakeVisibilitySets(b util.Rect) {
 				c.HasSeen.Set(cIdx)
 			}
 			if c.HasSeen.Contains(cIdx) {
-				m.Remebered.Set(idx)
+				m.Remembered.Set(idx)
 			}
 		}
 	}

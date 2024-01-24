@@ -1,11 +1,10 @@
-package citygen
+package game
 
 import (
 	"encoding/json"
 	"fmt"
 	"time"
 
-	"github.com/qbradq/after/internal/game"
 	"github.com/qbradq/after/lib/util"
 )
 
@@ -19,7 +18,7 @@ func (g *ItemGen) UnmarshalJSON(in []byte) error {
 	var src = map[string]int{}
 	json.Unmarshal(in, &src)
 	for k, n := range src {
-		_, found := game.ItemDefs[k]
+		_, found := ItemDefs[k]
 		if !found {
 			panic(fmt.Errorf("ItemGen referenced non-existent item %s", k))
 		}
@@ -32,7 +31,7 @@ func (g *ItemGen) UnmarshalJSON(in []byte) error {
 
 // Generate returns a new item created from the generator.
 // generation.
-func (g ItemGen) Generate(now time.Time) *game.Item {
+func (g ItemGen) Generate(now time.Time) *Item {
 	r := g[util.Random(0, len(g))]
-	return game.NewItem(r, now)
+	return NewItem(r, now, true)
 }

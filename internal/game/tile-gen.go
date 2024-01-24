@@ -1,15 +1,14 @@
-package citygen
+package game
 
 import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/qbradq/after/internal/game"
 	"github.com/qbradq/after/lib/util"
 )
 
 // TileGen generates a single tile from a set of possibilities.
-type TileGen []game.TileRef
+type TileGen []TileRef
 
 // TileGens is the mapping of generator names to objects.
 var TileGens = map[string]TileGen{}
@@ -18,7 +17,7 @@ func (g *TileGen) UnmarshalJSON(in []byte) error {
 	var src = map[string]int{}
 	json.Unmarshal(in, &src)
 	for k, n := range src {
-		r, found := game.TileRefs[k]
+		r, found := TileRefs[k]
 		if !found {
 			panic(fmt.Errorf("TileGen referenced non-existent tile %s", k))
 		}
@@ -31,7 +30,7 @@ func (g *TileGen) UnmarshalJSON(in []byte) error {
 
 // Generate returns a pointer to the selected tile def after procedural
 // generation.
-func (g TileGen) Generate() *game.TileDef {
+func (g TileGen) Generate() *TileDef {
 	r := g[util.Random(0, len(g))]
-	return game.TileDefs[r]
+	return TileDefs[r]
 }

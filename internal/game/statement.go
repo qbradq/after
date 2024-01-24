@@ -1,4 +1,4 @@
-package citygen
+package game
 
 import (
 	"errors"
@@ -7,30 +7,29 @@ import (
 	"strings"
 	"time"
 
-	"github.com/qbradq/after/internal/game"
 	"github.com/qbradq/after/lib/util"
 )
 
-// evaluator evaluates a single expression executing its generation function.
-type evaluator interface {
-	// evaluate evaluates a single expression executing its function.
-	evaluate(*game.Chunk, util.Point, time.Time)
+// Evaluator evaluates a single expression executing its generation function.
+type Evaluator interface {
+	// Evaluate evaluates a single expression executing its function.
+	Evaluate(*Chunk, util.Point, time.Time)
 }
 
-// itemCreator generates new items based on the expression.
-type itemCreator interface {
-	// createItem generates the new item and returns it if any.
-	createItem(time.Time) *game.Item
+// ItemCreator generates new items based on the expression.
+type ItemCreator interface {
+	// CreateItem generates the new item and returns it if any.
+	CreateItem(time.Time) *Item
 }
 
 // tileExpression returns a fixed tile.
 type tileExpression struct {
-	r game.TileRef // Fixed tile reference
+	r TileRef // Fixed tile reference
 }
 
-// evaluate implements the evaluator interface.
-func (e *tileExpression) evaluate(c *game.Chunk, p util.Point, now time.Time) {
-	c.Tiles[p.Y*game.ChunkWidth+p.X] = game.TileDefs[e.r]
+// Evaluate implements the evaluator interface.
+func (e *tileExpression) Evaluate(c *Chunk, p util.Point, now time.Time) {
+	c.Tiles[p.Y*ChunkWidth+p.X] = TileDefs[e.r]
 }
 
 // tileGenExpression returns the result of a tile generator.
@@ -38,9 +37,9 @@ type tileGenExpression struct {
 	r TileGen // Tile generator to execute
 }
 
-// evaluate implements the evaluator interface.
-func (e *tileGenExpression) evaluate(c *game.Chunk, p util.Point, now time.Time) {
-	c.Tiles[p.Y*game.ChunkWidth+p.X] = e.r.Generate()
+// Evaluate implements the evaluator interface.
+func (e *tileGenExpression) Evaluate(c *Chunk, p util.Point, now time.Time) {
+	c.Tiles[p.Y*ChunkWidth+p.X] = e.r.Generate()
 }
 
 // itemExpression lays down a fixed item with a given chance.
@@ -49,19 +48,19 @@ type itemExpression struct {
 	x, y int    // rng parameters
 }
 
-// evaluate implements the evaluator interface.
-func (e *itemExpression) evaluate(c *game.Chunk, p util.Point, now time.Time) {
+// Evaluate implements the evaluator interface.
+func (e *itemExpression) Evaluate(c *Chunk, p util.Point, now time.Time) {
 	if util.Random(0, e.y) < e.x {
-		i := game.NewItem(e.r, now)
+		i := NewItem(e.r, now, true)
 		i.Position = p
 		c.PlaceItemRelative(i)
 	}
 }
 
-// createItem returns just the new item, or nil if none.
-func (e *itemExpression) createItem(now time.Time) *game.Item {
+// CreateItem returns just the new item, or nil if none.
+func (e *itemExpression) CreateItem(now time.Time) *Item {
 	if util.Random(0, e.y) < e.x {
-		return game.NewItem(e.r, now)
+		return NewItem(e.r, now, true)
 	}
 	return nil
 }
@@ -72,8 +71,8 @@ type itemGenExpression struct {
 	x, y int     // rng parameters
 }
 
-// evaluate implements the evaluator interface.
-func (e *itemGenExpression) evaluate(c *game.Chunk, p util.Point, now time.Time) {
+// Evaluate implements the evaluator interface.
+func (e *itemGenExpression) Evaluate(c *Chunk, p util.Point, now time.Time) {
 	if util.Random(0, e.y) < e.x {
 		i := e.r.Generate(now)
 		i.Position = p
@@ -81,8 +80,8 @@ func (e *itemGenExpression) evaluate(c *game.Chunk, p util.Point, now time.Time)
 	}
 }
 
-// createItem returns just the new item, or nil if none.
-func (e *itemGenExpression) createItem(now time.Time) *game.Item {
+// CreateItem returns just the new item, or nil if none.
+func (e *itemGenExpression) CreateItem(now time.Time) *Item {
 	if util.Random(0, e.y) < e.x {
 		return e.r.Generate(now)
 	}
@@ -95,9 +94,10 @@ type actorExpression struct {
 	x, y int    // rng parameters
 }
 
-func (e *actorExpression) evaluate(c *game.Chunk, p util.Point, now time.Time) {
+// Evaluate implements the evaluator interface.
+func (e *actorExpression) Evaluate(c *Chunk, p util.Point, now time.Time) {
 	if util.Random(0, e.y) < e.x {
-		a := game.NewActor(e.r, now)
+		a := NewActor(e.r, now)
 		a.Position = p
 		c.PlaceActorRelative(a)
 	}
@@ -110,7 +110,8 @@ type actorGenExpression struct {
 	x, y int      // rng parameters
 }
 
-func (e *actorGenExpression) evaluate(c *game.Chunk, p util.Point, now time.Time) {
+// Evaluate implements the evaluator interface.
+func (e *actorGenExpression) Evaluate(c *Chunk, p util.Point, now time.Time) {
 	if util.Random(0, e.y) < e.x {
 		a := e.r.Generate(now)
 		a.Position = p
@@ -118,7 +119,7 @@ func (e *actorGenExpression) evaluate(c *game.Chunk, p util.Point, now time.Time
 	}
 }
 
-// genStatement is a list of expressions to run on a single position in the
+// GenStatement is a list of expressions to run on a single position in the
 // chunk at generation time. The text format of an expression is as follows:
 // exp[;exp]... Where:
 // exp = (tile_exp|item_exp)|(item_exp@XinY) Where:
@@ -126,9 +127,9 @@ func (e *actorGenExpression) evaluate(c *game.Chunk, p util.Point, now time.Time
 // item_name is the name of an item or item generator
 // Y is the bounded maximum of the half-open range [0-Y)
 // X is the value of the random roll [0-Y) below which the item will appear
-type genStatement []evaluator
+type GenStatement []Evaluator
 
-func (s *genStatement) UnmarshalJSON(in []byte) error {
+func (s *GenStatement) UnmarshalJSON(in []byte) error {
 	es, err := parseStatement(in)
 	if err != nil {
 		return err
@@ -139,8 +140,8 @@ func (s *genStatement) UnmarshalJSON(in []byte) error {
 
 // parseStatement parses a series of generator expressions from an input string
 // and returns them.
-func parseStatement(in []byte) ([]evaluator, error) {
-	var ret []evaluator
+func parseStatement(in []byte) ([]Evaluator, error) {
+	var ret []Evaluator
 	exprs := strings.Split(string(in[1:len(in)-1]), ";")
 	for _, expr := range exprs {
 		parts := strings.Split(expr, "@")
@@ -152,7 +153,7 @@ func parseStatement(in []byte) ([]evaluator, error) {
 					x: 1,
 					y: 1,
 				})
-			} else if _, found := game.ActorDefs[parts[0]]; found {
+			} else if _, found := ActorDefs[parts[0]]; found {
 				ret = append(ret, &actorExpression{
 					r: parts[0],
 					x: 1,
@@ -164,7 +165,7 @@ func parseStatement(in []byte) ([]evaluator, error) {
 					x: 1,
 					y: 1,
 				})
-			} else if _, found := game.ItemDefs[parts[0]]; found {
+			} else if _, found := ItemDefs[parts[0]]; found {
 				ret = append(ret, &itemExpression{
 					r: parts[0],
 					x: 1,
@@ -174,7 +175,7 @@ func parseStatement(in []byte) ([]evaluator, error) {
 				ret = append(ret, &tileGenExpression{
 					r: gen,
 				})
-			} else if r, found := game.TileRefs[parts[0]]; found {
+			} else if r, found := TileRefs[parts[0]]; found {
 				ret = append(ret, &tileExpression{
 					r: r,
 				})
@@ -197,7 +198,7 @@ func parseStatement(in []byte) ([]evaluator, error) {
 					x: int(x),
 					y: int(y),
 				})
-			} else if _, found := game.ActorDefs[parts[0]]; found {
+			} else if _, found := ActorDefs[parts[0]]; found {
 				ret = append(ret, &actorExpression{
 					r: parts[0],
 					x: int(x),
@@ -209,7 +210,7 @@ func parseStatement(in []byte) ([]evaluator, error) {
 					x: int(x),
 					y: int(y),
 				})
-			} else if _, found := game.ItemDefs[parts[0]]; found {
+			} else if _, found := ItemDefs[parts[0]]; found {
 				ret = append(ret, &itemExpression{
 					r: parts[0],
 					x: int(x),
@@ -227,7 +228,7 @@ func parseStatement(in []byte) ([]evaluator, error) {
 
 // validateExpressionIntegrity returns an error if the given statement contains
 // invalid parameters for any expression.
-func validateExpressionIntegrity(s []evaluator) error {
+func validateExpressionIntegrity(s []Evaluator) error {
 	for _, exp := range s {
 		switch e := exp.(type) {
 		case *actorExpression:
@@ -252,7 +253,7 @@ func validateExpressionIntegrity(s []evaluator) error {
 }
 
 // Validate validates the generator statement.
-func (s *genStatement) Validate() error {
+func (s *GenStatement) Validate() error {
 	if err := validateExpressionIntegrity(*s); err != nil {
 		return err
 	}
@@ -272,24 +273,24 @@ func (s *genStatement) Validate() error {
 	return nil
 }
 
-// evaluate evaluates each expression in the statement in order.
-func (s genStatement) evaluate(c *game.Chunk, p util.Point, t time.Time) {
+// Evaluate evaluates each expression in the statement in order.
+func (s GenStatement) Evaluate(c *Chunk, p util.Point, t time.Time) {
 	for _, exp := range s {
-		exp.evaluate(c, p, t)
+		exp.Evaluate(c, p, t)
 	}
 }
 
-// itemStatement is a generation statement that is only allowed to produce
+// ItemStatement is a generation statement that is only allowed to produce
 // items.
-type itemStatement []itemCreator
+type ItemStatement []ItemCreator
 
-func (s *itemStatement) UnmarshalJSON(in []byte) error {
+func (s *ItemStatement) UnmarshalJSON(in []byte) error {
 	es, err := parseStatement(in)
 	if err != nil {
 		return err
 	}
 	for _, e := range es {
-		if ic, ok := e.(itemCreator); ok {
+		if ic, ok := e.(ItemCreator); ok {
 			*s = append(*s, ic)
 		} else {
 			return errors.New("item statement contained non-item expression")
@@ -299,11 +300,11 @@ func (s *itemStatement) UnmarshalJSON(in []byte) error {
 	return nil
 }
 
-// evaluate evaluates each expression in the statement in order and returns the
+// Evaluate evaluates each expression in the statement in order and returns the
 // first item created.
-func (s itemStatement) evaluate(t time.Time) *game.Item {
+func (s ItemStatement) Evaluate(t time.Time) *Item {
 	for _, exp := range s {
-		if i := exp.createItem(t); i != nil {
+		if i := exp.CreateItem(t); i != nil {
 			return i
 		}
 	}

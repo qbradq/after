@@ -240,10 +240,22 @@ func (a *Actor) ActSpeed() float64 {
 
 // DropCorpse drops a corpse item for this actor.
 func (a *Actor) DropCorpse(m *CityMap) {
-	i := NewItem("Corpse", m.Now)
+	i := NewItem("Corpse", m.Now, false)
 	i.SArg = a.TemplateID
 	i.TArg = m.Now.Add(time.Hour * 24 * 14) // Takes two weeks for a corpse to resurrect
 	i.Position = a.Position
+	if a.Weapon != nil {
+		i.AddItem(a.Weapon)
+	}
+	for _, e := range a.Equipment {
+		if e == nil {
+			continue
+		}
+		i.AddItem(e)
+	}
+	for _, c := range a.Inventory {
+		i.AddItem(c)
+	}
 	m.PlaceItem(i)
 }
 
