@@ -69,6 +69,14 @@ func (m *List) HandleEvent(s TerminalDriver, e any) error {
 
 // Draw implements the Mode interface.
 func (m *List) Draw(s TerminalDriver) {
+	// Sanitation
+	if m.CursorPos < 0 {
+		m.CursorPos = 0
+	}
+	if m.CursorPos >= len(m.Items) {
+		m.CursorPos = len(m.Items) - 1
+	}
+	// Box drawing
 	b := m.Bounds
 	if m.Boxed {
 		DrawBox(s, b, CurrentTheme.Normal)
@@ -78,7 +86,7 @@ func (m *List) Draw(s TerminalDriver) {
 		b.BR.X--
 		b.BR.Y--
 	}
-	// Drawing
+	// List drawing
 	DrawFill(s, b, Glyph{Rune: ' ', Style: CurrentTheme.Normal})
 	si := 0
 	if m.CursorPos > b.Height()/2 {

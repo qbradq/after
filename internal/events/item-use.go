@@ -30,7 +30,7 @@ func openDoor(i *game.Item, src *game.Actor, m *game.CityMap) error {
 					m.RemoveItem(item)
 					ni := game.NewItem("Open"+item.TemplateID, m.Now, false)
 					ni.Position = item.Position
-					m.PlaceItem(ni)
+					m.PlaceItem(ni, true)
 				}
 			}
 		},
@@ -58,7 +58,7 @@ func closeDoor(i *game.Item, src *game.Actor, m *game.CityMap) error {
 					s, _ := strings.CutPrefix(i.TemplateID, "Open")
 					ni := game.NewItem(s, m.Now, false)
 					ni.Position = item.Position
-					m.PlaceItem(ni)
+					m.PlaceItem(ni, true)
 				}
 			}
 		},

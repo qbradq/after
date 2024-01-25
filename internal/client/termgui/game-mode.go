@@ -54,84 +54,30 @@ func newGameMode(m *game.CityMap) *gameMode {
 }
 
 func (m *gameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
-	var newSBS func(*game.Item, *game.Item, util.Point) *sideBySide
-	newSBS = func(c, pc *game.Item, p util.Point) *sideBySide {
-		ret := newSideBySide(m.CityMap, &m.CityMap.Player.Actor, c, p)
-		ret.InventorySelected = func(i *game.Item, equipped bool) {
-			if i.Container && len(i.Inventory) > 0 {
-				sbs := newSBS(i, c, util.Point{})
-				sbs.InContainer = true
-				termui.RunMode(s, sbs)
-				return
-			}
-			if equipped {
-				game.Log.Log(termui.ColorYellow, "You must take that off first.")
-				return
-			}
-			m.CityMap.Player.RemoveItemFromInventory(i)
-			if c != nil {
-				c.AddItem(i)
-			} else {
-				i.Position = p
-				m.CityMap.PlaceItem(i)
-			}
-			game.Log.Log(termui.ColorAqua, "You dropped "+i.Name+".")
-		}
-		ret.ItemListSelected = func(i *game.Item) {
-			if i != c && i.Container && len(i.Inventory) > 0 {
-				sbs := newSBS(i, c, util.Point{})
-				sbs.InContainer = true
-				termui.RunMode(s, sbs)
-				return
-			}
-			if c == i {
-				if pc != nil {
-					pc.RemoveItem(i)
-				} else {
-					m.CityMap.RemoveItem(i)
-				}
-				ret.Done = true
-			} else if c != nil {
-				c.RemoveItem(i)
-			} else {
-				m.CityMap.RemoveItem(i)
-			}
-			m.CityMap.Player.AddItemToInventory(i)
-			game.Log.Log(termui.ColorAqua, "You picked up "+i.Name+".")
-		}
-		return ret
-	}
-	pickUpItem := func(i *game.Item, c *game.Item) {
-		if c != nil {
-			c.RemoveItem(i)
-		} else {
-			m.CityMap.RemoveItem(i)
-		}
-		m.CityMap.Player.AddItemToInventory(i)
-		m.logMode.Log(termui.ColorAqua, "You picked up %s.", i.Name)
-		m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second) * m.CityMap.Player.ActSpeed()))
-	}
 	getAt := func(p util.Point) {
+		// If there's nothing there we can skip it
 		items := m.CityMap.ItemsAt(p)
 		if len(items) < 1 {
 			return
 		}
-		if len(items) == 1 {
-			i := items[0]
-			if i.Container && len(i.Inventory) > 0 {
-				sbs := newSBS(i, nil, p)
-				sbs.InContainer = true
-				termui.RunMode(s, sbs)
-			} else if i.Fixed {
-				m.logMode.Log(termui.ColorYellow, "You cannot pick that up.")
-			} else {
-				pickUpItem(i, nil)
-			}
+		// If there is only a single container we auto-open it
+		if len(items) == 1 && items[0].Container {
+			sbs := newSideBySide(m, m.CityMap, &m.CityMap.Player.Actor)
+			sbs.OnRight = true
+			sbs.RightContainer = items[0]
+			m.modeStack = append(m.modeStack, sbs)
 			return
 		}
-		sbs := newSBS(nil, nil, p)
-		sbs.InContainer = true
-		termui.RunMode(s, sbs)
+		// Otherwise we just open the side-by-side for the ground point
+		sbs := newSideBySide(m, m.CityMap, &m.CityMap.Player.Actor)
+		sbs.OnRight = true
+		sbs.RightPoint = p
+		m.modeStack = append(m.modeStack, sbs)
+	}
+	dropAt := func(p util.Point) {
+		sbs := newSideBySide(m, m.CityMap, &m.CityMap.Player.Actor)
+		sbs.RightPoint = p
+		m.modeStack = append(m.modeStack, sbs)
 	}
 	// Check every event for end game conditions
 	if m.CityMap.Player.Dead {
@@ -276,22 +222,8 @@ func (m *gameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 			}
 			return nil
 		case 'd': // Drop item from inventory
-			m.inventory.Selected = func(i *game.Item, equipped bool) {
-				if !m.CityMap.Player.RemoveItemFromInventory(i) {
-					return
-				}
-				i.Position = m.CityMap.Player.Position
-				m.CityMap.PlaceItem(i)
-				m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second) * m.CityMap.Player.ActSpeed()))
-			}
-			m.inventory.IncludeEquipment = false
-			m.inventory.Title = "Drop Item"
-			if m.inventory.PopulateList() > 0 {
-				m.modeStack = append(m.modeStack, m.inventory)
-			}
+			dropAt(m.CityMap.Player.Position)
 			return nil
-		case 't': // targeted Throw from inventory
-			fallthrough
 		case 'D': // targeted Drop from inventory
 			m.inventory.Selected = func(i *game.Item, equipped bool) {
 				m.inTarget = true
@@ -300,23 +232,19 @@ func (m *gameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 					if !confirmed {
 						return nil
 					}
-					if !m.CityMap.Player.RemoveItemFromInventory(i) {
-						return nil
-					}
-					i.Position = p
-					m.CityMap.PlaceItem(i)
-					m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second) * m.CityMap.Player.ActSpeed()))
+					dropAt(p)
 					return nil
 				}
 				m.mapMode.Center = m.CityMap.Player.Position
 				m.mapMode.CursorPos = m.CityMap.Player.Position
-				m.mapMode.CursorRange = 10 // 30 feet is average for a well-trained highschool athlete throwing shot put, so this is pretty generous
+				m.mapMode.CursorRange = 1
 			}
 			m.inventory.IncludeEquipment = false
-			m.inventory.Title = "Drop / Throw Item"
+			m.inventory.Title = "Drop Item"
 			if m.inventory.PopulateList() > 0 {
 				m.modeStack = append(m.modeStack, m.inventory)
 			}
+			m.logMode.Log(termui.ColorPurple, "Drop where?")
 			return nil
 		case ',': // get items at feet (,)
 			getAt(m.CityMap.Player.Position)

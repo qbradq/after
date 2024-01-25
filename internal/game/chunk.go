@@ -168,14 +168,24 @@ func (c *Chunk) RebuildBitmaps() {
 func (c *Chunk) PlaceItemRelative(i *Item) {
 	i.Position.X += c.Bounds.TL.X
 	i.Position.Y += c.Bounds.TL.Y
-	c.PlaceItem(i)
+	c.PlaceItem(i, true)
 }
 
 // PlaceItem places the item within the chunk. This is a no-op if the item's
 // current position lies outside the chunk.
-func (c *Chunk) PlaceItem(i *Item) {
-	if !c.Bounds.Contains(i.Position) {
-		return
+func (c *Chunk) PlaceItem(i *Item, force bool) bool {
+	for _, o := range c.Items {
+		if o == i {
+			return false
+		}
+	}
+	if !force {
+		if !c.Bounds.Contains(i.Position) {
+			return false
+		}
+		if c.BlocksWalk.Contains(c.relOfs(i.Position)) {
+			return false
+		}
 	}
 	if i.BlocksVis {
 		c.BlocksVis.Set(c.relOfs(i.Position))
@@ -184,6 +194,7 @@ func (c *Chunk) PlaceItem(i *Item) {
 		c.BlocksWalk.Set(c.relOfs(i.Position))
 	}
 	c.Items = append(c.Items, i)
+	return true
 }
 
 // RemoveItem removes the item from the chunk. This is a no-op if the item's

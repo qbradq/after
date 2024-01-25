@@ -276,7 +276,7 @@ func (a *Actor) DropCorpse(m *CityMap) {
 	for _, c := range a.Inventory {
 		i.AddItem(c)
 	}
-	m.PlaceItem(i)
+	m.PlaceItem(i, true)
 }
 
 // WearItem attempts to wear the item as clothing. On failure a string is
@@ -309,13 +309,14 @@ func (a *Actor) WieldItem(i *Item) string {
 }
 
 // AddItemToInventory adds the item to the actor's inventory.
-func (a *Actor) AddItemToInventory(i *Item) {
+func (a *Actor) AddItemToInventory(i *Item) bool {
 	for _, o := range a.Inventory {
 		if i == o {
-			return
+			return false
 		}
 	}
 	a.Inventory = append(a.Inventory, i)
+	return true
 }
 
 // UnWearItem takes off the item, returning true on success.

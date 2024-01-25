@@ -23,7 +23,11 @@ func newItemList() *itemList {
 		list: &termui.List{
 			Boxed: true,
 			Selected: func(s termui.TerminalDriver, i int) error {
-				ret.Selected(ret.items[i])
+				item := ret.items[i]
+				if item == nil {
+					return nil
+				}
+				ret.Selected(item)
 				return termui.ErrorQuit
 			},
 		},
@@ -44,6 +48,10 @@ func (m *itemList) SetItems(items []*game.Item, container *game.Item) {
 		m.ld.Y += 2
 	}
 	for _, i := range items {
+		if i == nil {
+			m.list.Items = append(m.list.Items, "_hbar_")
+			continue
+		}
 		n := " " + i.Name
 		if i.Container {
 			if len(i.Inventory) > 0 {

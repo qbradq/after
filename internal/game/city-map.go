@@ -366,8 +366,8 @@ func (m *CityMap) GetActors(b util.Rect) []*Actor {
 }
 
 // PlaceItem adds the item to the city at it's current location.
-func (m *CityMap) PlaceItem(i *Item) {
-	m.GetChunk(i.Position).PlaceItem(i)
+func (m *CityMap) PlaceItem(i *Item, force bool) bool {
+	return m.GetChunk(i.Position).PlaceItem(i, force)
 }
 
 // RemoveItem removes the item from the city map.
