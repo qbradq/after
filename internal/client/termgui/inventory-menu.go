@@ -9,6 +9,7 @@ import (
 // inventoryMenu implements a menu to select one item from the inventory or
 // set of currently equipped items.
 type inventoryMenu struct {
+	Bounds           util.Rect              // If this is the zero value the menu will be screen center
 	Selected         func(*game.Item, bool) // Function called on valid selection, the first argument will never be nil and the second argument is true if the item is currently equipped by the actor
 	IncludeEquipment bool                   // If true the actor's current equipment will be included in the list of items separated from the inventory by a horizontal bar
 	Title            string                 // Title of the inventory menu
@@ -44,6 +45,15 @@ func newInventoryMenu(a *game.Actor) *inventoryMenu {
 // PopulateList (re)-populates the inventory menu from the actor's items,
 // returning the number of items displayed.
 func (m *inventoryMenu) PopulateList() int {
+	fn := func(s string, i *game.Item) string {
+		if i.Container {
+			if len(i.Inventory) > 0 {
+				return "+" + s
+			}
+			return "-" + s
+		}
+		return " " + s
+	}
 	m.ld.X = len(m.Title) + 2
 	m.items = m.items[:0]
 	m.names = m.names[:0]
@@ -53,17 +63,19 @@ func (m *inventoryMenu) PopulateList() int {
 			if i == nil {
 				continue
 			}
-			m.names = append(m.names, i.Name)
+			n := fn(i.Name, i)
+			m.names = append(m.names, n)
 			m.items = append(m.items, i)
-			if m.ld.X < len(i.Name) {
-				m.ld.X = len(i.Name)
+			if m.ld.X < len(n) {
+				m.ld.X = len(n)
 			}
 		}
 		if m.actor.Weapon != nil {
-			m.names = append(m.names, m.actor.Weapon.Name)
+			n := fn(m.actor.Weapon.Name, m.actor.Weapon)
+			m.names = append(m.names, n)
 			m.items = append(m.items, m.actor.Weapon)
-			if m.ld.X < len(m.actor.Weapon.Name) {
-				m.ld.X = len(m.actor.Weapon.Name)
+			if m.ld.X < len(n) {
+				m.ld.X = len(n)
 			}
 		}
 		m.fii = len(m.items) + 1
@@ -73,10 +85,11 @@ func (m *inventoryMenu) PopulateList() int {
 		}
 	}
 	for _, i := range m.actor.Inventory {
-		m.names = append(m.names, i.Name)
+		n := fn(i.Name, i)
+		m.names = append(m.names, n)
 		m.items = append(m.items, i)
-		if m.ld.X < len(i.Name) {
-			m.ld.X = len(i.Name)
+		if m.ld.X < len(n) {
+			m.ld.X = len(n)
 		}
 	}
 	m.ld.Y = len(m.items)
@@ -98,10 +111,15 @@ func (m *inventoryMenu) HandleEvent(s termui.TerminalDriver, e any) error {
 
 // Draw implements the termui.Mode interface.
 func (m *inventoryMenu) Draw(s termui.TerminalDriver) {
-	w, h := s.Size()
-	sb := util.NewRectWH(w, h)
-	lb := sb.CenterRect(m.ld.X+2, m.ld.Y+2)
-	m.list.Bounds = sb.Contain(lb)
+	var rz util.Rect
+	if m.Bounds == rz {
+		w, h := s.Size()
+		sb := util.NewRectWH(w, h)
+		lb := sb.CenterRect(m.ld.X+2, m.ld.Y+2)
+		m.list.Bounds = sb.Contain(lb)
+	} else {
+		m.list.Bounds = m.Bounds
+	}
 	m.list.Items = m.names
 	m.list.Title = m.Title
 	m.list.Draw(s)

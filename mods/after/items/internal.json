@@ -8,5 +8,20 @@
             "Update": "ResurrectCorpse"
         },
         "Container": true
+    },
+    "TestBackpack": {
+        "Name": "backpack",
+        "Rune": "&",
+        "Fg": "Green",
+        "Bg": "Black",
+        "Wearable": true,
+        "WornBodyPart": "Back",
+        "Container": true,
+        "Contents": [
+            "Soap@1n8",
+            "Shirts",
+            "Shoes",
+            "Hats@1n2"
+        ]
     }
 }

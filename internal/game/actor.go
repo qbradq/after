@@ -36,14 +36,14 @@ var ActorDefs = map[string]*Actor{}
 // Actor represents a moving, thinking actor on the map.
 type Actor struct {
 	// Persistent values
-	TemplateID string                  // Template ID
-	Position   util.Point              // Current position on the map
-	AIModel    AIModel                 // AIModel for the actor
-	NextThink  time.Time               // Time of the next think
-	BodyParts  [BodyPartCount]BodyPart // Status of all body parts
-	Equipment  [BodyPartCount]*Item    // All items equipped to the body, if any
-	Inventory  []*Item                 // All items held in inventory, if any
-	Weapon     *Item                   // The item wielded as a weapon, if any
+	TemplateID string                            // Template ID
+	Position   util.Point                        // Current position on the map
+	AIModel    AIModel                           // AIModel for the actor
+	NextThink  time.Time                         // Time of the next think
+	BodyParts  [BodyPartCount]BodyPart           // Status of all body parts
+	Equipment  [BodyPartEquipmentSlotCount]*Item // All items equipped to the body, if any
+	Inventory  []*Item                           // All items held in inventory, if any
+	Weapon     *Item                             // The item wielded as a weapon, if any
 	// Reconstructed values
 	AITemplate string       // AI template name
 	Name       string       // Descriptive name
@@ -56,8 +56,10 @@ type Actor struct {
 	MaxDamage  float64      // Maximum damage done by normal attacks
 	IsPlayer   bool         // Only true for the player's actor
 	// Transient values
-	Dead  bool // If true something has happened to this actor to cause death
-	pqIdx int  // Priority queue index
+	Dead      bool    // If true something has happened to this actor to cause death
+	pqIdx     int     // Priority queue index
+	minDamage float64 // Minimum damage dealt accounting for all equipment and status effects
+	maxDamage float64 // Maximum damage dealt accounting for all equipment and status effects
 }
 
 // NewActor creates a new actor from the named template.
@@ -133,6 +135,23 @@ func (a *Actor) Write(w io.Writer) {
 	}
 }
 
+// recalculateDamage recalculates the minDamage and maxDamage variables.
+func (a *Actor) recalculateDamage() {
+	// Base damage
+	a.minDamage = a.MinDamage
+	a.maxDamage = a.MaxDamage
+	// Add weapon damage
+	if a.Weapon != nil {
+		a.minDamage += a.Weapon.WeaponMinDamage
+		a.maxDamage += a.Weapon.WeaponMaxDamage
+	}
+	// If mangled damage is cut by 75%
+	if a.BodyParts[BodyPartArms].Broken || a.BodyParts[BodyPartHand].Broken {
+		a.minDamage *= 0.25
+		a.maxDamage *= 0.25
+	}
+}
+
 // TargetedDamage applies a random amount of damage in the range [min-max) to
 // the indicated body part scaled as needed and makes updates as necessary.
 // Returns the amount of damage done.
@@ -195,6 +214,7 @@ func (a *Actor) TargetedDamage(which BodyPartCode, min, max float64, t time.Time
 			int(d*100),
 		)
 	}
+	a.recalculateDamage()
 	return d
 }
 
@@ -284,11 +304,17 @@ func (a *Actor) WieldItem(i *Item) string {
 		return "An item is already being wielded as a weapon."
 	}
 	a.Weapon = i
+	a.recalculateDamage()
 	return ""
 }
 
 // AddItemToInventory adds the item to the actor's inventory.
 func (a *Actor) AddItemToInventory(i *Item) {
+	for _, o := range a.Inventory {
+		if i == o {
+			return
+		}
+	}
 	a.Inventory = append(a.Inventory, i)
 }
 
@@ -307,6 +333,7 @@ func (a *Actor) UnWieldItem(i *Item) bool {
 		return false
 	}
 	a.Weapon = nil
+	a.recalculateDamage()
 	return true
 }
 

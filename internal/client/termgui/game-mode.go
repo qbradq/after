@@ -54,71 +54,84 @@ func newGameMode(m *game.CityMap) *gameMode {
 }
 
 func (m *gameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
-	// Process containers
-	var fn3 func(c *game.Item, p *game.Item)
-	fn3 = func(c *game.Item, p *game.Item) {
-		il := newItemList()
-		il.Title = "Get Items from Container"
-		il.Selected = func(i *game.Item) {
-			// Container selected, pick it up
-			if c == i {
-				// Remove container from parent
-				if p == nil {
-					m.CityMap.RemoveItem(i)
-				} else {
-					p.RemoveItem(c)
-				}
-				// Get item
-				m.CityMap.Player.AddItemToInventory(i)
-				m.logMode.Log(termui.ColorAqua, "You picked up %s.", i.Name)
-				m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second) * m.CityMap.Player.ActSpeed()))
+	var newSBS func(*game.Item, *game.Item, util.Point) *sideBySide
+	newSBS = func(c, pc *game.Item, p util.Point) *sideBySide {
+		ret := newSideBySide(m.CityMap, &m.CityMap.Player.Actor, c, p)
+		ret.InventorySelected = func(i *game.Item, equipped bool) {
+			if i.Container && len(i.Inventory) > 0 {
+				sbs := newSBS(i, c, util.Point{})
+				sbs.InContainer = true
+				termui.RunMode(s, sbs)
 				return
 			}
-			// Selected another container
-			if i.Container && len(i.Inventory) > 0 {
-				fn3(i, c)
+			if equipped {
+				game.Log.Log(termui.ColorYellow, "You must take that off first.")
 				return
 			}
-			// Selected an item
-			c.RemoveItem(i)
-			m.CityMap.Player.AddItemToInventory(i)
-			m.logMode.Log(termui.ColorAqua, "You picked up %s.", i.Name)
-			m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second) * m.CityMap.Player.ActSpeed()))
-		}
-		il.SetItems(c.Inventory, c)
-		termui.RunMode(s, il)
-	}
-	// Process item
-	fn2 := func(i *game.Item) {
-		if i.Fixed {
-			if i.Container && len(i.Inventory) > 0 {
-				fn3(i, nil)
+			m.CityMap.Player.RemoveItemFromInventory(i)
+			if c != nil {
+				c.AddItem(i)
 			} else {
-				m.logMode.Log(termui.ColorYellow, "You can't pick that up.")
+				i.Position = p
+				m.CityMap.PlaceItem(i)
 			}
-			return
+			game.Log.Log(termui.ColorAqua, "You dropped "+i.Name+".")
 		}
-		m.CityMap.RemoveItem(i)
+		ret.ItemListSelected = func(i *game.Item) {
+			if i != c && i.Container && len(i.Inventory) > 0 {
+				sbs := newSBS(i, c, util.Point{})
+				sbs.InContainer = true
+				termui.RunMode(s, sbs)
+				return
+			}
+			if c == i {
+				if pc != nil {
+					pc.RemoveItem(i)
+				} else {
+					m.CityMap.RemoveItem(i)
+				}
+				ret.Done = true
+			} else if c != nil {
+				c.RemoveItem(i)
+			} else {
+				m.CityMap.RemoveItem(i)
+			}
+			m.CityMap.Player.AddItemToInventory(i)
+			game.Log.Log(termui.ColorAqua, "You picked up "+i.Name+".")
+		}
+		return ret
+	}
+	pickUpItem := func(i *game.Item, c *game.Item) {
+		if c != nil {
+			c.RemoveItem(i)
+		} else {
+			m.CityMap.RemoveItem(i)
+		}
 		m.CityMap.Player.AddItemToInventory(i)
 		m.logMode.Log(termui.ColorAqua, "You picked up %s.", i.Name)
 		m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second) * m.CityMap.Player.ActSpeed()))
 	}
-	// Process item list
-	fn := func(items []*game.Item) {
+	getAt := func(p util.Point) {
+		items := m.CityMap.ItemsAt(p)
 		if len(items) < 1 {
 			return
-		} else if len(items) == 1 {
-			fn2(items[0])
-			return
-		} else {
-			m.itemList.Selected = func(i *game.Item) {
-				fn2(i)
+		}
+		if len(items) == 1 {
+			i := items[0]
+			if i.Container && len(i.Inventory) > 0 {
+				sbs := newSBS(i, nil, p)
+				sbs.InContainer = true
+				termui.RunMode(s, sbs)
+			} else if i.Fixed {
+				m.logMode.Log(termui.ColorYellow, "You cannot pick that up.")
+			} else {
+				pickUpItem(i, nil)
 			}
-			m.itemList.Title = "Get Item"
-			m.itemList.SetItems(items, nil)
-			m.modeStack = append(m.modeStack, m.itemList)
 			return
 		}
+		sbs := newSBS(nil, nil, p)
+		sbs.InContainer = true
+		termui.RunMode(s, sbs)
 	}
 	// Check every event for end game conditions
 	if m.CityMap.Player.Dead {
@@ -306,7 +319,7 @@ func (m *gameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 			}
 			return nil
 		case ',': // get items at feet (,)
-			fn(m.CityMap.ItemsAt(m.CityMap.Player.Position))
+			getAt(m.CityMap.Player.Position)
 			return nil
 		case 'g': // Get items within reach
 			m.inTarget = true
@@ -315,7 +328,7 @@ func (m *gameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 				if !confirmed {
 					return nil
 				}
-				fn(m.CityMap.ItemsAt(p))
+				getAt(p)
 				return nil
 			}
 			m.mapMode.Center = m.CityMap.Player.Position

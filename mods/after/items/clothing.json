@@ -134,5 +134,14 @@
         "Bg": "Black",
         "Wearable": true,
         "WornBodyPart": "Hand"
+    },
+    "Backpack": {
+        "Name": "backpack",
+        "Rune": "&",
+        "Fg": "Green",
+        "Bg": "Black",
+        "Wearable": true,
+        "WornBodyPart": "Back",
+        "Container": true
     }
 }

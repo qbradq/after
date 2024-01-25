@@ -379,6 +379,9 @@ func (m *CityMap) RemoveItem(i *Item) {
 func (m *CityMap) ItemsAt(p util.Point) []*Item {
 	var ret []*Item
 	c := m.GetChunk(p)
+	if c == nil {
+		return nil
+	}
 	for _, i := range c.Items {
 		if i.Position == p {
 			ret = append(ret, i)
@@ -392,6 +395,7 @@ func (m *CityMap) ItemsAt(p util.Point) []*Item {
 func (m *CityMap) ItemsWithin(b util.Rect) []*Item {
 	m.itemsWithinCache = m.itemsWithinCache[:0]
 	cb := util.NewRectXYWH(b.TL.X/ChunkWidth, b.TL.Y/ChunkHeight, b.Width()/ChunkWidth+1, b.Height()/ChunkHeight+1)
+	cb = m.Bounds.Overlap(cb)
 	for cy := cb.TL.Y; cy <= cb.BR.Y; cy++ {
 		for cx := cb.TL.X; cx <= cb.BR.X; cx++ {
 			c := m.Chunks[cy*CityMapWidth+cx]

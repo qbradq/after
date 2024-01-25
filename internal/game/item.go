@@ -23,21 +23,23 @@ type Item struct {
 	TArg       time.Time  // Generic time argument
 	Inventory  []*Item    // Container contents if any
 	// Reconstructed values
-	Events       map[string]string // Map of event names to event handler names
-	Name         string            // Descriptive name
-	Rune         string            // Display rune
-	Fg           termui.Color      // Display foreground color
-	Bg           termui.Color      // Display background color
-	BlocksVis    bool              // If true this item blocks visibility
-	BlocksWalk   bool              // If true this item blocks walking
-	Climbable    bool              // If true this item may be climbed over
-	Destroyed    bool              // If true something has happened to this item to cause it to be destroyed, it will be removed from the world at the end of the next update cycle
-	Fixed        bool              // If true the item cannot be moved at all
-	Wearable     bool              // If true this item can be worn as a piece of clothing
-	WornBodyPart BodyPartCode      // Code of the body part this item is worn on
-	Weapon       bool              // If true this item can be wielded as a weapon
-	Container    bool              // If true this item contains other items
-	Contents     []string          // Container content item statements if any
+	Events          map[string]string // Map of event names to event handler names
+	Name            string            // Descriptive name
+	Rune            string            // Display rune
+	Fg              termui.Color      // Display foreground color
+	Bg              termui.Color      // Display background color
+	BlocksVis       bool              // If true this item blocks visibility
+	BlocksWalk      bool              // If true this item blocks walking
+	Climbable       bool              // If true this item may be climbed over
+	Destroyed       bool              // If true something has happened to this item to cause it to be destroyed, it will be removed from the world at the end of the next update cycle
+	Fixed           bool              // If true the item cannot be moved at all
+	Wearable        bool              // If true this item can be worn as a piece of clothing
+	WornBodyPart    BodyPartCode      // Code of the body part this item is worn on
+	Weapon          bool              // If true this item can be wielded as a weapon
+	WeaponMinDamage float64           // Minimum damage bonus when using this item as a weapon
+	WeaponMaxDamage float64           // Maximum damage bonus when using this item as a weapon
+	Container       bool              // If true this item contains other items
+	Contents        []string          // Container content item statements if any
 	// Cache values
 	csCache []ItemStatement // Content statements cache
 }
@@ -98,6 +100,11 @@ func (i *Item) Write(w io.Writer) {
 func (i *Item) AddItem(item *Item) bool {
 	if !i.Container {
 		return false
+	}
+	for _, o := range i.Inventory {
+		if item == o {
+			return false
+		}
 	}
 	i.Inventory = append(i.Inventory, item)
 	return true

@@ -24,7 +24,8 @@
             "Pants",
             "Shoes",
             "Hats@1n6",
-            "Gloves@1n16"
+            "Gloves@1n16",
+            "TestBackpack"
         ],
         "Inventory": [
             "Soap"

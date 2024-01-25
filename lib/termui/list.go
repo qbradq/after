@@ -6,12 +6,13 @@ import (
 
 // List implements a mode that presents a scrollable list to the user.
 type List struct {
-	Bounds    util.Rect                       // Bounds of the rect on screen
-	CursorPos int                             // Current cursor position
-	Boxed     bool                            // If true a box is drawn around the list
-	Title     string                          // Title for the box, if any
-	Items     []string                        // Items of the list
-	Selected  func(TerminalDriver, int) error // The function that is called if the user selects an item
+	Bounds     util.Rect                       // Bounds of the rect on screen
+	CursorPos  int                             // Current cursor position
+	Boxed      bool                            // If true a box is drawn around the list
+	Title      string                          // Title for the box, if any
+	Items      []string                        // Items of the list
+	Selected   func(TerminalDriver, int) error // The function that is called if the user selects an item
+	HideCursor bool                            // If true we will not highlight the cursor position
 }
 
 // CurrentSelection returns the string under the current cursor position.
@@ -91,7 +92,7 @@ func (m *List) Draw(s TerminalDriver) {
 	}
 	for i := si; i < si+b.Height() && i < len(m.Items); i++ {
 		text := m.Items[i]
-		if i == m.CursorPos {
+		if i == m.CursorPos && !m.HideCursor {
 			DrawFill(s, util.NewRectXYWH(b.TL.X, b.TL.Y+i-si, b.Width(), 1), Glyph{
 				Rune:  ' ',
 				Style: CurrentTheme.Highlight,
