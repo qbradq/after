@@ -37,7 +37,7 @@ type CityMap struct {
 	Bounds     util.Rect // Bounds of the city map in chunks
 	TileBounds util.Rect // Bounds of the city map in tiles
 	// Working variables
-	Visibility          bitmap.Bitmap    // Last visibility set calcualted for the player
+	Visibility          bitmap.Bitmap    // Last visibility set calculated for the player
 	Remembered          bitmap.Bitmap    // Last remembered set calculated for the player
 	BitmapBounds        util.Rect        // Bounds of the Visibility and Remembered bitmaps
 	inMemoryChunks      bitmap.Bitmap    // Bitmap of all chunks loaded into memory
@@ -250,18 +250,18 @@ func (m *CityMap) purgeOldChunks() {
 		return cRefs[i] < cRefs[j]
 	})
 	// Persist and unload the oldest chunks until we reach the purge target
-	bufs := map[uint32][]byte{}
+	buffers := map[uint32][]byte{}
 	for _, cr := range cRefs[:maxInMemoryChunks-purgeInMemoryChunksTarget] {
 		w := bytes.NewBuffer(nil)
 		c := m.Chunks[cr]
 		c.Write(w)
-		bufs[cr] = w.Bytes()
+		buffers[cr] = w.Bytes()
 		c.Unload()
 		m.inMemoryChunks.Remove(cr)
 		m.inMemoryChunksCount--
 	}
 	// Save all unloaded chunks to the database
-	for k, v := range bufs {
+	for k, v := range buffers {
 		name := fmt.Sprintf("Chunk-%d", k)
 		SaveValue(name, v)
 	}
@@ -276,15 +276,15 @@ func (m *CityMap) purgeOldChunks() {
 // freeing memory.
 func (m *CityMap) saveAllChunks() {
 	// Accumulate all data
-	bufs := map[uint32][]byte{}
+	buffers := map[uint32][]byte{}
 	m.inMemoryChunks.Range(func(x uint32) {
 		w := bytes.NewBuffer(nil)
 		c := m.Chunks[x]
 		c.Write(w)
-		bufs[x] = w.Bytes()
+		buffers[x] = w.Bytes()
 	})
 	// Write to database
-	for r, v := range bufs {
+	for r, v := range buffers {
 		name := fmt.Sprintf("Chunk-%d", r)
 		SaveValue(name, v)
 	}
@@ -518,7 +518,7 @@ func (m *CityMap) StepPlayer(climbing bool, d util.Direction) bool {
 	if cs {
 		dur *= 4
 	}
-	m.PlayerTookTurn(dur)
+	m.PlayerTookTurn(dur, nil)
 	return true
 }
 
@@ -649,7 +649,19 @@ func (m *CityMap) CanSeePlayerFrom(p util.Point) bool {
 }
 
 // Update updates the game world for d duration based around point p.
-func (m *CityMap) Update(p util.Point, d time.Duration) {
+func (m *CityMap) Update(p util.Point, d time.Duration, update func()) {
+	m.Now = m.Now.Add(d)
+	// Updates of one minute or longer will use the wait handler automatically
+	if d < time.Minute {
+		m.updatePrepSets(p)
+		m.updateShort()
+		m.updateItemsAndPostProcessing(d)
+	} else {
+		m.Wait(d, update)
+	}
+}
+
+func (m *CityMap) updatePrepSets(p util.Point) {
 	fn := func(p util.Point) int {
 		return p.Y*CityMapWidth + p.X
 	}
@@ -692,18 +704,21 @@ func (m *CityMap) Update(p util.Point, d time.Duration) {
 			heap.Remove(&m.aq, a.pqIdx)
 		}
 	}
-	// Add actors in the new chunks to the priority queue
+	// Add actors in the new chunks to the priority queue and reset their think
+	// times so the actors don't take a million turns when the chunk gets
+	// reloaded after a long winter
 	for _, idx := range m.usNewCache {
 		c := m.Chunks[idx]
 		for _, a := range c.Actors {
+			if a.NextThink.Before(m.Now) {
+				a.NextThink = m.Now
+			}
 			heap.Push(&m.aq, a)
 		}
 	}
-	// Step time and process the priority queue if needed
-	if d == 0 {
-		return
-	}
-	m.Now = m.Now.Add(d)
+}
+
+func (m *CityMap) updateShort() {
 	if len(m.aq) > 0 {
 		for {
 			a := heap.Pop(&m.aq).(*Actor)
@@ -711,12 +726,54 @@ func (m *CityMap) Update(p util.Point, d time.Duration) {
 				heap.Push(&m.aq, a)
 				break
 			}
+			if a.Dead {
+				continue
+			}
 			d := a.AIModel.Act(a, m)
 			a.NextThink = a.NextThink.Add(d)
 			a.AIModel.PeriodicUpdate(a, m, d)
 			heap.Push(&m.aq, a)
 		}
 	}
+}
+
+// Wait advances time in the city by the given duration. During the first 90
+// seconds of the duration the city will simulate as normal at an interval of
+// one update per game second. Following that the simulation halts and only long
+// term updates are executed for the remainder of the duration.
+func (m *CityMap) Wait(d time.Duration, update func()) {
+	sd := time.Second * 90
+	if sd > d {
+		sd = d
+	}
+	ld := d - sd
+	for ; sd > 0; sd -= time.Second {
+		ud := time.Second
+		if sd < ud {
+			ud = sd
+		}
+		m.updateShort()
+		if update != nil {
+			update()
+		}
+	}
+	if ld == 0 {
+		return
+	}
+	for _, a := range m.aq {
+		a.AIModel.PeriodicUpdate(a, m, ld)
+		// Note that this assignment to the indexed property of the pq does not
+		// cause chaos because every index is changed in the exact same way and
+		// it does not alter the order of priority
+		a.NextThink = a.NextThink.Add(ld)
+	}
+	m.updateItemsAndPostProcessing(d)
+}
+
+func (m *CityMap) updateItemsAndPostProcessing(d time.Duration) {
+	var p util.Point
+	var actorsToRemove []*Actor
+	var itemsToRemove []*Item
 	// Update all items in the update radius
 	for p.Y = m.updateBounds.TL.Y; p.Y <= m.updateBounds.BR.Y; p.Y += ChunkHeight {
 		for p.X = m.updateBounds.TL.X; p.X <= m.updateBounds.BR.X; p.X += ChunkWidth {
@@ -726,10 +783,73 @@ func (m *CityMap) Update(p util.Point, d time.Duration) {
 			}
 		}
 	}
+	// Update all items held by the player
+	for idx, i := range m.Player.Equipment {
+		if i == nil {
+			continue
+		}
+		ExecuteItemUpdateEvent("Update", i, m, d)
+		if i.Destroyed {
+			m.Player.Equipment[idx] = nil
+		}
+	}
+	if m.Player.Weapon != nil {
+		ExecuteItemUpdateEvent("Update", m.Player.Weapon, m, d)
+		if m.Player.Weapon.Destroyed {
+			m.Player.Weapon = nil
+		}
+	}
+	itemsToRemove = itemsToRemove[:0]
+	for _, i := range m.Player.Inventory {
+		if i == nil {
+			continue
+		}
+		ExecuteItemUpdateEvent("Update", i, m, d)
+		if i.Destroyed {
+			itemsToRemove = append(itemsToRemove, i)
+		}
+	}
+	for _, i := range itemsToRemove {
+		m.Player.RemoveItemFromInventory(i)
+	}
+	// Update all items held by actors that were in the update area
+	for p.Y = m.updateBounds.TL.Y; p.Y <= m.updateBounds.BR.Y; p.Y += ChunkHeight {
+		for p.X = m.updateBounds.TL.X; p.X <= m.updateBounds.BR.X; p.X += ChunkWidth {
+			c := m.GetChunk(p)
+			for _, a := range c.Actors {
+				for idx, i := range a.Equipment {
+					if i == nil {
+						continue
+					}
+					ExecuteItemUpdateEvent("Update", i, m, d)
+					if i.Destroyed {
+						a.Equipment[idx] = nil
+					}
+				}
+				if a.Weapon != nil {
+					ExecuteItemUpdateEvent("Update", a.Weapon, m, d)
+					if a.Weapon.Destroyed {
+						a.Weapon = nil
+					}
+				}
+				itemsToRemove = itemsToRemove[:0]
+				for _, i := range a.Inventory {
+					if i == nil {
+						continue
+					}
+					ExecuteItemUpdateEvent("Update", i, m, d)
+					if i.Destroyed {
+						itemsToRemove = append(itemsToRemove, i)
+					}
+				}
+				for _, i := range itemsToRemove {
+					m.Player.RemoveItemFromInventory(i)
+				}
+			}
+		}
+	}
 	// Post-update cleanup of dead actors that need to turn into corpses and
 	// destroyed items that need to be removed
-	var actorsToRemove []*Actor
-	var itemsToRemove []*Item
 	for p.Y = m.loadBounds.TL.Y; p.Y <= m.loadBounds.BR.Y; p.Y += ChunkHeight {
 		for p.X = m.loadBounds.TL.X; p.X <= m.loadBounds.BR.X; p.X += ChunkWidth {
 			// Remove dead actors
@@ -743,6 +863,16 @@ func (m *CityMap) Update(p util.Point, d time.Duration) {
 			}
 			for _, a := range actorsToRemove {
 				c.RemoveActor(a)
+				idx := -1
+				for i, qa := range m.aq {
+					if qa == a {
+						idx = i
+						break
+					}
+				}
+				if idx >= 0 {
+					heap.Remove(&m.aq, idx)
+				}
 			}
 			// Remove destroyed items
 			itemsToRemove = itemsToRemove[:0]
@@ -760,9 +890,46 @@ func (m *CityMap) Update(p util.Point, d time.Duration) {
 
 // PlayerTookTurn is responsible for updating the city map model for the given
 // duration as well as anything else that should happen after the player's turn.
-func (m *CityMap) PlayerTookTurn(d time.Duration) {
-	m.Update(m.Player.Position, d)
+func (m *CityMap) PlayerTookTurn(d time.Duration, update func()) {
+	// Player regeneration and decay
+	days := float64(d) / float64(time.Hour*24)
+	// Process broken part timers
+	for i, p := range m.Player.BodyParts {
+		if !p.BrokenUntil.IsZero() && !m.Now.Before(p.BrokenUntil) {
+			p.Broken = false
+			p.BrokenUntil = time.Time{}
+		}
+		m.Player.BodyParts[i] = p
+	}
+	if m.Player.Hunger > 0 && m.Player.Thirst > 0 {
+		// Not starving or dehydrated, heal body parts as normal
+		for i, p := range m.Player.BodyParts {
+			p.Health += days * 0.5 // Body parts heal in two days
+			if p.Health > 1 {
+				p.Health = 1
+			}
+			m.Player.BodyParts[i] = p
+		}
+	} else {
+		// We are either starving or dehydrated or both so we wither
+		for i, p := range m.Player.BodyParts {
+			p.Health -= days * 0.2 // Can last five days without food and water
+			if p.Health < 0 {
+				p.Health = 0 // Withering does not break body parts
+			}
+			m.Player.BodyParts[i] = p
+		}
+		// Check if we're dead from withering
+		if m.Player.BodyParts[BodyPartHead].Health <= 0 ||
+			m.Player.BodyParts[BodyPartBody].Health <= 0 {
+			m.Player.Dead = true
+			Log.Log(termui.ColorRed, "You have withered to death.")
+		}
+	}
+	// Update the world
+	m.Update(m.Player.Position, d, update)
+	// End conditions check
 	if m.Player.Dead {
-		Log.Log(termui.ColorYellow, "YOU ARE DEAD! Press Escape to return to the main menu.")
+		Log.Log(termui.ColorRed, "YOU ARE DEAD! Press Escape to return to the main menu.")
 	}
 }

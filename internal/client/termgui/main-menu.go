@@ -42,10 +42,11 @@ func NewMainMenu(s termui.TerminalDriver) *MainMenu {
 						}
 						m := citygen.Generate("Interstate Town", sn)
 						m.SaveCityPlan()
-						m.Update(m.Player.Position, 0)
+						gm := newGameMode(m)
+						m.Update(m.Player.Position, 0, func() { gm.Draw(s) })
 						m.FullSave()
 						game.SaveTileRefs()
-						termui.RunMode(s, newGameMode(m))
+						termui.RunMode(s, gm)
 						game.CloseSave()
 					}
 					termui.RunMode(s, sl)

@@ -1,0 +1,13 @@
+
+{
+    "WaterBottle": {
+        "Name": "bottle of water",
+        "Rune": "%",
+        "Fg": "Aqua",
+        "Bg": "Black",
+        "FArg": 0.25,
+        "Events": {
+            "Use": "Drink"
+        }
+    }
+}

@@ -110,7 +110,7 @@ func (m *gameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 		case 'k': // Walk North
 			dir = util.DirectionNorth
 		case '.': // Wait one second
-			m.CityMap.PlayerTookTurn(time.Second)
+			m.CityMap.PlayerTookTurn(time.Second, func() { m.Draw(s) })
 			s.FlushEvents()
 			return nil
 		case 'x': // eXamine surroundings
@@ -146,7 +146,7 @@ func (m *gameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 						return err
 					}
 					if used {
-						m.CityMap.PlayerTookTurn(time.Second)
+						m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second)*m.CityMap.Player.ActSpeed()), func() { m.Draw(s) })
 					}
 				}
 				return nil
@@ -165,7 +165,7 @@ func (m *gameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 				a := m.CityMap.ActorAt(p)
 				if a != nil {
 					a.Damage(m.CityMap.Player.MinDamage, m.CityMap.Player.MaxDamage, m.CityMap.Now, &m.CityMap.Player.Actor)
-					m.CityMap.PlayerTookTurn(time.Second)
+					m.CityMap.PlayerTookTurn(time.Second, func() { m.Draw(s) })
 				}
 				return nil
 			}
@@ -213,10 +213,11 @@ func (m *gameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 						return
 					}
 				}
-				m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second) * m.CityMap.Player.ActSpeed()))
+				m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second)*m.CityMap.Player.ActSpeed()), func() { m.Draw(s) })
 			}
 			m.inventory.Title = "Wear / Un Wear Item"
 			m.inventory.IncludeEquipment = true
+			m.inventory.OnlyEquipment = true
 			if m.inventory.PopulateList() > 0 {
 				m.modeStack = append(m.modeStack, m.inventory)
 			}
@@ -225,25 +226,18 @@ func (m *gameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 			dropAt(m.CityMap.Player.Position)
 			return nil
 		case 'D': // targeted Drop from inventory
-			m.inventory.Selected = func(i *game.Item, equipped bool) {
-				m.inTarget = true
-				m.mapMode.Callback = func(p util.Point, confirmed bool) error {
-					m.inTarget = false
-					if !confirmed {
-						return nil
-					}
-					dropAt(p)
+			m.inTarget = true
+			m.mapMode.Callback = func(p util.Point, confirmed bool) error {
+				m.inTarget = false
+				if !confirmed {
 					return nil
 				}
-				m.mapMode.Center = m.CityMap.Player.Position
-				m.mapMode.CursorPos = m.CityMap.Player.Position
-				m.mapMode.CursorRange = 1
+				dropAt(p)
+				return nil
 			}
-			m.inventory.IncludeEquipment = false
-			m.inventory.Title = "Drop Item"
-			if m.inventory.PopulateList() > 0 {
-				m.modeStack = append(m.modeStack, m.inventory)
-			}
+			m.mapMode.Center = m.CityMap.Player.Position
+			m.mapMode.CursorPos = m.CityMap.Player.Position
+			m.mapMode.CursorRange = 1
 			m.logMode.Log(termui.ColorPurple, "Drop where?")
 			return nil
 		case ',': // get items at feet (,)
@@ -280,7 +274,34 @@ func (m *gameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 			m.mapMode.CursorRange = 1
 			m.logMode.Log(termui.ColorPurple, "Climb where?")
 			return nil
-		case '\033':
+		case 'i': // Inventory
+			m.inventory.IncludeEquipment = true
+			m.inventory.OnlyUsable = true
+			m.inventory.Title = "Use Item from Inventory"
+			m.inventory.Selected = func(i *game.Item, equipped bool) {
+				err, used := events.ExecuteItemUseEvent("Use", i, &m.CityMap.Player.Actor, m.CityMap)
+				if err != nil {
+					panic(err)
+				}
+				if used {
+					m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second)*m.CityMap.Player.ActSpeed()), func() { m.Draw(s) })
+				}
+			}
+			if m.inventory.PopulateList() > 0 {
+				m.modeStack = append(m.modeStack, m.inventory)
+				m.logMode.Log(termui.ColorPurple, "Use what?")
+			}
+			return nil
+		case 'r': // Rest / Wait
+			td := newTimeDialog(m.CityMap)
+			td.Title = "Rest How Long?"
+			td.Selected = func(d time.Duration) {
+				m.CityMap.PlayerTookTurn(d, func() { m.Draw(s) })
+			}
+			m.modeStack = append(m.modeStack, td)
+			m.logMode.Log(termui.ColorPurple, "Rest how long?")
+			return nil
+		case '\033': // Escape menu
 			m.modeStack = append(m.modeStack, newEscapeMenu(m))
 			return nil
 		default:
@@ -308,7 +329,7 @@ func (m *gameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 			a := m.CityMap.ActorAt(np)
 			if a != nil {
 				a.Damage(m.CityMap.Player.MinDamage, m.CityMap.Player.MaxDamage, m.CityMap.Now, &m.CityMap.Player.Actor)
-				m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second) * m.CityMap.Player.ActSpeed()))
+				m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second)*m.CityMap.Player.ActSpeed()), func() { m.Draw(s) })
 				s.FlushEvents()
 			} else {
 				items := m.CityMap.ItemsAt(np)
@@ -318,7 +339,7 @@ func (m *gameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 						return err
 					}
 					if used {
-						m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second) * m.CityMap.Player.ActSpeed()))
+						m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second)*m.CityMap.Player.ActSpeed()), func() { m.Draw(s) })
 					}
 					s.FlushEvents()
 				}

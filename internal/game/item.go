@@ -19,6 +19,7 @@ type Item struct {
 	TemplateID string     // Template ID
 	Position   util.Point // Current position on the map
 	LastUpdate time.Time  // Time of the last call to event update
+	FArg       float64    // Generic float argument
 	SArg       string     // Generic string argument
 	TArg       time.Time  // Generic time argument
 	Inventory  []*Item    // Container contents if any

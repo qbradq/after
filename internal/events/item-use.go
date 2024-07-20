@@ -10,6 +10,8 @@ import (
 func init() {
 	rue("OpenDoor", openDoor)
 	rue("CloseDoor", closeDoor)
+	rue("Eat", eat)
+	rue("Drink", drink)
 }
 
 func openDoor(i *game.Item, src *game.Actor, m *game.CityMap) error {
@@ -64,5 +66,23 @@ func closeDoor(i *game.Item, src *game.Actor, m *game.CityMap) error {
 		},
 	}
 	ff.Execute(i.Position)
+	return nil
+}
+
+func eat(i *game.Item, src *game.Actor, m *game.CityMap) error {
+	m.Player.Hunger += i.FArg
+	if m.Player.Hunger > 1 {
+		m.Player.Hunger = 1
+	}
+	i.Destroyed = true
+	return nil
+}
+
+func drink(i *game.Item, src *game.Actor, m *game.CityMap) error {
+	m.Player.Thirst += i.FArg
+	if m.Player.Thirst > 1 {
+		m.Player.Thirst = 1
+	}
+	i.Destroyed = true
 	return nil
 }

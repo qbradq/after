@@ -1,0 +1,12 @@
+{
+    "Salami": {
+        "Name": "salami",
+        "Rune": "%",
+        "Fg": "Yellow",
+        "Bg": "Black",
+        "FArg": 0.125,
+        "Events": {
+            "Use": "Eat"
+        }
+    }
+}

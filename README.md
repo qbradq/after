@@ -2,9 +2,14 @@
 # After
 A text-mode roguelike about scratching out a life in the post-apocalypse.
 
+## Planned Changes
+* Help screen
+* Stamina system an running
+* Stop automatic actions like resting when seeing an enemy or being harmed.
+
 ## Notes
 
-### Example car layouts
+### Example Car Layouts
 
 **Large**
 ```

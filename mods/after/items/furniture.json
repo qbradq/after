@@ -90,7 +90,25 @@
         "Bg": "Black",
         "BlocksWalk": true,
         "Fixed": true,
-        "Container": true
+        "Container": true,
+        "Contents": [
+            "Food@1n4",
+            "Food@1n4",
+            "Food@1n4",
+            "Food@1n4",
+            "Food@1n4",
+            "Food@1n4",
+            "Food@1n4",
+            "Food@1n4",
+            "Drinks@1n4",
+            "Drinks@1n4",
+            "Drinks@1n4",
+            "Drinks@1n4",
+            "Drinks@1n4",
+            "Drinks@1n4",
+            "Drinks@1n4",
+            "Drinks@1n4"
+        ]
     },
     "Toilet": {
         "Name": "toilet",

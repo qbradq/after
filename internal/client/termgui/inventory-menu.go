@@ -12,6 +12,8 @@ type inventoryMenu struct {
 	Bounds           util.Rect              // If this is the zero value the menu will be screen center
 	Selected         func(*game.Item, bool) // Function called on valid selection, the first argument will never be nil and the second argument is true if the item is currently equipped by the actor
 	IncludeEquipment bool                   // If true the actor's current equipment will be included in the list of items separated from the inventory by a horizontal bar
+	OnlyEquipment    bool                   // If true only wearable and wield-able items are displayed
+	OnlyUsable       bool                   // If true only items with a "Use" event are included
 	Title            string                 // Title of the inventory menu
 	actor            *game.Actor            // Pointer to the actor who's inventory we are exploring
 	list             termui.List            // List used for the display and input
@@ -38,7 +40,6 @@ func newInventoryMenu(a *game.Actor) *inventoryMenu {
 			},
 		},
 	}
-	ret.PopulateList()
 	return ret
 }
 
@@ -63,6 +64,12 @@ func (m *inventoryMenu) PopulateList() int {
 			if i == nil {
 				continue
 			}
+			if m.OnlyEquipment && !i.Wearable && !i.Weapon {
+				continue
+			}
+			if m.OnlyUsable && i.Events["Use"] == "" {
+				continue
+			}
 			n := fn(i.Name, i)
 			m.names = append(m.names, n)
 			m.items = append(m.items, i)
@@ -70,7 +77,14 @@ func (m *inventoryMenu) PopulateList() int {
 				m.ld.X = len(n)
 			}
 		}
-		if m.actor.Weapon != nil {
+		doWeapon := true
+		if m.actor.Weapon == nil {
+			doWeapon = false
+		}
+		if doWeapon && m.OnlyUsable && m.actor.Weapon.Events["Use"] == "" {
+			doWeapon = false
+		}
+		if doWeapon {
 			n := fn(m.actor.Weapon.Name, m.actor.Weapon)
 			m.names = append(m.names, n)
 			m.items = append(m.items, m.actor.Weapon)
@@ -85,6 +99,12 @@ func (m *inventoryMenu) PopulateList() int {
 		}
 	}
 	for _, i := range m.actor.Inventory {
+		if m.OnlyEquipment && !i.Wearable && !i.Weapon {
+			continue
+		}
+		if m.OnlyUsable && i.Events["Use"] == "" {
+			continue
+		}
 		n := fn(i.Name, i)
 		m.names = append(m.names, n)
 		m.items = append(m.items, i)

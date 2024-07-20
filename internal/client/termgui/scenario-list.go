@@ -14,6 +14,7 @@ type scenarioList struct {
 	Selected func(string)    // Function called when a scenario name is selected by the player
 	list     *termui.List    // Interactive list of scenario names
 	tb       *termui.TextBox // Text box for the description text
+	ids      []string        // Scenario IDs
 }
 
 // newScenarioList constructs a new scenarioList for use.
@@ -24,7 +25,7 @@ func newScenarioList() *scenarioList {
 			Boxed: true,
 			Title: "Choose Scenario",
 			Selected: func(td termui.TerminalDriver, i int) error {
-				ret.Selected(ret.list.Items[i])
+				ret.Selected(ret.ids[i])
 				return termui.ErrorQuit
 			},
 		},
@@ -34,9 +35,14 @@ func newScenarioList() *scenarioList {
 		},
 	}
 	for k := range citygen.Scenarios {
-		ret.list.Items = append(ret.list.Items, k)
+		ret.ids = append(ret.ids, k)
 	}
-	sort.Strings(ret.list.Items)
+	sort.Slice(ret.ids, func(i, j int) bool {
+		return ret.ids[i] < ret.ids[j]
+	})
+	for _, k := range ret.ids {
+		ret.list.Items = append(ret.list.Items, citygen.Scenarios[k].Name)
+	}
 	return ret
 }
 
@@ -54,7 +60,7 @@ func (m *scenarioList) HandleEvent(s termui.TerminalDriver, e any) error {
 
 // Draw implements the termui.Mode interface.
 func (m *scenarioList) Draw(s termui.TerminalDriver) {
-	sc := citygen.Scenarios[m.list.CurrentSelection()]
+	sc := citygen.Scenarios[m.ids[m.list.CursorPos]]
 	w, h := s.Size()
 	sb := util.NewRectWH(w, h)
 	mb := sb.CenterRect(42, 23)
