@@ -304,6 +304,9 @@ func (m *gameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 		case '\033': // Escape menu
 			m.modeStack = append(m.modeStack, newEscapeMenu(m))
 			return nil
+		case '?': // Help menu
+			m.modeStack = append(m.modeStack, newHelpDialog())
+			return nil
 		default:
 			// Unhandled key, just ignore it
 			return nil

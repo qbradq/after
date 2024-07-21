@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/qbradq/after/internal/citygen"
 	"github.com/qbradq/after/internal/game"
@@ -56,6 +58,7 @@ type Mod struct {
 
 // UnloadAllMods unloads all currently loaded mods.
 func UnloadAllMods() {
+	game.HelpPages = map[string]*game.HelpPage{}
 	game.TileDefs = []*game.TileDef{}
 	game.TileRefs = map[string]game.TileRef{}
 	game.TileCrossRefs = []*game.TileDef{}
@@ -71,13 +74,19 @@ func UnloadAllMods() {
 // LoadMods loads all of the listed mods.
 func LoadMods(ids []string) error {
 	UnloadAllMods()
-	// Items
+	// Help pages
 	for _, id := range ids {
 		mod, found := mods[id]
 		if !found {
 			return fmt.Errorf("mod %s not found", id)
 		}
-		if err := mod.loadItems(); err != nil {
+		if err := mod.loadHelp(); err != nil {
+			return err
+		}
+	}
+	// Items
+	for _, id := range ids {
+		if err := mods[id].loadItems(); err != nil {
 			return err
 		}
 	}
@@ -124,6 +133,54 @@ func LoadMods(ids []string) error {
 		}
 	}
 	return nil
+}
+
+// loadHelp loads the mod's help pages.
+func (m *Mod) loadHelp() error {
+	doFile := func(hp, dp string, f fs.DirEntry) error {
+		fp := path.Join(dp, f.Name())
+		d, err := os.ReadFile(fp)
+		if err != nil {
+			return err
+		}
+		hp += "/" + f.Name()
+		lines := strings.Split(string(d), "\n")
+		if len(lines) < 1 {
+			return fmt.Errorf("malformed help file %s", fp)
+		}
+		for i := range lines {
+			lines[i] = strings.TrimRight(lines[i], "\n")
+		}
+		game.HelpPages[hp] = &game.HelpPage{
+			Path:     hp,
+			Title:    lines[0],
+			Contents: lines[1:],
+		}
+		return nil
+	}
+	var doDir func(string, string) error
+	doDir = func(hp, dp string) error {
+		files, err := os.ReadDir(dp)
+		if err != nil {
+			if !os.IsNotExist(err) {
+				return err
+			}
+			return nil
+		}
+		for _, f := range files {
+			if f.IsDir() {
+				if err := doDir(hp+"/"+f.Name(), path.Join(dp, f.Name())); err != nil {
+					return err
+				}
+			} else {
+				if err := doFile(hp, dp, f); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+	return doDir(m.ID, path.Join(m.Path, "help"))
 }
 
 // loadTiles loads the mod's tile definitions.
