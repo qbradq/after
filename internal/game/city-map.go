@@ -517,6 +517,16 @@ func (m *CityMap) StepPlayer(climbing bool, d util.Direction) bool {
 	dur := time.Duration(float64(time.Second) * m.Player.WalkSpeed())
 	if cs {
 		dur *= 4
+	} else {
+		if m.Player.Running && m.Player.Stamina <= 0 {
+			Log.Log(termui.ColorRed, "You are exhausted and slow to a walk.")
+			m.Player.Running = false
+		}
+		if m.Player.Running {
+			dur /= 4
+			m.Player.Stamina -= float64(dur) / float64(time.Second*30) // Can run for about 30 seconds - the duration is not terribly realistic but the limit is for game play balance
+			m.Player.Stamina -= float64(dur) / float64(time.Minute*5)  // Counteract stamina gain
+		}
 	}
 	m.PlayerTookTurn(dur, nil)
 	return true
@@ -891,42 +901,7 @@ func (m *CityMap) updateItemsAndPostProcessing(d time.Duration) {
 // PlayerTookTurn is responsible for updating the city map model for the given
 // duration as well as anything else that should happen after the player's turn.
 func (m *CityMap) PlayerTookTurn(d time.Duration, update func()) {
-	// Player regeneration and decay
-	days := float64(d) / float64(time.Hour*24)
-	// Process broken part timers
-	for i, p := range m.Player.BodyParts {
-		if !p.BrokenUntil.IsZero() && !m.Now.Before(p.BrokenUntil) {
-			p.Broken = false
-			p.BrokenUntil = time.Time{}
-		}
-		m.Player.BodyParts[i] = p
-	}
-	if m.Player.Hunger > 0 && m.Player.Thirst > 0 {
-		// Not starving or dehydrated, heal body parts as normal
-		for i, p := range m.Player.BodyParts {
-			p.Health += days * 0.5 // Body parts heal in two days
-			if p.Health > 1 {
-				p.Health = 1
-			}
-			m.Player.BodyParts[i] = p
-		}
-	} else {
-		// We are either starving or dehydrated or both so we wither
-		for i, p := range m.Player.BodyParts {
-			p.Health -= days * 0.2 // Can last five days without food and water
-			if p.Health < 0 {
-				p.Health = 0 // Withering does not break body parts
-			}
-			m.Player.BodyParts[i] = p
-		}
-		// Check if we're dead from withering
-		if m.Player.BodyParts[BodyPartHead].Health <= 0 ||
-			m.Player.BodyParts[BodyPartBody].Health <= 0 {
-			m.Player.Dead = true
-			Log.Log(termui.ColorRed, "You have withered to death.")
-		}
-	}
-	// Update the world
+	m.Player.TookTurn(m.Now, d)
 	m.Update(m.Player.Position, d, update)
 	// End conditions check
 	if m.Player.Dead {

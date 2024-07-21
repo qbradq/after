@@ -301,6 +301,14 @@ func (m *gameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 			m.modeStack = append(m.modeStack, td)
 			m.logMode.Log(termui.ColorPurple, "Rest how long?")
 			return nil
+		case 'R': // Run / Walk toggle
+			if m.CityMap.Player.Running {
+				m.logMode.Log(termui.ColorFuchsia, "You slow to a walk.")
+			} else {
+				m.logMode.Log(termui.ColorFuchsia, "You quicken your pace to a run.")
+			}
+			m.CityMap.Player.Running = !m.CityMap.Player.Running
+			return nil
 		case '\033': // Escape menu
 			m.modeStack = append(m.modeStack, newEscapeMenu(m))
 			return nil
