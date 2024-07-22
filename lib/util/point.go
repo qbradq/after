@@ -26,6 +26,11 @@ func (p Point) Step(d Direction) Point {
 	return p.Add(DirectionOffsets[d.Bound()])
 }
 
+// StepFacing returns the result of stepping in facing f from point p.
+func (p Point) StepFacing(f Facing) Point {
+	return p.Add(FacingOffsets[f.Bound()])
+}
+
 // Sub returns the result of subtracting a from p.
 func (p Point) Sub(a Point) Point {
 	return Point{p.X - a.X, p.Y - a.Y}

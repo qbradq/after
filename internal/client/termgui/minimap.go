@@ -8,11 +8,12 @@ import (
 
 // minimap implements a termui.Mode that displays the minimap
 type minimap struct {
-	CityMap     *game.CityMap // The city we are displaying
-	Bounds      util.Rect     // Bounds of the minimap display on screen
-	Center      util.Point    // Current centerpoint of the display
-	DrawInfo    bool          // If true draws a box containing info near the cursor
-	CursorStyle int           // Cursor style
+	CityMap     *game.CityMap      // The city we are displaying
+	Bounds      util.Rect          // Bounds of the minimap display on screen
+	Center      util.Point         // Current centerpoint of the display
+	DrawInfo    bool               // If true draws a box containing info near the cursor
+	CursorStyle int                // Cursor style
+	Selected    func(p util.Point) // Function to execute on selection, if any
 }
 
 func (m *minimap) topLeft() util.Point {
@@ -65,6 +66,13 @@ func (m *minimap) HandleEvent(s termui.TerminalDriver, e any) error {
 			m.Center.Y++
 		case 'k':
 			m.Center.Y--
+		case ' ':
+			fallthrough
+		case '\n':
+			if m.Selected != nil {
+				m.Selected(m.Center)
+				return termui.ErrorQuit
+			}
 		case '\033':
 			return termui.ErrorQuit
 		}
@@ -78,10 +86,10 @@ func (m *minimap) HandleEvent(s termui.TerminalDriver, e any) error {
 // Draw implements the termui.Mode interface.
 func (m *minimap) Draw(s termui.TerminalDriver) {
 	// Render the minimap and cursor
-	mmtl := m.topLeft()
+	mmTL := m.topLeft()
 	for iy := 0; iy < m.Bounds.Height(); iy++ {
 		for ix := 0; ix < m.Bounds.Width(); ix++ {
-			c := m.CityMap.GetChunkFromMapPoint(util.Point{X: ix + mmtl.X, Y: iy + mmtl.Y})
+			c := m.CityMap.GetChunkFromMapPoint(util.Point{X: ix + mmTL.X, Y: iy + mmTL.Y})
 			s.SetCell(util.NewPoint(ix+m.Bounds.TL.X, iy+m.Bounds.TL.Y), termui.Glyph{
 				Rune: rune(c.MinimapRune[0]),
 				Style: termui.StyleDefault.
@@ -91,8 +99,8 @@ func (m *minimap) Draw(s termui.TerminalDriver) {
 		}
 	}
 	drawCursor(s, util.Point{
-		X: (m.Center.X - mmtl.X) + m.Bounds.TL.X,
-		Y: (m.Center.Y - mmtl.Y) + m.Bounds.TL.Y,
+		X: (m.Center.X - mmTL.X) + m.Bounds.TL.X,
+		Y: (m.Center.Y - mmTL.Y) + m.Bounds.TL.Y,
 	}, m.Bounds, m.CursorStyle)
 	// Draw the nameplate if requested
 	if m.DrawInfo {

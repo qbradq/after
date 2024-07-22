@@ -56,13 +56,19 @@ func (s *Scenario) Execute(m *game.CityMap) {
 		}
 	}
 	// Scan the map for suitable starting locations and pick one at random
-	var cs []*game.Chunk
+	cs := []*game.Chunk{}
 	for _, c := range m.Chunks {
 		if c.Generator.GetID() == s.StartingChunkType {
 			cs = append(cs, c)
 		}
 	}
 	c := util.RandomValue[*game.Chunk](cs)
+	if c == nil {
+		// No suitable chunk found, start in the dead center of the city
+		c = m.GetChunk(util.NewPoint(
+			game.ChunkWidth*game.CityMapWidth/2+game.ChunkWidth/2,
+			game.ChunkHeight*game.CityMapHeight/2+game.ChunkHeight/2))
+	}
 	// Safe zone implementation
 	if s.SafeZoneRadius > 0 {
 		// Load all the chunks we need to modify

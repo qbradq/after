@@ -26,7 +26,8 @@ func overlaps(b util.Rect, m *game.CityMap) bool {
 
 // place attempts to place the given chunk generator with the given facing. This
 // function returns true if the chunk generator was able to be placed properly.
-func place(m *game.CityMap, g *ChunkGen, p util.Point, f util.Facing) bool {
+// If force is true, place will ignore existing chunks.
+func place(m *game.CityMap, g *ChunkGen, p util.Point, f util.Facing, force bool) bool {
 	// Variable setup based on facing
 	var b util.Rect
 	switch f.Bound() {
@@ -40,7 +41,7 @@ func place(m *game.CityMap, g *ChunkGen, p util.Point, f util.Facing) bool {
 		b = util.NewRectXYWH(p.X, p.Y-(g.Width-1), g.Height, g.Width)
 	}
 	// Bounds check
-	if overlaps(b, m) {
+	if !force && overlaps(b, m) {
 		return false
 	}
 	// Function to translate current chunk rendering position to chunk offset
