@@ -56,6 +56,20 @@ func (a *Player) Write(w io.Writer) {
 	util.PutBool(w, a.Running)  // Running
 }
 
+// Attack has the player attack the target.
+func (a *Player) Attack(t *Actor, now time.Time) {
+	sc := 0.05
+	if a.Weapon != nil {
+		sc = a.Weapon.WeaponSwingStam
+	}
+	if a.Stamina < sc {
+		Log.Log(termui.ColorRed, "You are too fatigued.")
+		return
+	}
+	t.Damage(a.MinDamage, a.MaxDamage, now, &a.Actor)
+	a.Stamina -= sc
+}
+
 // TookTurn is responsible for per-turn updates for the player.
 func (a *Player) TookTurn(now time.Time, d time.Duration) {
 	// Stamina regeneration

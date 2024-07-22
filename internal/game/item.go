@@ -39,6 +39,7 @@ type Item struct {
 	Weapon          bool              // If true this item can be wielded as a weapon
 	WeaponMinDamage float64           // Minimum damage bonus when using this item as a weapon
 	WeaponMaxDamage float64           // Maximum damage bonus when using this item as a weapon
+	WeaponSwingStam float64           // Amount of stamina required to swing this weapon
 	Container       bool              // If true this item contains other items
 	Contents        []string          // Container content item statements if any
 	// Cache values

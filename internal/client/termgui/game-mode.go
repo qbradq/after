@@ -164,7 +164,7 @@ func (m *gameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 				}
 				a := m.CityMap.ActorAt(p)
 				if a != nil {
-					a.Damage(m.CityMap.Player.MinDamage, m.CityMap.Player.MaxDamage, m.CityMap.Now, &m.CityMap.Player.Actor)
+					m.CityMap.Player.Attack(a, m.CityMap.Now)
 					m.CityMap.PlayerTookTurn(time.Second, func() { m.Draw(s) })
 				}
 				return nil
@@ -339,7 +339,7 @@ func (m *gameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 			np := m.CityMap.Player.Position.Step(dir)
 			a := m.CityMap.ActorAt(np)
 			if a != nil {
-				a.Damage(m.CityMap.Player.MinDamage, m.CityMap.Player.MaxDamage, m.CityMap.Now, &m.CityMap.Player.Actor)
+				m.CityMap.Player.Attack(a, m.CityMap.Now)
 				m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second)*m.CityMap.Player.ActSpeed()), func() { m.Draw(s) })
 				s.FlushEvents()
 			} else {

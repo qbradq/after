@@ -7,7 +7,7 @@
         "Bg": "Black",
         "Speed": 1,
         "SightRange": 64,
-        "MinDamage": 0.25,
-        "MaxDamage": 0.50
+        "MinDamage": 0.05,
+        "MaxDamage": 0.1
     }
 }
