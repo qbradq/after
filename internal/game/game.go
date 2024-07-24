@@ -14,7 +14,7 @@ func init() {
 }
 
 // GetChunkGen is the ChunkGen getter.
-var GetChunkGen func(string) ChunkGen
+var GetChunkGen func(string, string) ChunkGen
 
 // Logger implementers can consume colored log messages.
 type Logger interface {

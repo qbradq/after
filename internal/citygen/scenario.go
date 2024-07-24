@@ -58,7 +58,7 @@ func (s *Scenario) Execute(m *game.CityMap) {
 	// Scan the map for suitable starting locations and pick one at random
 	cs := []*game.Chunk{}
 	for _, c := range m.Chunks {
-		if c.Generator.GetID() == s.StartingChunkType {
+		if c.Generator.GetGroup() == s.StartingChunkType {
 			cs = append(cs, c)
 		}
 	}

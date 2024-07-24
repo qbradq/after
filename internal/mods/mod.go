@@ -65,7 +65,7 @@ func UnloadAllMods() {
 	game.TileCrossRefForRef = map[game.TileRef]game.TileCrossRef{}
 	game.TileGens = map[string]game.TileGen{}
 	game.ItemGens = map[string]game.ItemGen{}
-	citygen.ChunkGens = map[string]*citygen.ChunkGen{}
+	citygen.ChunkGenGroups = map[string]*citygen.ChunkGenGroup{}
 	citygen.Scenarios = map[string]*citygen.Scenario{}
 	game.ItemDefs = map[string]*game.Item{}
 	game.ActorDefs = map[string]*game.Actor{}
@@ -266,25 +266,29 @@ func (m *Mod) loadChunkGens() error {
 			return err
 		}
 		for _, g := range gens {
-			if len(g.ID) < 1 {
-				return errors.New("chunk generator with no ID given")
+			if len(g.Group) < 1 {
+				return errors.New("chunk generator with no group given")
 			}
-			if _, found := citygen.ChunkGens[g.ID]; found {
-				return fmt.Errorf("duplicate chunk generator %s", g.ID)
+			if len(g.Variant) < 1 {
+				return errors.New("chunk generator with no variant given")
 			}
-			for iGenMap, genMap := range g.Maps {
-				if len(genMap) != g.Height*game.ChunkHeight || len(genMap[0]) != g.Width*game.ChunkWidth {
-					return fmt.Errorf("chunk generator map %s has the wrong dimensions", g.ID)
-				}
-				for iRow, row := range genMap {
-					for iCol, r := range row {
-						if _, found := g.Tiles[string(r)]; !found {
-							return fmt.Errorf("chunk generator %s map %d:%dx%d references tile %s not in tiles list", g.ID, iGenMap, iCol, iRow, string(r))
-						}
+			if len(g.Map) != g.Height*game.ChunkHeight || len(g.Map[0]) != g.Width*game.ChunkWidth {
+				return fmt.Errorf("chunk generator group %s variant %s has the wrong dimensions", g.Group, g.Variant)
+			}
+			for iRow, row := range g.Map {
+				for iCol, r := range row {
+					if _, found := g.Tiles[string(r)]; !found {
+						return fmt.Errorf("chunk generator %s at %dx%d references tile %s not in tiles list", g.Group, iCol, iRow, string(r))
 					}
 				}
 			}
-			citygen.ChunkGens[g.ID] = g
+			if group, found := citygen.ChunkGenGroups[g.Group]; found {
+				group.Add(g)
+			} else {
+				group = citygen.NewChunkGenGroup(g.Group)
+				citygen.ChunkGenGroups[g.Group] = group
+				group.Add(g)
+			}
 		}
 	}
 	return nil

@@ -22,8 +22,10 @@ type ChunkGen interface {
 	// AssignStaticInfo inserts all of the non-procedurally generated bits into
 	// the chunk, such as name and map rune.
 	AssignStaticInfo(*Chunk)
-	// GetID returns the unique ID of the generator.
-	GetID() string
+	// GetGroup returns the group ID of the generator.
+	GetGroup() string
+	// GetVariant returns the variant name.
+	GetVariant() string
 }
 
 // ChunkFlag encodes various bit flags of a chunk.
@@ -37,26 +39,30 @@ const (
 // Chunk represents the smallest unit of city planning and contains the tiles,
 // items and actors within its bounds.
 type Chunk struct {
-	Position          util.Point    // Position of the chunk on the city map in chunks
-	Ref               uint32        // Reference index for the chunk
-	Bounds            util.Rect     // Bounds of the chunk
-	Generator         ChunkGen      // The chunk generator responsible for procedural generation
-	ChunkGenOffset    util.Point    // Offset from the top-left corner of the chunk generator
-	Facing            util.Facing   // Facing of the chunk during generation
-	Name              string        // Descriptive name of the chunk
-	MinimapRune       string        // Rune to display on the minimap
-	MinimapForeground termui.Color  // Foreground color of the rune on the minimap
-	MinimapBackground termui.Color  // Background color of the rune on the minimap
-	Flags             ChunkFlags    // Flags
-	Loaded            time.Time     // Time this chunk was loaded, the zero value means it is not in memory
-	Tiles             []*TileDef    // Tile matrix
-	Items             []*Item       // All items within the chunk
-	Actors            []*Actor      // All actors within the chunk
-	HasSeen           bitmap.Bitmap // Bitmap of all spaces that have been previously viewed by the player
-	BlocksWalk        bitmap.Bitmap // Bitmap of all spaces that are blocked for walking
-	BlocksVis         bitmap.Bitmap // Bitmap of all spaces that are blocked for visibility
-	BlocksClimb       bitmap.Bitmap // Bitmap of all spaces that can be climbed
-	bitmapsDirty      bool          // If true the BlocksWalk and BlocksVis bitmaps need to be rebuilt before use
+	// Values persisted at the CityMap level
+	Generator      ChunkGen    // The chunk generator responsible for procedural generation
+	ChunkGenOffset util.Point  // Offset from the top-left corner of the chunk generator
+	Facing         util.Facing // Facing of the chunk during generation
+	Flags          ChunkFlags  // Flags
+	// Persistent values
+	Tiles   []*TileDef    // Tile matrix
+	Items   []*Item       // All items within the chunk
+	Actors  []*Actor      // All actors within the chunk
+	HasSeen bitmap.Bitmap // Bitmap of all spaces that have been previously viewed by the player
+	// Reconstituted values
+	Position          util.Point   // Position of the chunk on the city map in chunks
+	Ref               uint32       // Reference index for the chunk
+	Bounds            util.Rect    // Bounds of the chunk
+	Name              string       // Descriptive name of the chunk
+	MinimapRune       string       // Rune to display on the minimap
+	MinimapForeground termui.Color // Foreground color of the rune on the minimap
+	MinimapBackground termui.Color // Background color of the rune on the minimap
+	// Working values
+	Loaded       time.Time     // Time this chunk was loaded, the zero value means it is not in memory
+	BlocksWalk   bitmap.Bitmap // Bitmap of all spaces that are blocked for walking
+	BlocksVis    bitmap.Bitmap // Bitmap of all spaces that are blocked for visibility
+	BlocksClimb  bitmap.Bitmap // Bitmap of all spaces that can be climbed
+	bitmapsDirty bool          // If true the BlocksWalk and BlocksVis bitmaps need to be rebuilt before use
 
 }
 
@@ -102,6 +108,7 @@ func (c *Chunk) Unload() {
 	c.Tiles = nil
 	c.Items = nil
 	c.Actors = nil
+	c.HasSeen = nil
 	c.Loaded = time.Time{}
 }
 

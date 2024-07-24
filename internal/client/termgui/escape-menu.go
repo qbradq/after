@@ -18,7 +18,14 @@ func newEscapeMenu(m *gameMode) *escapeMenu {
 		m: m,
 		list: termui.List{
 			Boxed: true,
-			Items: []string{"Resume", "Force Save", "Save and Quit", "_hbar_"},
+			Items: []string{
+				"Resume",
+				"Force Save",
+				"Save and Quit",
+				"_hbar_",
+				"Teleport Menu",
+				"Log Chunk Info",
+			},
 			Title: "Game Menu",
 			Selected: func(td termui.TerminalDriver, i int) error {
 				switch i {
@@ -32,9 +39,6 @@ func newEscapeMenu(m *gameMode) *escapeMenu {
 					m.quit = true
 					return termui.ErrorQuit
 				case 4:
-					m.debug = !m.debug
-					return termui.ErrorQuit
-				case 5:
 					termui.RunMode(td, &minimap{
 						CityMap:     m.CityMap,
 						Bounds:      util.NewRectWH(td.Size()),
@@ -61,6 +65,23 @@ func newEscapeMenu(m *gameMode) *escapeMenu {
 						},
 					})
 					return termui.ErrorQuit
+				case 5:
+					c := m.CityMap.GetChunk(m.CityMap.Player.Position)
+					b, err := c.Facing.MarshalJSON()
+					if err != nil {
+						panic(err)
+					}
+					facing := string(b)
+					m.logMode.Log(
+						termui.ColorLime,
+						"Chunk Info: Gen=%s, Var=%s, Facing=%s",
+						c.Generator.GetGroup(),
+						c.Generator.GetVariant(),
+						facing,
+					)
+				case 6:
+					m.debug = !m.debug
+					return termui.ErrorQuit
 				}
 				return nil
 			},
@@ -71,7 +92,6 @@ func newEscapeMenu(m *gameMode) *escapeMenu {
 	} else {
 		ret.list.Items = append(ret.list.Items, "Enable Debug Display")
 	}
-	ret.list.Items = append(ret.list.Items, "Teleport Menu")
 	return ret
 }
 
@@ -91,6 +111,13 @@ func (m *escapeMenu) HandleEvent(s termui.TerminalDriver, e any) error {
 // Draw implements the termui.Mode interface.
 func (m *escapeMenu) Draw(s termui.TerminalDriver) {
 	w, h := s.Size()
-	m.list.Bounds = util.NewRectWH(w, h).CenterRect(27, 7)
+	maxW := 0
+	for _, i := range m.list.Items {
+		l := len(i)
+		if l > maxW {
+			maxW = l
+		}
+	}
+	m.list.Bounds = util.NewRectWH(w, h).CenterRect(2+maxW, 2+len(m.list.Items))
 	m.list.Draw(s)
 }

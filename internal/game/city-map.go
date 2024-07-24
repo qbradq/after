@@ -92,16 +92,18 @@ func (m *CityMap) LoadCityPlan() {
 
 // Write writes the city-level map information to the writer.
 func (m *CityMap) Write(w io.Writer) {
-	// Build dictionary of chunk generator IDs
+	// Build string dictionary for generator and variant IDs
 	dict := util.NewDictionary()
 	for _, c := range m.Chunks {
-		dict.Put(c.Generator.GetID())
+		dict.Put(c.Generator.GetGroup())
+		dict.Put(c.Generator.GetVariant())
 	}
 	// Write the file
 	util.PutUint32(w, 0) // Version
 	util.PutDictionary(w, dict)
 	for _, c := range m.Chunks {
-		util.PutUint16(w, dict.Get(c.Generator.GetID()))
+		util.PutUint16(w, dict.Get(c.Generator.GetGroup()))
+		util.PutUint16(w, dict.Get(c.Generator.GetVariant()))
 		util.PutPoint(w, c.ChunkGenOffset)
 		util.PutByte(w, byte(c.Facing))
 		util.PutByte(w, byte(c.Flags))
@@ -131,7 +133,8 @@ func (m *CityMap) Read(r io.Reader) {
 	dict := util.GetDictionary(r)
 	for _, c := range m.Chunks {
 		s := dict.Lookup(util.GetUint16(r))
-		c.Generator = GetChunkGen(s)
+		v := dict.Lookup(util.GetUint16(r))
+		c.Generator = GetChunkGen(s, v)
 		c.ChunkGenOffset = util.GetPoint(r)
 		c.Facing = util.Facing(util.GetByte(r))
 		c.Flags = ChunkFlags(util.GetByte(r))

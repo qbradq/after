@@ -15,30 +15,64 @@ func init() {
 func interstate() *game.CityMap {
 	m := game.NewCityMap()
 	var p, iip util.Point
-	var l int
+	cgStreet := ChunkGenGroups["Street"].Get()
+	cgRoad := ChunkGenGroups["Road"].Get()
+	cgInterstateStreetIntersection := ChunkGenGroups["InterstateStreetIntersection"].Get()
+	cgHighwayStreetIntersection := ChunkGenGroups["HighwayStreetIntersection"].Get()
+	cgStreetStreetIntersection := ChunkGenGroups["StreetStreetIntersection"].Get()
+	cgStreetRoadIntersection := ChunkGenGroups["StreetRoadIntersection"].Get()
+	cgHighwayRoadIntersection := ChunkGenGroups["HighwayRoadIntersection"].Get()
+	cgRoadRoadIntersection := ChunkGenGroups["RoadRoadIntersection"].Get()
 	// layStreet lays a street from the starting point in the given facing
 	// for the given distance.
 	layStreet := func(sp util.Point, f util.Facing, l int) {
 		for ; l > 0; l-- {
 			// Try to place a straight street chunk
-			if !place(m, ChunkGens["Street"], sp, f, false) {
+			if !place(m, cgStreet, sp, f, false) {
 				// Try to place an intersection
 				c := m.GetChunkFromMapPoint(sp)
-				switch c.Generator.GetID() {
+				switch c.Generator.GetGroup() {
 				case "Interstate":
-					place(m, ChunkGens["InterstateStreetIntersection"], sp, c.Facing, true)
+					place(m, cgInterstateStreetIntersection, sp, c.Facing, true)
 				case "Highway":
 					sp.Y++
-					place(m, ChunkGens["HighwayIntersection"], sp, c.Facing, true)
+					place(m, cgHighwayStreetIntersection, sp, c.Facing, true)
 					sp.Y--
 				case "Street":
-					place(m, ChunkGens["StreetStreetIntersection"], sp, c.Facing, true)
+					place(m, cgStreetStreetIntersection, sp, c.Facing, true)
+				case "Road":
+					place(m, cgStreetRoadIntersection, sp, (c.Facing + 1).Bound(), true)
+				}
+			}
+			sp = sp.StepFacing(f)
+		}
+	}
+	// layRoad lays a road from the starting point in the given facing for the
+	// given distance.
+	layRoad := func(sp util.Point, f util.Facing, l int) {
+		for ; l > 0; l-- {
+			// Try to place a straight road chunk
+			if !place(m, cgRoad, sp, f, false) {
+				// Try to place an intersection
+				c := m.GetChunkFromMapPoint(sp)
+				switch c.Generator.GetGroup() {
+				case "Highway":
+					sp.Y++
+					place(m, cgHighwayRoadIntersection, sp, c.Facing, true)
+					sp.Y--
+				case "Street":
+					place(m, cgStreetRoadIntersection, sp, c.Facing, true)
+				case "Road":
+					place(m, cgRoadRoadIntersection, sp, c.Facing, true)
 				}
 			}
 			sp = sp.StepFacing(f)
 		}
 	}
 	// Lay down the base forest and clearing land pattern
+	cgBrushyField := ChunkGenGroups["BrushyField"].Get()
+	cgGrassyField := ChunkGenGroups["GrassyField"].Get()
+	cgForest := ChunkGenGroups["Forest"].Get()
 	nox := util.RandomF(0, 1024)
 	noy := util.RandomF(0, 1024)
 	for p.Y = 0; p.Y < m.Bounds.Height(); p.Y++ {
@@ -50,79 +84,150 @@ func interstate() *game.CityMap {
 			f := util.Facing(util.Random(0, 4))
 			if n > 0.25 {
 				if util.Random(0, 16) == 0 {
-					set(m, p, ChunkGens["BrushyField"], f)
+					set(m, p, cgBrushyField, f)
 				} else {
-					set(m, p, ChunkGens["GrassyField"], f)
+					set(m, p, cgGrassyField, f)
 				}
 			} else {
-				set(m, p, ChunkGens["Forest"], f)
+				set(m, p, cgForest, f)
 			}
 		}
 	}
 	// Main interstate artery
+	cgInterstateHighwayIntersection := ChunkGenGroups["InterstateHighwayIntersection"].Get()
+	cgInterstate := ChunkGenGroups["Interstate"].Get()
 	iip = util.NewPoint(m.Bounds.Width()/2, m.Bounds.Height()/2)
 	p = iip
-	place(m, ChunkGens["InterstateHighwayIntersection"], p, util.FacingNorth, false)
+	place(m, cgInterstateHighwayIntersection, p, util.FacingNorth, false)
 	for ; p.Y >= 0; p.Y-- {
-		place(m, ChunkGens["Interstate"], p, util.FacingNorth, false)
+		place(m, cgInterstate, p, util.FacingNorth, false)
 	}
 	p = iip
 	p.Y += 3
 	for ; p.Y < m.Bounds.Height(); p.Y++ {
-		place(m, ChunkGens["Interstate"], p, util.FacingNorth, false)
+		place(m, cgInterstate, p, util.FacingNorth, false)
 	}
 	// Crossing highway
+	cgHighway := ChunkGenGroups["Highway"].Get()
 	p = iip
 	p.X--
 	p.Y += 2
 	for ; p.X >= 0; p.X-- {
-		place(m, ChunkGens["Highway"], p, util.FacingWest, false)
+		place(m, cgHighway, p, util.FacingWest, false)
 	}
 	p = iip
-	p.X += ChunkGens["InterstateHighwayIntersection"].Width
+	p.X += cgInterstateHighwayIntersection.Width
 	p.Y++
 	for ; p.X < m.Bounds.Width(); p.X++ {
-		place(m, ChunkGens["Highway"], p, util.FacingEast, false)
+		place(m, cgHighway, p, util.FacingEast, false)
 	}
+	// Street and road network
+	nsRoadsX := []int{}
+	nsStreetsX := []int{}
+	ewRoadsY := []int{}
+	ewStreetsY := []int{}
 	// Western N/S streets
 	p = iip
 	p.X--
-	l = 256
-	for i := 0; i < 4; i++ {
-		p.X -= 32 + util.Random(0, 32)
-		p.Y = iip.Y - l/2
-		layStreet(p, util.FacingSouth, l)
-		l -= 16
+	for iStreet := 0; iStreet < 4; iStreet++ {
+		nRoads := 3 + util.Random(0, 4)
+		for iRoad := 0; iRoad < nRoads; iRoad++ {
+			p.X -= 9 + util.Random(0, 7)
+			nsRoadsX = append(nsRoadsX, p.X)
+		}
+		if iStreet < 3 {
+			p.X -= 9 + util.Random(0, 7)
+			nsStreetsX = append(nsStreetsX, p.X)
+		}
 	}
 	// Eastern N/S streets
 	p = iip
-	p.X += ChunkGens["InterstateHighwayIntersection"].Width
-	l = 256
-	for i := 0; i < 4; i++ {
-		p.X += 32 + util.Random(0, 32)
-		p.Y = iip.Y - l/2
-		layStreet(p, util.FacingSouth, l)
-		l -= 16
+	p.X += cgInterstateHighwayIntersection.Width
+	for iStreet := 0; iStreet < 4; iStreet++ {
+		nRoads := 3 + util.Random(0, 4)
+		for iRoad := 0; iRoad < nRoads; iRoad++ {
+			p.X += 7 + util.Random(0, 7)
+			nsRoadsX = append(nsRoadsX, p.X)
+		}
+		if iStreet < 3 {
+			p.X += 7 + util.Random(0, 7)
+			nsStreetsX = append(nsStreetsX, p.X)
+		}
 	}
 	// Northern E/W streets
 	p = iip
-	p.X--
-	l = 256
-	for i := 0; i < 4; i++ {
-		p.Y -= 32 + util.Random(0, 32)
-		p.X = iip.X - l/2
-		layStreet(p, util.FacingEast, l)
-		l -= 16
+	for iStreet := 0; iStreet < 4; iStreet++ {
+		nRoads := 3 + util.Random(0, 4)
+		for iRoad := 0; iRoad < nRoads; iRoad++ {
+			p.Y -= 7 + util.Random(0, 7)
+			ewRoadsY = append(ewRoadsY, p.Y)
+		}
+		if iStreet < 3 {
+			p.Y -= 7 + util.Random(0, 7)
+			ewStreetsY = append(ewStreetsY, p.Y)
+		}
 	}
 	// Southern E/W streets
 	p = iip
-	p.X += ChunkGens["InterstateHighwayIntersection"].Width
-	l = 256
-	for i := 0; i < 4; i++ {
-		p.Y += 32 + util.Random(0, 32)
-		p.X = iip.X - l/2
-		layStreet(p, util.FacingEast, l)
-		l -= 16
+	p.Y += cgInterstateHighwayIntersection.Height
+	for iStreet := 0; iStreet < 4; iStreet++ {
+		nRoads := 3 + util.Random(0, 4)
+		for iRoad := 0; iRoad < nRoads; iRoad++ {
+			p.Y += 7 + util.Random(0, 7)
+			ewRoadsY = append(ewRoadsY, p.Y)
+		}
+		if iStreet < 3 {
+			p.Y += 7 + util.Random(0, 7)
+			ewStreetsY = append(ewStreetsY, p.Y)
+		}
+	}
+	// Lay down streets and roads
+	minRoadX := iip.X
+	maxRoadX := iip.X
+	minRoadY := iip.Y
+	maxRoadY := iip.Y
+	for _, x := range nsRoadsX {
+		if x < minRoadX {
+			minRoadX = x
+		}
+		if x > maxRoadX {
+			maxRoadX = x
+		}
+	}
+	for _, y := range ewRoadsY {
+		if y < minRoadY {
+			minRoadY = y
+		}
+		if y > maxRoadY {
+			maxRoadY = y
+		}
+	}
+	for _, x := range nsRoadsX {
+		layRoad(util.NewPoint(x, minRoadY), util.FacingSouth, (maxRoadY-minRoadY)+1)
+	}
+	for _, x := range nsStreetsX {
+		layStreet(util.NewPoint(x, minRoadY), util.FacingSouth, (maxRoadY-minRoadY)+1)
+	}
+	for _, y := range ewRoadsY {
+		layRoad(util.NewPoint(minRoadX, y), util.FacingEast, (maxRoadX-minRoadX)+1)
+	}
+	for _, y := range ewStreetsY {
+		layStreet(util.NewPoint(minRoadX, y), util.FacingEast, (maxRoadX-minRoadX)+1)
+	}
+	// Fill with housing
+	nsx := append(nsRoadsX, nsStreetsX...)
+	ewy := append(ewRoadsY, ewStreetsY...)
+	for _, x := range nsx {
+		for y := minRoadY; y < maxRoadY; y++ {
+			place(m, ChunkGenGroups["House"].Get(), util.NewPoint(x-1, y), util.FacingEast, false)
+			place(m, ChunkGenGroups["House"].Get(), util.NewPoint(x+1, y), util.FacingWest, false)
+		}
+	}
+	for _, y := range ewy {
+		for x := minRoadX; x < maxRoadX; x++ {
+			place(m, ChunkGenGroups["House"].Get(), util.NewPoint(x, y-1), util.FacingSouth, false)
+			place(m, ChunkGenGroups["House"].Get(), util.NewPoint(x, y+1), util.FacingNorth, false)
+		}
 	}
 	// // Test chunk
 	// p = iip

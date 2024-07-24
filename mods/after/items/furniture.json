@@ -132,5 +132,15 @@
         "BlocksWalk": true,
         "Climbable": true,
         "Fixed": true
+    },
+    "Planter": {
+        "Name": "planter",
+        "Rune": "]",
+        "Fg": "Olive",
+        "Bg": "Black",
+        "BlocksWalk": true,
+        "Climbable": true,
+        "Fixed": true,
+        "Container": true
     }
 }
