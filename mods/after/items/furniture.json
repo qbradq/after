@@ -68,16 +68,9 @@
         "Fixed": true,
         "Container": true,
         "Contents": [
-            "Shirts@1n4",
-            "Shirts@1n4",
-            "Shirts@1n4",
-            "Shirts@1n4",
-            "Pants@1n4",
-            "Pants@1n4",
-            "Pants@1n4",
-            "Pants@1n4",
-            "Shoes@1n2",
-            "Shoes@1n2",
+            "Shirts@1n4*4",
+            "Pants@1n4*4",
+            "Shoes@1n2*2",
             "Hats@1n4",
             "Gloves@1n8"
         ]
@@ -101,22 +94,8 @@
         "Fixed": true,
         "Container": true,
         "Contents": [
-            "Food@1n4",
-            "Food@1n4",
-            "Food@1n4",
-            "Food@1n4",
-            "Food@1n4",
-            "Food@1n4",
-            "Food@1n4",
-            "Food@1n4",
-            "Drinks@1n4",
-            "Drinks@1n4",
-            "Drinks@1n4",
-            "Drinks@1n4",
-            "Drinks@1n4",
-            "Drinks@1n4",
-            "Drinks@1n4",
-            "Drinks@1n4"
+            "Food@1n4*8",
+            "Drinks@1n4*8"
         ]
     },
     "Toilet": {
@@ -169,29 +148,7 @@
         "Fixed": true,
         "Container": true,
         "Contents": [
-            "CashRegisterContents@1n2",
-            "CashRegisterContents@1n2",
-            "CashRegisterContents@1n2",
-            "CashRegisterContents@1n2",
-            "CashRegisterContents@1n2",
-            "CashRegisterContents@1n2",
-            "CashRegisterContents@1n2",
-            "CashRegisterContents@1n2",
-            "CashRegisterContents@1n2",
-            "CashRegisterContents@1n2",
-            "CashRegisterContents@1n2",
-            "CashRegisterContents@1n2",
-            "CashRegisterContents@1n2",
-            "CashRegisterContents@1n2",
-            "CashRegisterContents@1n2",
-            "CashRegisterContents@1n2",
-            "CashRegisterContents@1n2",
-            "CashRegisterContents@1n2",
-            "CashRegisterContents@1n2",
-            "CashRegisterContents@1n2",
-            "CashRegisterContents@1n2",
-            "CashRegisterContents@1n2",
-            "CashRegisterContents@1n2"
+            "CashRegisterContents@1n5*100"
         ]
     }
 }

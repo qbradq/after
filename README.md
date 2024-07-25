@@ -9,6 +9,7 @@ A text-mode roguelike about scratching out a life in the post-apocalypse.
 
 ### Known Issues
 * Bump action seems to default to climbing.
+* Door bump action defaults to climbing after opening and closing.
 
 ## Notes
 

@@ -28,28 +28,29 @@ func (s *Scenario) Execute(m *game.CityMap) {
 	m.Player = game.NewPlayer(m.Now)
 	// Starting equipment
 	for _, statement := range s.Equipment {
-		i := statement.Evaluate(m.Now)
-		if i == nil {
-			continue
-		}
-		r := m.Player.WearItem(i)
-		if r != "" {
-			panic(errors.New(r))
+		items := statement.Evaluate(m.Now)
+		for _, i := range items {
+			r := m.Player.WearItem(i)
+			if r != "" {
+				panic(errors.New(r))
+			}
 		}
 	}
 	// Starting inventory
 	for _, statement := range s.Inventory {
-		i := statement.Evaluate(m.Now)
-		if i == nil {
-			continue
+		items := statement.Evaluate(m.Now)
+		for _, i := range items {
+			m.Player.AddItemToInventory(i)
 		}
-		m.Player.AddItemToInventory(i)
 	}
 	// Starting weapon
 	if len(s.Weapon) != 0 {
 		i := s.Weapon.Evaluate(m.Now)
-		if i != nil {
-			r := m.Player.WieldItem(i)
+		if len(i) > 1 {
+			panic("multiple weapons generated")
+		}
+		if len(i) > 0 {
+			r := m.Player.WieldItem(i[0])
 			if r != "" {
 				panic(errors.New(r))
 			}

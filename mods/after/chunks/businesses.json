@@ -2,7 +2,7 @@
     {
         "Group": "Business",
         "Variant": "Retail.Small.1",
-        "Name": "house",
+        "Name": "small retail store",
         "MiniMap": [
             "R"
         ],
@@ -11,11 +11,11 @@
         "Width": 1,
         "Height": 1,
         "Map": [
-            ":;;;;:;;;;:;;z;:",
+            ":;;;;:;;;;:;;X;:",
             ":;;;;:;;;;:;;;;:",
-            ":;;Z;:;;;;:;;;;:",
+            ":;;X;:;;;;:;;;;:",
             ":;;;;:;;;;:;;;;:",
-            ":;;;;:;;;;:;;Z;:",
+            ":;;;;:;;;;:;;X;:",
             ":;;;;:;;;;:;;;;:",
             "::::::::::::::::",
             "###--##++##--###",
@@ -46,6 +46,7 @@
             "3": "Floor;BathroomCounter",
             "|": "ChainFence",
             "/": "Pavement;ChainFenceGate",
+            "X": "Pavement;Zombie@1n10",
             "Z": "Floor;Zombie@1n10",
             "z": "Floor;Zombie@1n20"
         }
