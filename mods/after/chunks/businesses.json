@@ -1,0 +1,53 @@
+[
+    {
+        "Group": "Business",
+        "Variant": "Retail.Small.1",
+        "Name": "house",
+        "MiniMap": [
+            "R"
+        ],
+        "Fg": "Blue",
+        "Bg": "Black",
+        "Width": 1,
+        "Height": 1,
+        "Map": [
+            ":;;;;:;;;;:;;z;:",
+            ":;;;;:;;;;:;;;;:",
+            ":;;Z;:;;;;:;;;;:",
+            ":;;;;:;;;;:;;;;:",
+            ":;;;;:;;;;:;;Z;:",
+            ":;;;;:;;;;:;;;;:",
+            "::::::::::::::::",
+            "###--##++##--###",
+            "#..Z.....Z....[#",
+            "#.[...........[#",
+            "#Z$..[[[[[[[..[#",
+            "#.[.....Zz....[#",
+            "#+##..[[[[[[..[#",
+            "#z}#...Zz....Z[#",
+            "#23#[[[[[[[[[[[#",
+            "################"
+        ],
+        "Tiles": {
+            ",": "RandomGrass",
+            "*": "Tree",
+            ";": "Pavement",
+            ":": "YellowPavement",
+            ".": "Floor",
+            "#": "Wall",
+            "[": "Floor;CounterTop",
+            "$": "Floor;CounterTop;CashRegister",
+            "}": "Floor;Sink",
+            "-": "Floor;ShopWindow",
+            "~": "WindowFrame;Window",
+            "+": "DoorFrame;Door",
+            "1": "DoorFrame;GlassDoor",
+            "2": "Floor;Toilet",
+            "3": "Floor;BathroomCounter",
+            "|": "ChainFence",
+            "/": "Pavement;ChainFenceGate",
+            "Z": "Floor;Zombie@1n10",
+            "z": "Floor;Zombie@1n20"
+        }
+    }
+]

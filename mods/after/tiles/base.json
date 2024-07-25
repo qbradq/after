@@ -36,10 +36,30 @@
         "BlocksVis": true,
         "Climbable": true
     },
+    "ChainFence": {
+        "Name": "chain link fence",
+        "Rune": "#",
+        "Fg": "Silver",
+        "Bg": "Black",
+        "BlocksWalk": true,
+        "Climbable": true
+    },
     "Grass": {
         "Name": "grass",
         "Rune": ".",
         "Fg": "Lime",
+        "Bg": "Black"
+    },
+    "Dirt": {
+        "Name": "dirt",
+        "Rune": ".",
+        "Fg": "Olive",
+        "Bg": "Black"
+    },
+    "Gravel": {
+        "Name": "gravel",
+        "Rune": ".",
+        "Fg": "White",
         "Bg": "Black"
     },
     "Brush": {

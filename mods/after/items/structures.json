@@ -21,6 +21,27 @@
             "Use": "CloseDoor"
         }
     },
+    "GlassDoor": {
+        "Name": "glass door",
+        "Rune": "+",
+        "Fg": "Aqua",
+        "Bg": "Black",
+        "BlocksWalk": true,
+        "Fixed": true,
+        "Events": {
+            "Use": "OpenDoor"
+        }
+    },
+    "OpenGlassDoor": {
+        "Name": "open glass door",
+        "Rune": "-",
+        "Fg": "Aqua",
+        "Bg": "Black",
+        "Fixed": true,
+        "Events": {
+            "Use": "CloseDoor"
+        }
+    },
     "Window": {
         "Name": "window",
         "Rune": "#",
@@ -44,6 +65,14 @@
             "Use": "CloseDoor"
         }
     },
+    "ShopWindow": {
+        "Name": "shop window",
+        "Rune": "#",
+        "Fg": "Aqua",
+        "Bg": "Black",
+        "BlocksWalk": true,
+        "Fixed": true
+    },
     "FenceGate": {
         "Name": "fence gate",
         "Rune": "+",
@@ -61,6 +90,28 @@
         "Name": "open fence gate",
         "Rune": "-",
         "Fg": "Yellow",
+        "Bg": "Black",
+        "Fixed": true,
+        "Events": {
+            "Use": "CloseDoor"
+        }
+    },
+    "ChainFenceGate": {
+        "Name": "chain link fence gate",
+        "Rune": "+",
+        "Fg": "Silver",
+        "Bg": "Black",
+        "BlocksWalk": true,
+        "Climbable": true,
+        "Fixed": true,
+        "Events": {
+            "Use": "OpenDoor"
+        }
+    },
+    "ChainOpenFenceGate": {
+        "Name": "open chain link fence gate",
+        "Rune": "-",
+        "Fg": "Silver",
         "Bg": "Black",
         "Fixed": true,
         "Events": {

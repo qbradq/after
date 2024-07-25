@@ -4,5 +4,13 @@
     },
     "Drinks": {
         "WaterBottle": 1
+    },
+    "CashRegisterContents": {
+        "Coin": 10,
+        "OneDollarBill": 10,
+        "FiveDollarBill": 5,
+        "TenDollarBill": 5,
+        "TwentyDollarBill": 5,
+        "OneHundredDollarBill": 1
     }
 }

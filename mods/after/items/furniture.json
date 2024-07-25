@@ -22,6 +22,15 @@
         "Climbable": true,
         "Fixed": true
     },
+    "CounterTop": {
+        "Name": "counter top",
+        "Rune": "[",
+        "Fg": "Yellow",
+        "Bg": "Black",
+        "BlocksWalk": true,
+        "Climbable": true,
+        "Fixed": true
+    },
     "KitchenCounter": {
         "Name": "kitchen counter",
         "Rune": "[",
@@ -142,5 +151,47 @@
         "Climbable": true,
         "Fixed": true,
         "Container": true
+    },
+    "Mailbox": {
+        "Name": "mailbox",
+        "Rune": "]",
+        "Fg": "Silver",
+        "Bg": "Black",
+        "BlocksWalk": true,
+        "Fixed": true,
+        "Container": true
+    },
+    "CashRegister": {
+        "Name": "cash register",
+        "Rune": "]",
+        "Fg": "Lime",
+        "Bg": "Silver",
+        "Fixed": true,
+        "Container": true,
+        "Contents": [
+            "CashRegisterContents@1n2",
+            "CashRegisterContents@1n2",
+            "CashRegisterContents@1n2",
+            "CashRegisterContents@1n2",
+            "CashRegisterContents@1n2",
+            "CashRegisterContents@1n2",
+            "CashRegisterContents@1n2",
+            "CashRegisterContents@1n2",
+            "CashRegisterContents@1n2",
+            "CashRegisterContents@1n2",
+            "CashRegisterContents@1n2",
+            "CashRegisterContents@1n2",
+            "CashRegisterContents@1n2",
+            "CashRegisterContents@1n2",
+            "CashRegisterContents@1n2",
+            "CashRegisterContents@1n2",
+            "CashRegisterContents@1n2",
+            "CashRegisterContents@1n2",
+            "CashRegisterContents@1n2",
+            "CashRegisterContents@1n2",
+            "CashRegisterContents@1n2",
+            "CashRegisterContents@1n2",
+            "CashRegisterContents@1n2"
+        ]
     }
 }

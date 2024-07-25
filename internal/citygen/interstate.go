@@ -35,9 +35,13 @@ func interstate() *game.CityMap {
 				case "Interstate":
 					place(m, cgInterstateStreetIntersection, sp, c.Facing, true)
 				case "Highway":
-					sp.Y++
-					place(m, cgHighwayStreetIntersection, sp, c.Facing, true)
-					sp.Y--
+					if c.Facing == util.FacingWest {
+						sp.Y++
+						place(m, cgHighwayStreetIntersection, sp, c.Facing, true)
+						sp.Y--
+					} else {
+						place(m, cgHighwayStreetIntersection, sp, c.Facing, true)
+					}
 				case "Street":
 					place(m, cgStreetStreetIntersection, sp, c.Facing, true)
 				case "Road":
@@ -57,9 +61,13 @@ func interstate() *game.CityMap {
 				c := m.GetChunkFromMapPoint(sp)
 				switch c.Generator.GetGroup() {
 				case "Highway":
-					sp.Y++
-					place(m, cgHighwayRoadIntersection, sp, c.Facing, true)
-					sp.Y--
+					if c.Facing == util.FacingWest {
+						sp.Y++
+						place(m, cgHighwayRoadIntersection, sp, c.Facing, true)
+						sp.Y--
+					} else {
+						place(m, cgHighwayStreetIntersection, sp, c.Facing, true)
+					}
 				case "Street":
 					place(m, cgStreetRoadIntersection, sp, c.Facing, true)
 				case "Road":
@@ -126,58 +134,63 @@ func interstate() *game.CityMap {
 	nsStreetsX := []int{}
 	ewRoadsY := []int{}
 	ewStreetsY := []int{}
+	nStreets := 4
+	minRoads := 2
+	maxRoads := 4
+	minBlockWidth := 4
+	maxBlockWidth := 8
 	// Western N/S streets
 	p = iip
 	p.X--
-	for iStreet := 0; iStreet < 4; iStreet++ {
-		nRoads := 3 + util.Random(0, 4)
+	for iStreet := 0; iStreet < nStreets; iStreet++ {
+		nRoads := util.Random(minRoads, maxRoads+1)
 		for iRoad := 0; iRoad < nRoads; iRoad++ {
-			p.X -= 9 + util.Random(0, 7)
+			p.X -= util.Random(minBlockWidth, maxBlockWidth+1) + 1
 			nsRoadsX = append(nsRoadsX, p.X)
 		}
-		if iStreet < 3 {
-			p.X -= 9 + util.Random(0, 7)
+		if iStreet < nStreets-1 {
+			p.X -= util.Random(minBlockWidth, maxBlockWidth+1) + 1
 			nsStreetsX = append(nsStreetsX, p.X)
 		}
 	}
 	// Eastern N/S streets
 	p = iip
 	p.X += cgInterstateHighwayIntersection.Width
-	for iStreet := 0; iStreet < 4; iStreet++ {
-		nRoads := 3 + util.Random(0, 4)
+	for iStreet := 0; iStreet < nStreets; iStreet++ {
+		nRoads := util.Random(minRoads, maxRoads+1)
 		for iRoad := 0; iRoad < nRoads; iRoad++ {
-			p.X += 7 + util.Random(0, 7)
+			p.X += util.Random(minBlockWidth, maxBlockWidth+1) + 1
 			nsRoadsX = append(nsRoadsX, p.X)
 		}
-		if iStreet < 3 {
-			p.X += 7 + util.Random(0, 7)
+		if iStreet < nStreets-1 {
+			p.X += util.Random(minBlockWidth, maxBlockWidth+1) + 1
 			nsStreetsX = append(nsStreetsX, p.X)
 		}
 	}
 	// Northern E/W streets
 	p = iip
-	for iStreet := 0; iStreet < 4; iStreet++ {
-		nRoads := 3 + util.Random(0, 4)
+	for iStreet := 0; iStreet < nStreets; iStreet++ {
+		nRoads := util.Random(minRoads, maxRoads+1)
 		for iRoad := 0; iRoad < nRoads; iRoad++ {
-			p.Y -= 7 + util.Random(0, 7)
+			p.Y -= util.Random(minBlockWidth, maxBlockWidth+1) + 1
 			ewRoadsY = append(ewRoadsY, p.Y)
 		}
-		if iStreet < 3 {
-			p.Y -= 7 + util.Random(0, 7)
+		if iStreet < nStreets-1 {
+			p.Y -= util.Random(minBlockWidth, maxBlockWidth+1) + 1
 			ewStreetsY = append(ewStreetsY, p.Y)
 		}
 	}
 	// Southern E/W streets
 	p = iip
 	p.Y += cgInterstateHighwayIntersection.Height
-	for iStreet := 0; iStreet < 4; iStreet++ {
-		nRoads := 3 + util.Random(0, 4)
+	for iStreet := 0; iStreet < nStreets; iStreet++ {
+		nRoads := util.Random(minRoads, maxRoads+1)
 		for iRoad := 0; iRoad < nRoads; iRoad++ {
-			p.Y += 7 + util.Random(0, 7)
+			p.Y += util.Random(minBlockWidth, maxBlockWidth+1) + 1
 			ewRoadsY = append(ewRoadsY, p.Y)
 		}
-		if iStreet < 3 {
-			p.Y += 7 + util.Random(0, 7)
+		if iStreet < nStreets-1 {
+			p.Y += util.Random(minBlockWidth, maxBlockWidth+1) + 1
 			ewStreetsY = append(ewStreetsY, p.Y)
 		}
 	}
@@ -214,28 +227,71 @@ func interstate() *game.CityMap {
 	for _, y := range ewStreetsY {
 		layStreet(util.NewPoint(minRoadX, y), util.FacingEast, (maxRoadX-minRoadX)+1)
 	}
-	// Fill with housing
-	nsx := append(nsRoadsX, nsStreetsX...)
-	ewy := append(ewRoadsY, ewStreetsY...)
-	for _, x := range nsx {
+	// Build possible locations
+	type potentialLocation struct {
+		p util.Point
+		f util.Facing
+	}
+	phl := []potentialLocation{}
+	pbl := []potentialLocation{}
+	for _, x := range nsRoadsX {
 		for y := minRoadY; y < maxRoadY; y++ {
-			place(m, ChunkGenGroups["House"].Get(), util.NewPoint(x-1, y), util.FacingEast, false)
-			place(m, ChunkGenGroups["House"].Get(), util.NewPoint(x+1, y), util.FacingWest, false)
+			phl = append(phl,
+				potentialLocation{p: util.NewPoint(x-1, y), f: util.FacingEast},
+				potentialLocation{p: util.NewPoint(x+1, y), f: util.FacingWest},
+			)
 		}
 	}
-	for _, y := range ewy {
+	for _, x := range nsStreetsX {
+		for y := minRoadY; y < maxRoadY; y++ {
+			pbl = append(pbl,
+				potentialLocation{p: util.NewPoint(x-1, y), f: util.FacingEast},
+				potentialLocation{p: util.NewPoint(x+1, y), f: util.FacingWest},
+			)
+		}
+	}
+	for _, y := range ewRoadsY {
 		for x := minRoadX; x < maxRoadX; x++ {
-			place(m, ChunkGenGroups["House"].Get(), util.NewPoint(x, y-1), util.FacingSouth, false)
-			place(m, ChunkGenGroups["House"].Get(), util.NewPoint(x, y+1), util.FacingNorth, false)
+			phl = append(phl,
+				potentialLocation{p: util.NewPoint(x, y-1), f: util.FacingSouth},
+				potentialLocation{p: util.NewPoint(x, y+1), f: util.FacingNorth},
+			)
 		}
 	}
-	// // Test chunk
-	// p = iip
-	// p.X--
-	// place(m, ChunkGens["Test"], p, util.FacingSouth)
-	// // Test house
-	// p = iip
-	// p.X -= 2
-	// place(m, ChunkGens["House"], p, util.FacingSouth)
+	for _, y := range ewStreetsY {
+		for x := minRoadX; x < maxRoadX; x++ {
+			pbl = append(pbl,
+				potentialLocation{p: util.NewPoint(x, y-1), f: util.FacingSouth},
+				potentialLocation{p: util.NewPoint(x, y+1), f: util.FacingNorth},
+			)
+		}
+	}
+	for i := range phl {
+		j := util.Random(0, i+1)
+		phl[i], phl[j] = phl[j], phl[i]
+	}
+	for i := range pbl {
+		j := util.Random(0, i+1)
+		pbl[i], pbl[j] = pbl[j], pbl[i]
+	}
+	sl := float64(iip.Distance(util.NewPoint(maxRoadX, maxRoadY)))
+	// Try to place businesses
+	for _, l := range pbl {
+		r := (1.0 - float64(l.p.Distance(iip))/sl) / 2
+		if util.RandomF(0, 1.0) < r {
+			place(m, ChunkGenGroups["Business"].Get(), l.p, l.f, false)
+		}
+	}
+	// Fill with houses
+	for _, l := range phl {
+		r := 1.0 - float64(l.p.Distance(iip))/sl
+		if util.RandomF(0, 1.0) < r {
+			place(m, ChunkGenGroups["House"].Get(), l.p, l.f, false)
+		}
+	}
+	// Test chunk
+	p = iip
+	p.X--
+	place(m, ChunkGenGroups["Test"].Get(), p, util.FacingSouth, true)
 	return m
 }

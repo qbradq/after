@@ -1,0 +1,38 @@
+{
+    "Coin": {
+        "Name": "coin",
+        "Rune": "$",
+        "Fg": "Silver",
+        "Bg": "Black"
+    },
+    "OneDollarBill": {
+        "Name": "$1 bill",
+        "Rune": "$",
+        "Fg": "Lime",
+        "Bg": "Black"
+    },
+    "FiveDollarBill": {
+        "Name": "$5 bill",
+        "Rune": "$",
+        "Fg": "Lime",
+        "Bg": "Black"
+    },
+    "TenDollarBill": {
+        "Name": "$10 bill",
+        "Rune": "$",
+        "Fg": "Lime",
+        "Bg": "Black"
+    },
+    "TwentyDollarBill": {
+        "Name": "$20 bill",
+        "Rune": "$",
+        "Fg": "Lime",
+        "Bg": "Black"
+    },
+    "OneHundredDollarBill": {
+        "Name": "$100 bill",
+        "Rune": "$",
+        "Fg": "Lime",
+        "Bg": "Black"
+    }
+}
