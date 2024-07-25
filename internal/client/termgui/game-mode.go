@@ -325,39 +325,57 @@ func (m *gameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 	dir = dir.Bound()
 	if dir != util.DirectionInvalid {
 		if !m.CityMap.StepPlayer(false, dir) {
-			// Bump handling
-			if m.CityMap.PlayerCanClimb(dir) {
-				// Offer to climb over whatever is blocking us
-				m.confirmDialog.Title = "Confirm Climb"
-				m.confirmDialog.Prompt = "Do you wish to climb?"
-				m.confirmDialog.Confirmed = func() {
-					m.CityMap.StepPlayer(true, dir)
-				}
-				m.modeStack = append(m.modeStack, m.confirmDialog)
-				return nil
-			}
-			np := m.CityMap.Player.Position.Step(dir)
-			a := m.CityMap.ActorAt(np)
-			if a != nil {
-				m.CityMap.Player.Attack(a, m.CityMap.Now)
-				m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second)*m.CityMap.Player.ActSpeed()), func() { m.Draw(s) })
-				s.FlushEvents()
-			} else {
-				items := m.CityMap.ItemsAt(np)
-				if len(items) > 0 {
-					err, used := events.ExecuteItemUseEvent("Use", items[len(items)-1], &m.CityMap.Player.Actor, m.CityMap)
-					if err != nil {
-						return err
-					}
-					if used {
-						m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second)*m.CityMap.Player.ActSpeed()), func() { m.Draw(s) })
-					}
-					s.FlushEvents()
-				}
+			if err := m.handleBump(dir, s); err != nil {
+				return err
 			}
 		} else {
 			s.FlushEvents()
 		}
+	}
+	return nil
+}
+
+// handleBump handles the player bumping into something, returning any error.
+func (m *gameMode) handleBump(dir util.Direction, s termui.TerminalDriver) error {
+	np := m.CityMap.Player.Position.Step(dir)
+	// Try attacking first
+	a := m.CityMap.ActorAt(np)
+	if a != nil {
+		m.CityMap.Player.Attack(a, m.CityMap.Now)
+		m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second)*m.CityMap.Player.ActSpeed()), func() { m.Draw(s) })
+		s.FlushEvents()
+		return nil
+	}
+	// Then try climbing
+	if m.CityMap.PlayerCanClimb(dir) {
+		// Offer to climb over whatever is blocking us
+		m.confirmDialog.Title = "Confirm Climb"
+		m.confirmDialog.Prompt = "Do you wish to climb?"
+		m.confirmDialog.Confirmed = func() {
+			m.CityMap.StepPlayer(true, dir)
+		}
+		m.modeStack = append(m.modeStack, m.confirmDialog)
+		return nil
+	}
+	// Try to use fixed items
+	items := m.CityMap.ItemsAt(np)
+	for _, i := range items {
+		if !i.Fixed || i.Events == nil {
+			continue
+		}
+		if _, found := i.Events["Use"]; !found {
+			continue
+		}
+		err, used := events.ExecuteItemUseEvent("Use", items[len(items)-1], &m.CityMap.Player.Actor, m.CityMap)
+		if err != nil {
+			return err
+		}
+		if used {
+			m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second)*m.CityMap.Player.ActSpeed()), func() { m.Draw(s) })
+		}
+		s.FlushEvents()
+		// If we reached this point we have successfully used a fixed item.
+		break
 	}
 	return nil
 }

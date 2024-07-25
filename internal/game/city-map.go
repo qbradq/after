@@ -545,8 +545,8 @@ func (m *CityMap) PlayerCanClimb(d util.Direction) bool {
 		return false
 	}
 	nc := m.GetChunk(np)
-	ws, cs := nc.CanStep(&m.Player.Actor, np)
-	return ws || cs
+	_, cs := nc.CanStep(&m.Player.Actor, np)
+	return cs
 }
 
 // MakeVisibilitySets constructs bitmaps representing the current and remembered

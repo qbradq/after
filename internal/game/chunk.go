@@ -200,6 +200,9 @@ func (c *Chunk) PlaceItem(i *Item, force bool) bool {
 	if i.BlocksWalk {
 		c.BlocksWalk.Set(c.relOfs(i.Position))
 	}
+	if !i.Climbable {
+		c.BlocksClimb.Set(c.relOfs(i.Position))
+	}
 	c.Items = append(c.Items, i)
 	return true
 }
@@ -225,10 +228,7 @@ func (c *Chunk) RemoveItem(i *Item) {
 	c.Items[len(c.Items)-1] = nil
 	c.Items = c.Items[:len(c.Items)-1]
 	// Bitmap updates
-	if i.BlocksVis {
-		c.bitmapsDirty = true
-	}
-	if i.BlocksWalk {
+	if i.BlocksVis || i.BlocksWalk || !i.Climbable {
 		c.bitmapsDirty = true
 	}
 }
@@ -260,6 +260,7 @@ func (c *Chunk) PlaceActor(a *Actor, climbing bool) (bool, bool) {
 	}
 	c.Actors = append(c.Actors, a)
 	c.BlocksWalk.Set(c.relOfs(a.Position))
+	c.BlocksClimb.Set(c.relOfs(a.Position))
 	return true, false
 }
 
