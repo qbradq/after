@@ -2,6 +2,7 @@
     "Soap": {
         "Name": "bar of soap",
         "Rune": "&",
+        "Stackable": true,
         "Fg": "White",
         "Bg": "Black"
     }

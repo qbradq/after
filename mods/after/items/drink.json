@@ -3,6 +3,7 @@
     "WaterBottle": {
         "Name": "bottle of water",
         "Rune": "%",
+        "Stackable": true,
         "Fg": "Aqua",
         "Bg": "Black",
         "FArg": 0.25,

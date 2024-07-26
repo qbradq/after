@@ -2,6 +2,7 @@
     "Salami": {
         "Name": "salami",
         "Rune": "%",
+        "Stackable": true,
         "Fg": "Yellow",
         "Bg": "Black",
         "FArg": 0.125,

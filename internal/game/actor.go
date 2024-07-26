@@ -314,6 +314,12 @@ func (a *Actor) AddItemToInventory(i *Item) bool {
 		if i == o {
 			return false
 		}
+		// Try to stack
+		if i.Stackable && i.TemplateID == o.TemplateID {
+			o.Amount += i.Amount
+			i.Destroyed = true
+			return true
+		}
 	}
 	a.Inventory = append(a.Inventory, i)
 	return true

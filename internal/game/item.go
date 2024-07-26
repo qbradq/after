@@ -108,6 +108,7 @@ func (i *Item) AddItem(item *Item) bool {
 		if item == o {
 			return false
 		}
+		// Try to stack
 		if item.Stackable && item.TemplateID == o.TemplateID {
 			o.Amount += item.Amount
 			item.Destroyed = true
