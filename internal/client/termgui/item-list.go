@@ -1,6 +1,8 @@
 package termgui
 
 import (
+	"strconv"
+
 	"github.com/qbradq/after/internal/game"
 	"github.com/qbradq/after/lib/termui"
 	"github.com/qbradq/after/lib/util"
@@ -59,6 +61,9 @@ func (m *itemList) SetItems(items []*game.Item, container *game.Item) {
 			} else {
 				n = "-" + i.Name
 			}
+		}
+		if i.Amount > 1 {
+			n = n + " x" + strconv.FormatInt(int64(i.Amount), 10)
 		}
 		m.list.Items = append(m.list.Items, n)
 		if m.ld.X < len(n) {

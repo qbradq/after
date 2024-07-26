@@ -63,7 +63,11 @@ func (e *itemExpression) CreateItems(now time.Time) []*Item {
 	ret := []*Item{}
 	for pass := 0; pass < e.n; pass++ {
 		if util.Random(0, e.y) < e.x {
-			ret = append(ret, NewItem(e.r, now, true))
+			i := NewItem(e.r, now, true)
+			if i.Amount < 1 {
+				i.Amount = 1
+			}
+			ret = append(ret, i)
 		}
 	}
 	return ret
@@ -89,7 +93,11 @@ func (e *itemGenExpression) CreateItems(now time.Time) []*Item {
 	ret := []*Item{}
 	for pass := 0; pass < e.n; pass++ {
 		if util.Random(0, e.y) < e.x {
-			ret = append(ret, e.r.Generate(now))
+			i := e.r.Generate(now)
+			if i.Amount < 1 {
+				i.Amount = 1
+			}
+			ret = append(ret, i)
 		}
 	}
 	return ret

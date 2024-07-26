@@ -1,6 +1,8 @@
 package termgui
 
 import (
+	"strconv"
+
 	"github.com/qbradq/after/internal/ai"
 	"github.com/qbradq/after/internal/game"
 	"github.com/qbradq/after/lib/termui"
@@ -268,8 +270,12 @@ func (m *mapMode) drawMap(s termui.TerminalDriver, mtl util.Point, mb util.Rect)
 				h++
 			}
 			for _, i := range items {
-				if len(i.Name) > w {
-					w = len(i.Name)
+				nl := len(i.Name)
+				if i.Amount > 1 {
+					nl += 2 + len(strconv.FormatInt(int64(i.Amount), 10))
+				}
+				if nl > w {
+					w = nl
 				}
 			}
 			if len(items) == 0 {
@@ -282,7 +288,7 @@ func (m *mapMode) drawMap(s termui.TerminalDriver, mtl util.Point, mb util.Rect)
 			if m.CursorPos.X > m.Center.X {
 				dx = sp.X - (3 + w)
 			}
-			r := util.NewRectXYWH(dx, sp.Y-1, w+2, h+2)
+			r := util.NewRectXYWH(dx, sp.Y-1, w+3, h+2)
 			r = m.Bounds.Contain(r)
 			termui.DrawBox(s, r, termui.CurrentTheme.Normal)
 			r.TL.X++
@@ -300,7 +306,18 @@ func (m *mapMode) drawMap(s termui.TerminalDriver, mtl util.Point, mb util.Rect)
 				r.TL.Y++
 			}
 			for _, i := range items {
-				termui.DrawStringLeft(s, r, i.Name, termui.CurrentTheme.Normal.Foreground(termui.ColorAqua))
+				n := " " + i.Name
+				if i.Container {
+					if len(i.Inventory) > 0 {
+						n = "+" + i.Name
+					} else {
+						n = "-" + i.Name
+					}
+				}
+				if i.Amount > 1 {
+					n = n + " x" + strconv.FormatInt(int64(i.Amount), 10)
+				}
+				termui.DrawStringLeft(s, r, n, termui.CurrentTheme.Normal.Foreground(termui.ColorAqua))
 				r.TL.Y++
 			}
 			if len(items) == 0 {

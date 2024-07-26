@@ -19,6 +19,7 @@ type Item struct {
 	TemplateID string     // Template ID
 	Position   util.Point // Current position on the map
 	LastUpdate time.Time  // Time of the last call to event update
+	Amount     int        // Stack amount
 	FArg       float64    // Generic float argument
 	SArg       string     // Generic string argument
 	TArg       time.Time  // Generic time argument
@@ -33,6 +34,7 @@ type Item struct {
 	BlocksWalk      bool              // If true this item blocks walking
 	Climbable       bool              // If true this item may be climbed over
 	Destroyed       bool              // If true something has happened to this item to cause it to be destroyed, it will be removed from the world at the end of the next update cycle
+	Stackable       bool              // If true this item can stack with others of the exact same template name
 	Fixed           bool              // If true the item cannot be moved at all
 	Wearable        bool              // If true this item can be worn as a piece of clothing
 	WornBodyPart    BodyPartCode      // Code of the body part this item is worn on
@@ -70,6 +72,7 @@ func NewItemFromReader(r io.Reader) *Item {
 	i := NewItem(tid, time.Time{}, false) // Create new object
 	i.Position = util.GetPoint(r)         // Map position
 	i.LastUpdate = util.GetTime(r)        // Time of last update
+	i.Amount = int(util.GetUint32(r))     // Stack amount
 	i.SArg = util.GetString(r)            // Generic string argument
 	i.TArg = util.GetTime(r)              // Generic time argument
 	n := int(util.GetUint16(r))           // Contents
@@ -86,6 +89,7 @@ func (i *Item) Write(w io.Writer) {
 	util.PutString(w, i.TemplateID)             // Template ID
 	util.PutPoint(w, i.Position)                // Map position
 	util.PutTime(w, i.LastUpdate)               // Time of last update
+	util.PutUint32(w, uint32(i.Amount))         // Stack amount
 	util.PutString(w, i.SArg)                   // Generic string argument
 	util.PutTime(w, i.TArg)                     // Generic time argument
 	util.PutUint16(w, uint16(len(i.Inventory))) // Contents
@@ -103,6 +107,11 @@ func (i *Item) AddItem(item *Item) bool {
 	for _, o := range i.Inventory {
 		if item == o {
 			return false
+		}
+		if item.Stackable && item.TemplateID == o.TemplateID {
+			o.Amount += item.Amount
+			item.Destroyed = true
+			return true
 		}
 	}
 	i.Inventory = append(i.Inventory, item)

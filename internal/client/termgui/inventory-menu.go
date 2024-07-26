@@ -1,6 +1,8 @@
 package termgui
 
 import (
+	"strconv"
+
 	"github.com/qbradq/after/internal/game"
 	"github.com/qbradq/after/lib/termui"
 	"github.com/qbradq/after/lib/util"
@@ -106,6 +108,9 @@ func (m *inventoryMenu) PopulateList() int {
 			continue
 		}
 		n := fn(i.Name, i)
+		if i.Amount > 1 {
+			n = n + " x" + strconv.FormatInt(int64(i.Amount), 10)
+		}
 		m.names = append(m.names, n)
 		m.items = append(m.items, i)
 		if m.ld.X < len(n) {

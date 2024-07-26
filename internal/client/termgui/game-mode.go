@@ -53,6 +53,49 @@ func newGameMode(m *game.CityMap) *gameMode {
 	return gm
 }
 
+func (m *gameMode) wearWield(i *game.Item) {
+	if !m.CityMap.Player.RemoveItemFromInventory(i) {
+		return
+	}
+	if i.Weapon {
+		if r := m.CityMap.Player.WieldItem(i); r != "" {
+			m.logMode.Log(termui.ColorYellow, r)
+			m.CityMap.Player.AddItemToInventory(i)
+			return
+		}
+		m.logMode.Log(termui.ColorAqua, "Wielded %s.", i.Name)
+	} else if i.Wearable {
+		if r := m.CityMap.Player.WearItem(i); r != "" {
+			m.logMode.Log(termui.ColorYellow, r)
+			m.CityMap.Player.AddItemToInventory(i)
+			return
+		}
+		m.logMode.Log(termui.ColorAqua, "Wore %s.", i.Name)
+	} else {
+		m.logMode.Log(termui.ColorYellow, "That item is not wearable.")
+		m.CityMap.Player.AddItemToInventory(i)
+		return
+	}
+	m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second)*m.CityMap.Player.ActSpeed()), nil)
+}
+
+func (m *gameMode) unwearUnwield(i *game.Item) {
+	if i.Weapon {
+		if !m.CityMap.Player.UnWieldItem(i) {
+			return
+		}
+		m.CityMap.Player.AddItemToInventory(i)
+		m.logMode.Log(termui.ColorAqua, "Stopped wielding %s.", i.Name)
+	} else {
+		if !m.CityMap.Player.UnWearItem(i) {
+			return
+		}
+		m.CityMap.Player.AddItemToInventory(i)
+		m.logMode.Log(termui.ColorAqua, "Took off %s.", i.Name)
+	}
+	m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second)*m.CityMap.Player.ActSpeed()), nil)
+}
+
 func (m *gameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 	getAt := func(p util.Point) {
 		// If there's nothing there we can skip it
@@ -176,44 +219,10 @@ func (m *gameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 		case 'w': // Wear / Un-wear / Wield / Un-wield equipment
 			m.inventory.Selected = func(i *game.Item, equipped bool) {
 				if equipped {
-					if i.Weapon {
-						if !m.CityMap.Player.UnWieldItem(i) {
-							return
-						}
-						m.CityMap.Player.AddItemToInventory(i)
-						m.logMode.Log(termui.ColorAqua, "Stopped wielding %s.", i.Name)
-					} else {
-						if !m.CityMap.Player.UnWearItem(i) {
-							return
-						}
-						m.CityMap.Player.AddItemToInventory(i)
-						m.logMode.Log(termui.ColorAqua, "Took off %s.", i.Name)
-					}
+					m.unwearUnwield(i)
 				} else {
-					if !m.CityMap.Player.RemoveItemFromInventory(i) {
-						return
-					}
-					if i.Weapon {
-						if r := m.CityMap.Player.WieldItem(i); r != "" {
-							m.logMode.Log(termui.ColorYellow, r)
-							m.CityMap.Player.AddItemToInventory(i)
-							return
-						}
-						m.logMode.Log(termui.ColorAqua, "Wielded %s.", i.Name)
-					} else if i.Wearable {
-						if r := m.CityMap.Player.WearItem(i); r != "" {
-							m.logMode.Log(termui.ColorYellow, r)
-							m.CityMap.Player.AddItemToInventory(i)
-							return
-						}
-						m.logMode.Log(termui.ColorAqua, "Wore %s.", i.Name)
-					} else {
-						m.logMode.Log(termui.ColorYellow, "That item is not wearable.")
-						m.CityMap.Player.AddItemToInventory(i)
-						return
-					}
+					m.wearWield(i)
 				}
-				m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second)*m.CityMap.Player.ActSpeed()), func() { m.Draw(s) })
 			}
 			m.inventory.Title = "Wear / Un Wear Item"
 			m.inventory.IncludeEquipment = true
@@ -276,20 +285,22 @@ func (m *gameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 			return nil
 		case 'i': // Inventory
 			m.inventory.IncludeEquipment = true
-			m.inventory.OnlyUsable = true
-			m.inventory.Title = "Use Item from Inventory"
+			m.inventory.OnlyEquipment = false
+			m.inventory.OnlyUsable = false
+			m.inventory.Title = "Inventory"
 			m.inventory.Selected = func(i *game.Item, equipped bool) {
-				err, used := events.ExecuteItemUseEvent("Use", i, &m.CityMap.Player.Actor, m.CityMap)
-				if err != nil {
-					panic(err)
-				}
-				if used {
-					m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second)*m.CityMap.Player.ActSpeed()), func() { m.Draw(s) })
+				if _, useable := i.Events["Use"]; useable {
+					err, used := events.ExecuteItemUseEvent("Use", i, &m.CityMap.Player.Actor, m.CityMap)
+					if err != nil {
+						panic(err)
+					}
+					if used {
+						m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second)*m.CityMap.Player.ActSpeed()), func() { m.Draw(s) })
+					}
 				}
 			}
 			if m.inventory.PopulateList() > 0 {
 				m.modeStack = append(m.modeStack, m.inventory)
-				m.logMode.Log(termui.ColorPurple, "Use what?")
 			}
 			return nil
 		case 'r': // Rest / Wait
