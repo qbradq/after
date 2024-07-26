@@ -108,7 +108,7 @@
             "Use": "OpenDoor"
         }
     },
-    "ChainOpenFenceGate": {
+    "OpenChainFenceGate": {
         "Name": "open chain link fence gate",
         "Rune": "-",
         "Fg": "Silver",

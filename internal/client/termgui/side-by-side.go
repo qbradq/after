@@ -2,7 +2,9 @@ package termgui
 
 import (
 	"fmt"
+	"time"
 
+	"github.com/qbradq/after/internal/events"
 	"github.com/qbradq/after/internal/game"
 	"github.com/qbradq/after/lib/termui"
 	"github.com/qbradq/after/lib/util"
@@ -12,6 +14,7 @@ import (
 // location on the ground or a container.
 type sideBySide struct {
 	OnRight        bool          // If false the focus should be on the left-hand menu
+	TryUse         bool          // If true, when the user selects a non-container item we try to use it
 	LeftParent     *game.Item    // Parent of LeftContainer
 	LeftContainer  *game.Item    // Container contents we are displaying at the left, nil means the actor's inventory
 	RightParent    *game.Item    // Parent of RightContainer
@@ -51,6 +54,19 @@ func newSideBySide(p *gameMode, m *game.CityMap, a *game.Actor) *sideBySide {
 			if e == i {
 				game.Log.Log(termui.ColorYellow, "You must take that off first.")
 				return
+			}
+		}
+		// Try to use the item
+		if ret.TryUse {
+			if _, useable := i.Events["Use"]; useable {
+				err, used := events.ExecuteItemUseEvent("Use", i, &p.CityMap.Player.Actor, p.CityMap)
+				if err != nil {
+					return
+				}
+				if used {
+					p.CityMap.PlayerTookTurn(time.Duration(float64(time.Second)*p.CityMap.Player.ActSpeed()), nil)
+					return
+				}
 			}
 		}
 		// Remove item from parent

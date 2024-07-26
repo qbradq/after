@@ -58,7 +58,9 @@ func NewItem(template string, now time.Time, genContents bool) *Item {
 	ret.LastUpdate = now
 	if genContents {
 		for _, s := range ret.csCache {
-			ret.Inventory = append(ret.Inventory, s.Evaluate(now)...)
+			for _, item := range s.Evaluate(now) {
+				ret.AddItem(item)
+			}
 		}
 	}
 	return &ret

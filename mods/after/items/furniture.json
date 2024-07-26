@@ -31,6 +31,15 @@
         "Climbable": true,
         "Fixed": true
     },
+    "GlassDisplayCase": {
+        "Name": "glass display case",
+        "Rune": "[",
+        "Fg": "Aqua",
+        "Bg": "Black",
+        "BlocksWalk": true,
+        "Climbable": true,
+        "Fixed": true
+    },
     "KitchenCounter": {
         "Name": "kitchen counter",
         "Rune": "[",

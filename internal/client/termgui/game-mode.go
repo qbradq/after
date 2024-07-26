@@ -284,24 +284,9 @@ func (m *gameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 			m.logMode.Log(termui.ColorPurple, "Climb where?")
 			return nil
 		case 'i': // Inventory
-			m.inventory.IncludeEquipment = true
-			m.inventory.OnlyEquipment = false
-			m.inventory.OnlyUsable = false
-			m.inventory.Title = "Inventory"
-			m.inventory.Selected = func(i *game.Item, equipped bool) {
-				if _, useable := i.Events["Use"]; useable {
-					err, used := events.ExecuteItemUseEvent("Use", i, &m.CityMap.Player.Actor, m.CityMap)
-					if err != nil {
-						panic(err)
-					}
-					if used {
-						m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second)*m.CityMap.Player.ActSpeed()), func() { m.Draw(s) })
-					}
-				}
-			}
-			if m.inventory.PopulateList() > 0 {
-				m.modeStack = append(m.modeStack, m.inventory)
-			}
+			sbs := newSideBySide(m, m.CityMap, &m.CityMap.Player.Actor)
+			sbs.TryUse = true
+			m.modeStack = append(m.modeStack, sbs)
 			return nil
 		case 'r': // Rest / Wait
 			td := newTimeDialog(m.CityMap)
