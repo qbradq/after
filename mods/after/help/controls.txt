@@ -6,8 +6,6 @@ Game Controls
 %BInteractions%F
 %Dx%F Examine surroundings
 %DU%F Use nearby item
-%Dd%F Drop item at feet
-%DD%F Drop item on ground
 %D,%F Get items at feet
 %Dg%F Get items within reach
 
@@ -17,5 +15,4 @@ Game Controls
 %Dr%F Wait
 
 %BCombat Related%F
-%Dw%F (Un)Wear / (Un)Wield
 %Da%F Attack
