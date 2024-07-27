@@ -3,6 +3,7 @@ package game
 import (
 	"fmt"
 	"io"
+	"strconv"
 	"time"
 
 	"github.com/qbradq/after/lib/termui"
@@ -98,6 +99,29 @@ func (i *Item) Write(w io.Writer) {
 	for _, i := range i.Inventory {
 		i.Write(w)
 	}
+}
+
+// DisplayName returns the string to display for this item in user-facing
+// displays.
+func (i *Item) DisplayName() string {
+	ret := i.Name
+	if i.Amount > 1 {
+		ret += " x" + strconv.FormatInt(int64(i.Amount), 10)
+	}
+	return ret
+}
+
+// UIDisplayName returns the string to display in UIs like the inventory.
+func (i *Item) UIDisplayName() string {
+	ret := i.DisplayName()
+	if i.Container {
+		if len(i.Inventory) > 0 {
+			return "+" + ret
+		} else {
+			return "-" + ret
+		}
+	}
+	return " " + ret
 }
 
 // AddItem adds the item to this container's content if it is a container,

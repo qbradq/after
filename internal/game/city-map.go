@@ -374,8 +374,8 @@ func (m *CityMap) PlaceItem(i *Item, force bool) bool {
 }
 
 // RemoveItem removes the item from the city map.
-func (m *CityMap) RemoveItem(i *Item) {
-	m.GetChunk(i.Position).RemoveItem(i)
+func (m *CityMap) RemoveItem(i *Item) bool {
+	return m.GetChunk(i.Position).RemoveItem(i)
 }
 
 // ItemsAt returns the items at the given position.

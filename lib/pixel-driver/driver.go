@@ -92,6 +92,10 @@ func (d *Driver) Run() {
 			d.Driver.Events <- &termui.EventKey{Key: '\n'}
 			d.Console.FBDirty = true
 		}
+		if win.JustPressed(pixelgl.KeyBackspace) {
+			d.Driver.Events <- &termui.EventKey{Key: '\010'}
+			d.Console.FBDirty = true
+		}
 		if win.JustPressed(pixelgl.KeyEscape) {
 			d.Driver.Events <- &termui.EventKey{Key: '\033'}
 			d.Console.FBDirty = true

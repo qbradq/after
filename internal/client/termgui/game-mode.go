@@ -17,9 +17,7 @@ type gameMode struct {
 	mapMode       *mapMode       // Map display
 	minimap       *minimap       // Small mini-map
 	status        *statusPanel   // Status panel
-	inventory     *inventoryMenu // Inventory menu
 	escapeMenu    *escapeMenu    // Escape menu
-	itemList      *itemList      // Item list menu
 	confirmDialog *confirmDialog // Confirmation dialog
 	modeStack     []termui.Mode  // Internal stack of mode that overlay the main game mode, like the escape menu or inventory screen
 	quit          bool           // If true we should quit
@@ -43,8 +41,6 @@ func newGameMode(m *game.CityMap) *gameMode {
 		status: &statusPanel{
 			CityMap: m,
 		},
-		inventory:     newInventoryMenu(&m.Player.Actor),
-		itemList:      newItemList(),
 		confirmDialog: newConfirmDialog(),
 	}
 	gm.escapeMenu = newEscapeMenu(gm)
@@ -53,75 +49,7 @@ func newGameMode(m *game.CityMap) *gameMode {
 	return gm
 }
 
-func (m *gameMode) wearWield(i *game.Item) {
-	if !m.CityMap.Player.RemoveItemFromInventory(i) {
-		return
-	}
-	if i.Weapon {
-		if r := m.CityMap.Player.WieldItem(i); r != "" {
-			m.logMode.Log(termui.ColorYellow, r)
-			m.CityMap.Player.AddItemToInventory(i)
-			return
-		}
-		m.logMode.Log(termui.ColorAqua, "Wielded %s.", i.Name)
-	} else if i.Wearable {
-		if r := m.CityMap.Player.WearItem(i); r != "" {
-			m.logMode.Log(termui.ColorYellow, r)
-			m.CityMap.Player.AddItemToInventory(i)
-			return
-		}
-		m.logMode.Log(termui.ColorAqua, "Wore %s.", i.Name)
-	} else {
-		m.logMode.Log(termui.ColorYellow, "That item is not wearable.")
-		m.CityMap.Player.AddItemToInventory(i)
-		return
-	}
-	m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second)*m.CityMap.Player.ActSpeed()), nil)
-}
-
-func (m *gameMode) unwearUnwield(i *game.Item) {
-	if i.Weapon {
-		if !m.CityMap.Player.UnWieldItem(i) {
-			return
-		}
-		m.CityMap.Player.AddItemToInventory(i)
-		m.logMode.Log(termui.ColorAqua, "Stopped wielding %s.", i.Name)
-	} else {
-		if !m.CityMap.Player.UnWearItem(i) {
-			return
-		}
-		m.CityMap.Player.AddItemToInventory(i)
-		m.logMode.Log(termui.ColorAqua, "Took off %s.", i.Name)
-	}
-	m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second)*m.CityMap.Player.ActSpeed()), nil)
-}
-
 func (m *gameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
-	getAt := func(p util.Point) {
-		// If there's nothing there we can skip it
-		items := m.CityMap.ItemsAt(p)
-		if len(items) < 1 {
-			return
-		}
-		// If there is only a single container we auto-open it
-		if len(items) == 1 && items[0].Container {
-			sbs := newSideBySide(m, m.CityMap, &m.CityMap.Player.Actor)
-			sbs.OnRight = true
-			sbs.RightContainer = items[0]
-			m.modeStack = append(m.modeStack, sbs)
-			return
-		}
-		// Otherwise we just open the side-by-side for the ground point
-		sbs := newSideBySide(m, m.CityMap, &m.CityMap.Player.Actor)
-		sbs.OnRight = true
-		sbs.RightPoint = p
-		m.modeStack = append(m.modeStack, sbs)
-	}
-	dropAt := func(p util.Point) {
-		sbs := newSideBySide(m, m.CityMap, &m.CityMap.Player.Actor)
-		sbs.RightPoint = p
-		m.modeStack = append(m.modeStack, sbs)
-	}
 	// Check every event for end game conditions
 	if m.CityMap.Player.Dead {
 		if ev, ok := e.(*termui.EventKey); ok {
@@ -216,32 +144,15 @@ func (m *gameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 			m.mapMode.CursorPos = m.CityMap.Player.Position
 			m.mapMode.CursorRange = 1
 			return nil
-		case 'w': // Wear / Un-wear / Wield / Un-wield equipment
-			m.inventory.Selected = func(i *game.Item, equipped bool) {
-				if equipped {
-					m.unwearUnwield(i)
-				} else {
-					m.wearWield(i)
-				}
-			}
-			m.inventory.Title = "Wear / Un Wear Item"
-			m.inventory.IncludeEquipment = true
-			m.inventory.OnlyEquipment = true
-			if m.inventory.PopulateList() > 0 {
-				m.modeStack = append(m.modeStack, m.inventory)
-			}
-			return nil
 		case 'd': // Drop item from inventory
-			dropAt(m.CityMap.Player.Position)
-			return nil
-		case 'D': // targeted Drop from inventory
 			m.inTarget = true
 			m.mapMode.Callback = func(p util.Point, confirmed bool) error {
 				m.inTarget = false
 				if !confirmed {
 					return nil
 				}
-				dropAt(p)
+				inv := newInventoryDialog(m.CityMap, &m.CityMap.Player.Actor, p)
+				m.modeStack = append(m.modeStack, inv)
 				return nil
 			}
 			m.mapMode.Center = m.CityMap.Player.Position
@@ -250,7 +161,11 @@ func (m *gameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 			m.logMode.Log(termui.ColorPurple, "Drop where?")
 			return nil
 		case ',': // get items at feet (,)
-			getAt(m.CityMap.Player.Position)
+			inv := newInventoryDialog(
+				m.CityMap,
+				&m.CityMap.Player.Actor,
+				m.CityMap.Player.Position)
+			inv.OnRight = true
 			return nil
 		case 'g': // Get items within reach
 			m.inTarget = true
@@ -259,7 +174,9 @@ func (m *gameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 				if !confirmed {
 					return nil
 				}
-				getAt(p)
+				inv := newInventoryDialog(m.CityMap, &m.CityMap.Player.Actor, p)
+				inv.OnRight = true
+				m.modeStack = append(m.modeStack, inv)
 				return nil
 			}
 			m.mapMode.Center = m.CityMap.Player.Position
@@ -284,9 +201,11 @@ func (m *gameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 			m.logMode.Log(termui.ColorPurple, "Climb where?")
 			return nil
 		case 'i': // Inventory
-			sbs := newSideBySide(m, m.CityMap, &m.CityMap.Player.Actor)
-			sbs.TryUse = true
-			m.modeStack = append(m.modeStack, sbs)
+			inv := newInventoryDialog(
+				m.CityMap,
+				&m.CityMap.Player.Actor,
+				m.CityMap.Player.Position)
+			m.modeStack = append(m.modeStack, inv)
 			return nil
 		case 'r': // Rest / Wait
 			td := newTimeDialog(m.CityMap)

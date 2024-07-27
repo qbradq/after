@@ -54,6 +54,9 @@ func (d *Driver) Update() error {
 		inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter) {
 		d.Driver.Events <- &termui.EventKey{Key: '\n'}
 	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyBackspace) {
+		d.Driver.Events <- &termui.EventKey{Key: '\010'}
+	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 		d.Driver.Events <- &termui.EventKey{Key: '\033'}
 	}

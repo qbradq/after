@@ -106,6 +106,8 @@ func pumpEvents(d *Driver) {
 					d.Driver.Events <- &termui.EventKey{Key: ev.Rune()}
 				case tcell.KeyEnter:
 					d.Driver.Events <- &termui.EventKey{Key: '\n'}
+				case tcell.KeyBackspace:
+					d.Driver.Events <- &termui.EventKey{Key: '\010'}
 				case tcell.KeyEsc:
 					d.Driver.Events <- &termui.EventKey{Key: '\033'}
 				}

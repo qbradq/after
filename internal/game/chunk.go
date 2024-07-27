@@ -209,9 +209,9 @@ func (c *Chunk) PlaceItem(i *Item, force bool) bool {
 
 // RemoveItem removes the item from the chunk. This is a no-op if the item's
 // current position lies outside the chunk.
-func (c *Chunk) RemoveItem(i *Item) {
+func (c *Chunk) RemoveItem(i *Item) bool {
 	if !c.Bounds.Contains(i.Position) {
-		return
+		return false
 	}
 	idx := -1
 	for n, item := range c.Items {
@@ -221,7 +221,7 @@ func (c *Chunk) RemoveItem(i *Item) {
 		}
 	}
 	if idx < 0 {
-		return
+		return false
 	}
 	// Remove from slice while maintaining order
 	copy(c.Items[idx:], c.Items[idx+1:])
@@ -231,6 +231,7 @@ func (c *Chunk) RemoveItem(i *Item) {
 	if i.BlocksVis || i.BlocksWalk || !i.Climbable {
 		c.bitmapsDirty = true
 	}
+	return true
 }
 
 // PlaceActorRelative adds the actor to the chunk and adjusts the position from
