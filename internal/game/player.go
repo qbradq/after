@@ -14,6 +14,9 @@ type Player struct {
 	Stamina float64 // Stamina value from zero (exhausted) to one (well rested)
 	Hunger  float64 // Hunger value from zero (starving) to one (stuffed)
 	Thirst  float64 // Thirst value from zero (dehydrated to death) to one (slaked)
+	Joy     float64 // Happiness value from zero (suicidal) to one (manic), 0.5 is normal
+	Mind    float64 // Sanity value from zero (insane) to one (well adjusted), 0.5 is normal
+	Sleep   float64 // Sleepiness value from zero (falling asleep standing up) to one (unable to go back to sleep)
 	Running bool    // If true the player is running and consuming stamina
 }
 
@@ -23,9 +26,12 @@ func NewPlayer(now time.Time) *Player {
 	a.IsPlayer = true
 	p := &Player{
 		Actor:   *a,
-		Stamina: 0.3,
-		Hunger:  0.4,
-		Thirst:  0.25,
+		Stamina: 1.0,
+		Hunger:  0.5,
+		Thirst:  0.5,
+		Joy:     0.5,
+		Mind:    0.5,
+		Sleep:   1.0,
 	}
 	return p
 }
@@ -41,6 +47,9 @@ func NewPlayerFromReader(r io.Reader) *Player {
 		Stamina: util.GetFloat(r),
 		Hunger:  util.GetFloat(r),
 		Thirst:  util.GetFloat(r),
+		Joy:     util.GetFloat(r),
+		Mind:    util.GetFloat(r),
+		Sleep:   util.GetFloat(r),
 		Running: util.GetBool(r),
 	}
 	return p
@@ -53,6 +62,9 @@ func (a *Player) Write(w io.Writer) {
 	util.PutFloat(w, a.Stamina) // Stamina
 	util.PutFloat(w, a.Hunger)  // Hunger
 	util.PutFloat(w, a.Thirst)  // Thirst
+	util.PutFloat(w, a.Joy)     // Happiness
+	util.PutFloat(w, a.Mind)    // Sanity
+	util.PutFloat(w, a.Sleep)   // Sleepiness
 	util.PutBool(w, a.Running)  // Running
 }
 
@@ -89,6 +101,21 @@ func (a *Player) TookTurn(now time.Time, d time.Duration) {
 	a.Thirst -= float64(d) / float64(time.Hour*24*3) // Takes three days to start dying of dehydration
 	if a.Thirst < 0 {
 		a.Thirst = 0
+	}
+	// Happiness decay
+	a.Joy -= float64(d) / float64(time.Hour*24*30) // Thirty days of no stimulus at all until suicidal ideation
+	if a.Joy < 0 {
+		a.Joy = 0
+	}
+	// Sanity decay
+	a.Mind -= float64(d) / float64(time.Hour*24*30) // Thirty days in the aftermath without support until insanity
+	if a.Mind < 0 {
+		a.Mind = 0
+	}
+	// Sleep decay
+	a.Sleep -= float64(d) / float64(time.Hour*36) // Thirty six hours until dead tired
+	if a.Mind < 0 {
+		a.Mind = 0
 	}
 	// Process broken part timers
 	days := float64(d) / float64(time.Hour*24)

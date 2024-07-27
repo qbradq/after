@@ -34,10 +34,11 @@ func newInventoryDialogPanel(source any, cm *game.CityMap) *inventoryDialogPanel
 
 // setTop sets the top line based on the selected line.
 func (m *inventoryDialogPanel) setTop() {
-	m.top = m.selected - (m.size.Y / 2)
+	ys := m.size.Y - 2
+	m.top = m.selected - (ys / 2)
 	// Bound bottom
-	if m.top+m.size.Y >= len(m.lines) {
-		m.top = len(m.lines) - m.size.Y
+	if m.top+ys >= len(m.lines) {
+		m.top = len(m.lines) - ys
 	}
 	// Bound top
 	if m.top < 0 {
@@ -56,7 +57,6 @@ func (m *inventoryDialogPanel) setSelected(idx int, up bool, popUp bool) {
 		return
 	}
 	// Indexing and popup handling
-	idx += m.top
 	if idx >= len(m.lines) {
 		idx = 0
 	}
@@ -211,6 +211,9 @@ func (m *inventoryDialogPanel) getSelectedItem() *game.Item {
 // removeSelectedItem removes the currently selected item from the source.
 func (m *inventoryDialogPanel) removeSelectedItem(cm *game.CityMap) *game.Item {
 	i := m.getSelectedItem()
+	if i == nil {
+		return nil
+	}
 	if i.Fixed {
 		game.Log.Log(termui.ColorYellow, "You cannot pick that up.")
 		return nil
@@ -269,11 +272,9 @@ func (m *inventoryDialogPanel) Draw(s termui.TerminalDriver, tl util.Point, si i
 	termui.DrawBox(s, b, ns)
 	termui.DrawStringCenter(s, b, m.title, ns)
 	// Draw items list
-	b.TL.X++
-	b.TL.Y++
-	b.BR.X--
-	b.BR.Y--
-	for y := 0; y < b.Height(); y++ {
+	b = b.Shrink(1)
+	nLines := b.Height()
+	for y := 0; y < nLines; y++ {
 		idx := y + m.top
 		if idx >= len(m.lines) {
 			break
@@ -299,7 +300,7 @@ func (m *inventoryDialogPanel) Draw(s termui.TerminalDriver, tl util.Point, si i
 				Rune:  ' ',
 				Style: ns,
 			})
-			termui.DrawStringLeft(s, b, i.item.UIDisplayName(), ns)
+			termui.DrawStringLeft(s, db, i.item.UIDisplayName(), ns)
 		}
 		b.TL.Y++
 	}
@@ -349,13 +350,13 @@ func (m *inventoryDialog) HandleEvent(s termui.TerminalDriver, e any) error {
 				break
 			}
 			m.OnRight = false
-			left.setSelected(right.selected-right.top, false, true)
+			left.setSelected((right.selected-right.top)+left.top, false, true)
 		case 'l': // Cursor right
 			if m.OnRight {
 				break
 			}
 			m.OnRight = true
-			right.setSelected(left.selected-left.top, false, true)
+			right.setSelected((left.selected-left.top)+right.top, false, true)
 		case 'j': // Cursor down
 			if m.OnRight {
 				right.setSelected(right.selected+1, false, false)
@@ -373,9 +374,9 @@ func (m *inventoryDialog) HandleEvent(s termui.TerminalDriver, e any) error {
 		case '\n': // Open container
 			var c *game.Item
 			if m.OnRight {
-				c = right.lines[right.selected].item
+				c = right.getSelectedItem()
 			} else {
-				c = left.lines[left.selected].item
+				c = left.getSelectedItem()
 			}
 			if c != nil && c.Container {
 				if m.OnRight {
@@ -395,14 +396,16 @@ func (m *inventoryDialog) HandleEvent(s termui.TerminalDriver, e any) error {
 				s = left
 				t = right
 			}
-			if i = s.removeSelectedItem(m.m); i == nil {
+			if i = s.getSelectedItem(); i == nil {
 				break
 			}
-			if !t.addItem(i, m.m) {
-				s.addItem(i, m.m)
+			if t.addItem(i, m.m) {
+				s.removeSelectedItem(m.m)
+				left.refreshSource(m.m)
+				right.refreshSource(m.m)
+			} else {
+				game.Log.Log(termui.ColorYellow, "There is no room to put that there.")
 			}
-			left.refreshSource(m.m)
-			right.refreshSource(m.m)
 		case 'w':
 			// Source and i selection
 			var i *game.Item
@@ -538,7 +541,7 @@ func (m *inventoryDialog) Draw(s termui.TerminalDriver) {
 	db = b
 	idx := -1
 	if !m.OnRight {
-		idx = left.selected - left.top
+		idx = left.selected
 	}
 	left.Draw(s, db.TL, idx, m.m, !m.OnRight)
 	// Right-hand display

@@ -77,9 +77,9 @@
         "Fixed": true,
         "Container": true,
         "Contents": [
-            "Shirts@1n4*4",
-            "Pants@1n4*4",
-            "Shoes@1n2*2",
+            "Shirts@1n4*40",
+            "Pants@1n4*40",
+            "Shoes@1n2*20",
             "Hats@1n4",
             "Gloves@1n8"
         ]

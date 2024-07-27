@@ -86,6 +86,28 @@ func (r Rect) Multiply(a int) Rect {
 	}
 }
 
+// Add adds the point to both points of the rect.
+func (r Rect) Add(p Point) Rect {
+	return Rect{
+		TL: r.TL.Add(p),
+		BR: r.BR.Add(p),
+	}
+}
+
+// Shrink removes n tiles from all sides of the rect.
+func (r Rect) Shrink(n int) Rect {
+	return Rect{
+		TL: Point{
+			X: r.TL.X + n,
+			Y: r.TL.Y + n,
+		},
+		BR: Point{
+			X: r.BR.X - n,
+			Y: r.BR.Y - n,
+		},
+	}
+}
+
 // Contains returns true if the point is contained within the rect.
 func (r Rect) Contains(p Point) bool {
 	return p.X >= r.TL.X && p.X <= r.BR.X && p.Y >= r.TL.Y && p.Y <= r.BR.Y

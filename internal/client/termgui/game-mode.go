@@ -321,8 +321,10 @@ func (m *gameMode) Draw(s termui.TerminalDriver) {
 	// Draw the root window elements
 	termui.DrawClear(s)
 	sw, sh := s.Size()
-	m.logMode.Bounds = util.NewRectXYWH(sw-38, 21, 38, sh-21)
+	// Log area
+	m.logMode.Bounds = util.NewRectXYWH(sw-38, 23, 38, sh-23)
 	m.logMode.Draw(s)
+	// Map display
 	m.mapMode.Bounds = util.NewRectXYWH(0, 0, sw-39, sh)
 	if m.inTarget {
 		m.mapMode.CursorStyle = 2
@@ -334,11 +336,14 @@ func (m *gameMode) Draw(s termui.TerminalDriver) {
 	}
 	m.mapMode.DrawPaths = m.debug
 	m.mapMode.Draw(s)
-	termui.DrawVLine(s, util.NewPoint(sw-39, 0), sh, termui.CurrentTheme.Normal)
-	m.minimap.Bounds = util.NewRectXYWH(sw-22, 0, 21, 21)
+	// Mini-map
+	mmb := util.NewRectXYWH(sw-23, 0, 23, 23)
+	termui.DrawBox(s, mmb, termui.CurrentTheme.Normal)
+	m.minimap.Bounds = mmb.Shrink(1)
 	m.minimap.Center = util.NewPoint(m.CityMap.Player.Position.X/game.ChunkWidth, m.CityMap.Player.Position.Y/game.ChunkHeight)
 	m.minimap.Draw(s)
-	m.status.Position = util.NewPoint(sw-38, 0)
+	// Status display
+	m.status.Position = util.NewPoint(sw-39, 0)
 	m.status.Draw(s)
 	// Render the mode stack
 	for _, m := range m.modeStack {
