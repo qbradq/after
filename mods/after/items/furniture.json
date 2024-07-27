@@ -100,6 +100,7 @@
         "Fg": "Blue",
         "Bg": "Black",
         "BlocksWalk": true,
+        "BlocksStack": true,
         "Fixed": true,
         "Container": true,
         "Contents": [

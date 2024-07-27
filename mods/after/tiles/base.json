@@ -11,7 +11,8 @@
         "Fg": "White",
         "Bg": "Black",
         "BlocksWalk": true,
-        "BlocksVis": true
+        "BlocksVis": true,
+        "BlocksStack": true
     },
     "WindowFrame": {
         "Name": "window frame",
@@ -19,6 +20,7 @@
         "Fg": "White",
         "Bg": "Black",
         "BlocksWalk": true,
+        "BlocksStack": true,
         "Climbable": true
     },
     "DoorFrame": {
@@ -34,6 +36,7 @@
         "Bg": "Black",
         "BlocksWalk": true,
         "BlocksVis": true,
+        "BlocksStack": true,
         "Climbable": true
     },
     "ChainFence": {
@@ -42,6 +45,7 @@
         "Fg": "Silver",
         "Bg": "Black",
         "BlocksWalk": true,
+        "BlocksStack": true,
         "Climbable": true
     },
     "Grass": {
@@ -74,7 +78,8 @@
         "Fg": "Green",
         "Bg": "Black",
         "BlocksWalk": true,
-        "BlocksVis": true
+        "BlocksVis": true,
+        "BlocksStack": true
     },
     "Pavement": {
         "Name": "pavement",

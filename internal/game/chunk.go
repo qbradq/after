@@ -178,6 +178,26 @@ func (c *Chunk) PlaceItemRelative(i *Item) {
 	c.PlaceItem(i, true)
 }
 
+// CanStack returns true if and item can be stacked on the given point.
+func (c *Chunk) CanStack(p util.Point) bool {
+	if !c.Bounds.Contains(p) {
+		return false
+	}
+	t := c.Tiles[c.relOfs(p)]
+	if t.BlocksStack {
+		return false
+	}
+	for _, i := range c.Items {
+		if i.Position != p {
+			continue
+		}
+		if i.BlocksStack {
+			return false
+		}
+	}
+	return true
+}
+
 // PlaceItem places the item within the chunk. This is a no-op if the item's
 // current position lies outside the chunk.
 func (c *Chunk) PlaceItem(i *Item, force bool) bool {
@@ -190,7 +210,7 @@ func (c *Chunk) PlaceItem(i *Item, force bool) bool {
 		if !c.Bounds.Contains(i.Position) {
 			return false
 		}
-		if c.BlocksWalk.Contains(c.relOfs(i.Position)) {
+		if !c.CanStack(i.Position) {
 			return false
 		}
 	}

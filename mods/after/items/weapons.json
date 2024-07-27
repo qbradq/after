@@ -5,8 +5,8 @@
         "Fg": "Silver",
         "Bg": "Black",
         "Weapon": true,
-        "WeaponMinDamage": 0.15,
-        "WeaponMaxDamage": 0.25,
-        "WeaponSwingStam": 0.01
+        "WeaponMinDamage": 0.25,
+        "WeaponMaxDamage": 0.5,
+        "WeaponSwingStam": 0.1
     }
 }

@@ -16,7 +16,10 @@ var ItemDefs = map[string]*Item{}
 // Item is any dynamic item within the world, anything that can be used, taken,
 // destroyed or built.
 type Item struct {
+	//
 	// Persistent values
+	//
+
 	TemplateID string     // Template ID
 	Position   util.Point // Current position on the map
 	LastUpdate time.Time  // Time of the last call to event update
@@ -25,7 +28,11 @@ type Item struct {
 	SArg       string     // Generic string argument
 	TArg       time.Time  // Generic time argument
 	Inventory  []*Item    // Container contents if any
+
+	//
 	// Reconstructed values
+	//
+
 	Events          map[string]string // Map of event names to event handler names
 	Name            string            // Descriptive name
 	Rune            string            // Display rune
@@ -33,6 +40,7 @@ type Item struct {
 	Bg              termui.Color      // Display background color
 	BlocksVis       bool              // If true this item blocks visibility
 	BlocksWalk      bool              // If true this item blocks walking
+	BlocksStack     bool              // If true this item blocks any other items being placed on that spot
 	Climbable       bool              // If true this item may be climbed over
 	Destroyed       bool              // If true something has happened to this item to cause it to be destroyed, it will be removed from the world at the end of the next update cycle
 	Stackable       bool              // If true this item can stack with others of the exact same template name
@@ -45,7 +53,11 @@ type Item struct {
 	WeaponSwingStam float64           // Amount of stamina required to swing this weapon
 	Container       bool              // If true this item contains other items
 	Contents        []string          // Container content item statements if any
+
+	//
 	// Cache values
+	//
+
 	csCache []ItemStatement // Content statements cache
 }
 

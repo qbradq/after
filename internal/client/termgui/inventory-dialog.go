@@ -399,6 +399,11 @@ func (m *inventoryDialog) HandleEvent(s termui.TerminalDriver, e any) error {
 			if i = s.getSelectedItem(); i == nil {
 				break
 			}
+			if i == m.m.Player.Weapon ||
+				i == m.m.Player.Equipment[i.WornBodyPart] {
+				game.Log.Log(termui.ColorYellow, "You must take that off first.")
+				break
+			}
 			if t.addItem(i, m.m) {
 				s.removeSelectedItem(m.m)
 				left.refreshSource(m.m)

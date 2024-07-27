@@ -77,7 +77,6 @@ func (m *statusPanel) Draw(s termui.TerminalDriver) {
 		termui.DrawStringCenter(s, nb, "Exhausted", termui.CurrentTheme.Normal.Foreground(termui.ColorRed))
 	} else {
 		nb.BR.Y = nb.TL.Y
-		nb.BR.X--
 		termui.DrawFill(s, nb, termui.Glyph{
 			Rune:  '-',
 			Style: termui.StyleDefault.Foreground(termui.ColorPurple),
@@ -101,7 +100,6 @@ func (m *statusPanel) Draw(s termui.TerminalDriver) {
 		termui.DrawStringCenter(s, nb, "-Starving-", termui.CurrentTheme.Normal.Foreground(termui.ColorRed))
 	} else {
 		nb.BR.Y = nb.TL.Y
-		nb.BR.X--
 		termui.DrawFill(s, nb, termui.Glyph{
 			Rune:  '-',
 			Style: termui.StyleDefault.Foreground(termui.ColorOlive),
@@ -125,7 +123,6 @@ func (m *statusPanel) Draw(s termui.TerminalDriver) {
 		termui.DrawStringCenter(s, nb, "Dehydrated", termui.CurrentTheme.Normal.Foreground(termui.ColorRed))
 	} else {
 		nb.BR.Y = nb.TL.Y
-		nb.BR.X--
 		termui.DrawFill(s, nb, termui.Glyph{
 			Rune:  '-',
 			Style: termui.StyleDefault.Foreground(termui.ColorNavy),
@@ -155,7 +152,6 @@ func (m *statusPanel) Draw(s termui.TerminalDriver) {
 		termui.DrawStringCenter(s, nb, "-Suicidal-", termui.CurrentTheme.Normal.Foreground(termui.ColorRed))
 	} else {
 		nb.BR.Y = nb.TL.Y
-		nb.BR.X--
 		termui.DrawFill(s, nb, termui.Glyph{
 			Rune:  '-',
 			Style: termui.StyleDefault.Foreground(termui.ColorOlive),
@@ -179,7 +175,6 @@ func (m *statusPanel) Draw(s termui.TerminalDriver) {
 		termui.DrawStringCenter(s, nb, "--Insane--", termui.CurrentTheme.Normal.Foreground(termui.ColorRed))
 	} else {
 		nb.BR.Y = nb.TL.Y
-		nb.BR.X--
 		termui.DrawFill(s, nb, termui.Glyph{
 			Rune:  '-',
 			Style: termui.StyleDefault.Foreground(termui.ColorGreen),
@@ -203,7 +198,6 @@ func (m *statusPanel) Draw(s termui.TerminalDriver) {
 		termui.DrawStringCenter(s, nb, "Drop  Dead", termui.CurrentTheme.Normal.Foreground(termui.ColorRed))
 	} else {
 		nb.BR.Y = nb.TL.Y
-		nb.BR.X--
 		termui.DrawFill(s, nb, termui.Glyph{
 			Rune:  '-',
 			Style: termui.StyleDefault.Foreground(termui.ColorNavy),
@@ -237,7 +231,6 @@ func (m *statusPanel) Draw(s termui.TerminalDriver) {
 		}
 		// Else continue with health display
 		nb.BR.Y = nb.TL.Y
-		nb.BR.X--
 		termui.DrawFill(s, nb, termui.Glyph{
 			Rune:  '-',
 			Style: termui.StyleDefault.Foreground(termui.ColorRed),
