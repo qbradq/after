@@ -28,15 +28,30 @@ var gaRet []*Actor
 // CityMap represents the entire world of the game in terms of which chunks go
 // where.
 type CityMap struct {
+	//
 	// Dynamic persistent data
+	//
+
 	Player *Player   // Player actor
 	Now    time.Time // Current in-game time
+
+	//
 	// Static persistent data
+	//
+
 	Chunks []*Chunk // The chunks of the map
+
+	//
 	// Reconstructed values
+	//
+
 	Bounds     util.Rect // Bounds of the city map in chunks
 	TileBounds util.Rect // Bounds of the city map in tiles
+
+	//
 	// Working variables
+	//
+
 	Visibility          bitmap.Bitmap    // Last visibility set calculated for the player
 	Remembered          bitmap.Bitmap    // Last remembered set calculated for the player
 	BitmapBounds        util.Rect        // Bounds of the Visibility and Remembered bitmaps
@@ -332,28 +347,8 @@ func chunkRefForPoint(p util.Point) uint32 {
 // returned slice is reused by subsequent calls to GetActors().
 func (m *CityMap) GetActors(b util.Rect) []*Actor {
 	gaRet = gaRet[:0]
-	cb := util.Rect{
-		TL: util.Point{
-			X: b.TL.X / ChunkWidth,
-			Y: b.TL.Y / ChunkHeight,
-		},
-		BR: util.Point{
-			X: b.BR.X / ChunkWidth,
-			Y: b.BR.Y / ChunkHeight,
-		},
-	}
-	if cb.TL.X < 0 {
-		cb.TL.X = 0
-	}
-	if cb.TL.Y < 0 {
-		cb.TL.Y = 0
-	}
-	if cb.BR.X >= CityMapWidth {
-		cb.BR.X = CityMapWidth - 1
-	}
-	if cb.BR.Y >= CityMapHeight {
-		cb.BR.Y = CityMapHeight - 1
-	}
+	cb := b.Divide(ChunkWidth)
+	cb = m.Bounds.Overlap(cb)
 	var p util.Point
 	for p.Y = cb.TL.Y; p.Y <= cb.BR.Y; p.Y++ {
 		for p.X = cb.TL.X; p.X <= cb.BR.X; p.X++ {
@@ -397,7 +392,7 @@ func (m *CityMap) ItemsAt(p util.Point) []*Item {
 // ItemsWithin will re-use the same slice.
 func (m *CityMap) ItemsWithin(b util.Rect) []*Item {
 	m.itemsWithinCache = m.itemsWithinCache[:0]
-	cb := util.NewRectXYWH(b.TL.X/ChunkWidth, b.TL.Y/ChunkHeight, b.Width()/ChunkWidth+1, b.Height()/ChunkHeight+1)
+	cb := util.NewRect(b.TL.Divide(ChunkWidth), b.BR.Divide(ChunkWidth))
 	cb = m.Bounds.Overlap(cb)
 	for cy := cb.TL.Y; cy <= cb.BR.Y; cy++ {
 		for cx := cb.TL.X; cx <= cb.BR.X; cx++ {
