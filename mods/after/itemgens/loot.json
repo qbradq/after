@@ -5,6 +5,18 @@
     "Drinks": {
         "WaterBottle": 1
     },
+    "KitchenItems": {
+        "Pot": 2,
+        "Pan": 2,
+        "Jar": 1
+    },
+    "BathroomItems": {
+        "Soap": 1,
+        "CurlingIron": 1,
+        "HairBrush": 1,
+        "Toothbrush": 1,
+        "Toothpaste": 1
+    },
     "CashRegisterContents": {
         "Coin": 10,
         "OneDollarBill": 10,
@@ -12,5 +24,12 @@
         "TenDollarBill": 5,
         "TwentyDollarBill": 5,
         "OneHundredDollarBill": 1
+    },
+    "BedroomClothing": {
+        "$Shirts": 8,
+        "$Pants": 8,
+        "$Shoes": 4,
+        "$Hats": 2,
+        "$Gloves": 1
     }
 }

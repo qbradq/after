@@ -399,6 +399,10 @@ func (m *inventoryDialog) HandleEvent(s termui.TerminalDriver, e any) error {
 			if i = s.getSelectedItem(); i == nil {
 				break
 			}
+			if i.Fixed {
+				game.Log.Log(termui.ColorYellow, "You cannot pick that up.")
+				break
+			}
 			if i == m.m.Player.Weapon ||
 				i == m.m.Player.WornItems[i.WornBodyPart] {
 				game.Log.Log(termui.ColorYellow, "You must take that off first.")

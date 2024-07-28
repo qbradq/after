@@ -48,7 +48,10 @@
         "BlocksWalk": true,
         "Climbable": true,
         "Fixed": true,
-        "Container": true
+        "Container": true,
+        "Contents": [
+            "KitchenItems@1n8*2"
+        ]
     },
     "BathroomCounter": {
         "Name": "bathroom counter",
@@ -58,7 +61,10 @@
         "BlocksWalk": true,
         "Climbable": true,
         "Fixed": true,
-        "Container": true
+        "Container": true,
+        "Contents": [
+            "BathroomItems@1n4*4"
+        ]
     },
     "Bed": {
         "Name": "bed",
@@ -77,11 +83,7 @@
         "Fixed": true,
         "Container": true,
         "Contents": [
-            "Shirts@1n4*40",
-            "Pants@1n4*40",
-            "Shoes@1n2*20",
-            "Hats@1n4",
-            "Gloves@1n8"
+            "BedroomClothing@1n4*4"
         ]
     },
     "Oven": {

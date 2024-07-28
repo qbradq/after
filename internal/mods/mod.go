@@ -96,6 +96,12 @@ func LoadMods(ids []string) error {
 			return err
 		}
 	}
+	// Validate item gens
+	for _, g := range game.ItemGens {
+		if err := g.Validate(); err != nil {
+			return err
+		}
+	}
 	// Compile content statements
 	for _, i := range game.ItemDefs {
 		if err := i.CacheContentStatements(); err != nil {
