@@ -792,13 +792,13 @@ func (m *CityMap) updateItemsAndPostProcessing(d time.Duration) {
 		}
 	}
 	// Update all items held by the player
-	for idx, i := range m.Player.Equipment {
+	for idx, i := range m.Player.WornItems {
 		if i == nil {
 			continue
 		}
 		ExecuteItemUpdateEvent("Update", i, m, d)
 		if i.Destroyed {
-			m.Player.Equipment[idx] = nil
+			m.Player.WornItems[idx] = nil
 		}
 	}
 	if m.Player.Weapon != nil {
@@ -825,13 +825,13 @@ func (m *CityMap) updateItemsAndPostProcessing(d time.Duration) {
 		for p.X = m.updateBounds.TL.X; p.X <= m.updateBounds.BR.X; p.X += ChunkWidth {
 			c := m.GetChunk(p)
 			for _, a := range c.Actors {
-				for idx, i := range a.Equipment {
+				for idx, i := range a.WornItems {
 					if i == nil {
 						continue
 					}
 					ExecuteItemUpdateEvent("Update", i, m, d)
 					if i.Destroyed {
-						a.Equipment[idx] = nil
+						a.WornItems[idx] = nil
 					}
 				}
 				if a.Weapon != nil {

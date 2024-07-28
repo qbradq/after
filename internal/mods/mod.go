@@ -108,6 +108,12 @@ func LoadMods(ids []string) error {
 			return err
 		}
 	}
+	// Compile equipment statements
+	for _, a := range game.ActorDefs {
+		if err := a.CacheEquipmentStatements(); err != nil {
+			return err
+		}
+	}
 	// Tiles
 	for _, id := range ids {
 		if err := mods[id].loadTiles(); err != nil {

@@ -35,16 +35,23 @@ var ActorDefs = map[string]*Actor{}
 
 // Actor represents a moving, thinking actor on the map.
 type Actor struct {
+	//
 	// Persistent values
+	//
+
 	TemplateID string                            // Template ID
 	Position   util.Point                        // Current position on the map
 	AIModel    AIModel                           // AIModel for the actor
 	NextThink  time.Time                         // Time of the next think
 	BodyParts  [BodyPartCount]BodyPart           // Status of all body parts
-	Equipment  [BodyPartEquipmentSlotCount]*Item // All items equipped to the body, if any
+	WornItems  [BodyPartEquipmentSlotCount]*Item // All items equipped to the body, if any
 	Inventory  []*Item                           // All items held in inventory, if any
 	Weapon     *Item                             // The item wielded as a weapon, if any
+
+	//
 	// Reconstructed values
+	//
+
 	AITemplate string       // AI template name
 	Name       string       // Descriptive name
 	Rune       string       // Display rune
@@ -55,25 +62,55 @@ type Actor struct {
 	MinDamage  float64      // Minimum damage done by normal attacks
 	MaxDamage  float64      // Maximum damage done by normal attacks
 	IsPlayer   bool         // Only true for the player's actor
+	Equipment  []string     // Item statements
+
+	//
 	// Transient values
-	Dead      bool    // If true something has happened to this actor to cause death
-	pqIdx     int     // Priority queue index
-	minDamage float64 // Minimum damage dealt accounting for all equipment and status effects
-	maxDamage float64 // Maximum damage dealt accounting for all equipment and status effects
+	//
+
+	Dead      bool            // If true something has happened to this actor to cause death
+	pqIdx     int             // Priority queue index
+	minDamage float64         // Minimum damage dealt accounting for all equipment and status effects
+	maxDamage float64         // Maximum damage dealt accounting for all equipment and status effects
+	esCache   []ItemStatement // Cache of item statements to generate for equipment
 }
 
 // NewActor creates a new actor from the named template.
-func NewActor(template string, now time.Time) *Actor {
+func NewActor(template string, now time.Time, generateEquipment bool) *Actor {
+	// Template resolution
 	a, found := ActorDefs[template]
 	if !found {
 		panic(fmt.Errorf("reference to non-existent actor template %s", template))
 	}
 	ret := *a
+	// AI setup
 	ret.AIModel = NewAIModel(ret.AITemplate)
 	ret.NextThink = now.Add(time.Second * time.Duration(util.RandomF(0, 1)))
+	// Body part setup
 	for i := range ret.BodyParts {
 		ret.BodyParts[i].Which = BodyPartCode(i)
 		ret.BodyParts[i].Health = 1
+	}
+	// Equipment generation
+	if generateEquipment {
+		for _, s := range ret.esCache {
+			for _, item := range s.Evaluate(now) {
+				if ret.WieldItem(item) == "" {
+					continue
+				}
+				if ret.WearItem(item) == "" {
+					continue
+				}
+				if !ret.AddItemToInventory(item) {
+					Log.Log(
+						termui.ColorRed,
+						"Template Error: Actor %s: unable to stow item %s",
+						template,
+						item.DisplayName(),
+					)
+				}
+			}
+		}
 	}
 	return &ret
 }
@@ -81,13 +118,13 @@ func NewActor(template string, now time.Time) *Actor {
 // NewActorFromReader reads the actor information from r and returns a new Actor
 // with this information.
 func NewActorFromReader(r io.Reader) *Actor {
-	_ = util.GetUint32(r)               // Version
-	tid := util.GetString(r)            // Template ID
-	a := NewActor(tid, time.Time{})     // Create new object
-	a.Position = util.GetPoint(r)       // Map position
-	a.AIModel = NewAIModelFromReader(r) // AI model
-	a.NextThink = util.GetTime(r)       // Next think time
-	for i := range a.BodyParts {        // Body part status
+	_ = util.GetUint32(r)                  // Version
+	tid := util.GetString(r)               // Template ID
+	a := NewActor(tid, time.Time{}, false) // Create new object
+	a.Position = util.GetPoint(r)          // Map position
+	a.AIModel = NewAIModelFromReader(r)    // AI model
+	a.NextThink = util.GetTime(r)          // Next think time
+	for i := range a.BodyParts {           // Body part status
 		p := BodyPart{
 			Which:       BodyPartCode(i),
 			Health:      util.GetFloat(r),
@@ -98,9 +135,9 @@ func NewActorFromReader(r io.Reader) *Actor {
 		}
 		a.BodyParts[i] = p
 	}
-	for i := range a.Equipment { // Equipped items
+	for i := range a.WornItems { // Equipped items
 		if util.GetBool(r) {
-			a.Equipment[i] = NewItemFromReader(r)
+			a.WornItems[i] = NewItemFromReader(r)
 		}
 	}
 	a.Inventory = make([]*Item, util.GetUint16(r)) // Inventory
@@ -121,7 +158,7 @@ func (a *Actor) Write(w io.Writer) {
 		util.PutFloat(w, p.Health)
 		util.PutTime(w, p.BrokenUntil)
 	}
-	for _, i := range a.Equipment { // Equipped items
+	for _, i := range a.WornItems { // Equipped items
 		if i == nil {
 			util.PutBool(w, false)
 		} else {
@@ -150,6 +187,12 @@ func (a *Actor) recalculateDamage() {
 		a.minDamage *= 0.25
 		a.maxDamage *= 0.25
 	}
+}
+
+// DamageMinMax returns the minimum and maximum amounts of damage this actor
+// currently deals.
+func (a *Actor) DamageMinMax() (float64, float64) {
+	return a.minDamage, a.maxDamage
 }
 
 // TargetedDamage applies a random amount of damage in the range [min-max) to
@@ -267,7 +310,7 @@ func (a *Actor) DropCorpse(m *CityMap) {
 	if a.Weapon != nil {
 		i.AddItem(a.Weapon)
 	}
-	for _, e := range a.Equipment {
+	for _, e := range a.WornItems {
 		if e == nil {
 			continue
 		}
@@ -286,10 +329,10 @@ func (a *Actor) WearItem(i *Item) string {
 	if !i.Wearable {
 		return "That item is not wearable."
 	}
-	if a.Equipment[i.WornBodyPart] != nil {
+	if a.WornItems[i.WornBodyPart] != nil {
 		return "An item is already being worn there."
 	}
-	a.Equipment[i.WornBodyPart] = i
+	a.WornItems[i.WornBodyPart] = i
 	return ""
 }
 
@@ -327,10 +370,10 @@ func (a *Actor) AddItemToInventory(i *Item) bool {
 
 // UnWearItem takes off the item, returning true on success.
 func (a *Actor) UnWearItem(i *Item) bool {
-	if a.Equipment[i.WornBodyPart] != i {
+	if a.WornItems[i.WornBodyPart] != i {
 		return false
 	}
-	a.Equipment[i.WornBodyPart] = nil
+	a.WornItems[i.WornBodyPart] = nil
 	return true
 }
 
@@ -359,4 +402,19 @@ func (a *Actor) RemoveItemFromInventory(item *Item) bool {
 	}
 	a.Inventory = append(a.Inventory[:idx], a.Inventory[idx+1:]...)
 	return true
+}
+
+// CacheEquipmentStatements generates the cache of equipment statements. This
+// must be called on all actor prototypes after item and item gen loading is
+// complete.
+func (a *Actor) CacheEquipmentStatements() error {
+	a.esCache = make([]ItemStatement, len(a.Equipment))
+	for idx, s := range a.Equipment {
+		is := ItemStatement{}
+		if err := is.UnmarshalJSON([]byte("\"" + s + "\"")); err != nil {
+			return err
+		}
+		a.esCache[idx] = is
+	}
+	return nil
 }

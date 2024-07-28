@@ -13,49 +13,20 @@ var Scenarios = map[string]*Scenario{}
 // Scenario controls the generation of the player, their equipment, inventory
 // and placement within the city.
 type Scenario struct {
-	Name              string               // Descriptive name of the scenario
-	Description       string               // Full descriptive text for the scenario
-	StartingChunkType string               // Type of chunk to select for the starting location
-	Equipment         []game.ItemStatement // Item and item generator expressions to equip to the player on spawn
-	Inventory         []game.ItemStatement // Item and item generator expressions to add to the player's inventory on spawn
-	Weapon            game.ItemStatement   // Item or item generator expression of the item to wield as a weapon
-	SafeZoneRadius    int                  // Radius of the "safe zone" surrounding the starting chunk which has all actors removed at spawn
+	Name              string   // Descriptive name of the scenario
+	Description       string   // Full descriptive text for the scenario
+	StartingChunkType string   // Type of chunk to select for the starting location
+	Equipment         []string // Item statements to equip to the player on spawn
+	SafeZoneRadius    int      // Radius of the "safe zone" surrounding the starting chunk which has all actors removed at spawn
 }
 
 // Execute sets up the city map and player according to the parameters of the
 // scenario.
 func (s *Scenario) Execute(m *game.CityMap) {
+	// Equipment injection
+	game.ActorDefs["Player"].Equipment = s.Equipment
+	game.ActorDefs["Player"].CacheEquipmentStatements()
 	m.Player = game.NewPlayer(m.Now)
-	// Starting equipment
-	for _, statement := range s.Equipment {
-		items := statement.Evaluate(m.Now)
-		for _, i := range items {
-			r := m.Player.WearItem(i)
-			if r != "" {
-				panic(errors.New(r))
-			}
-		}
-	}
-	// Starting inventory
-	for _, statement := range s.Inventory {
-		items := statement.Evaluate(m.Now)
-		for _, i := range items {
-			m.Player.AddItemToInventory(i)
-		}
-	}
-	// Starting weapon
-	if len(s.Weapon) != 0 {
-		i := s.Weapon.Evaluate(m.Now)
-		if len(i) > 1 {
-			panic("multiple weapons generated")
-		}
-		if len(i) > 0 {
-			r := m.Player.WieldItem(i[0])
-			if r != "" {
-				panic(errors.New(r))
-			}
-		}
-	}
 	// Scan the map for suitable starting locations and pick one at random
 	cs := []*game.Chunk{}
 	for _, c := range m.Chunks {

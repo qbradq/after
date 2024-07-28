@@ -98,7 +98,8 @@ func init() {
 		return time.Duration(float64(time.Second) * a.WalkSpeed())
 	})
 	regActFn("zmActAttack", func(ai *AIModel, a *game.Actor, m *game.CityMap) time.Duration {
-		m.Player.Damage(a.MinDamage, a.MaxDamage, m.Now, a)
+		min, max := a.DamageMinMax()
+		m.Player.Damage(min, max, m.Now, a)
 		return time.Duration(float64(time.Second) * a.ActSpeed())
 	})
 }

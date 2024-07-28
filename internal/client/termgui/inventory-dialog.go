@@ -104,7 +104,7 @@ func (m *inventoryDialogPanel) linesForActor(a *game.Actor) []inventoryDialogLin
 			text: a.Weapon.UIDisplayName(),
 		})
 	}
-	for _, i := range a.Equipment {
+	for _, i := range a.WornItems {
 		if i == nil {
 			continue
 		}
@@ -221,7 +221,7 @@ func (m *inventoryDialogPanel) removeSelectedItem(cm *game.CityMap) *game.Item {
 	switch t := m.source.(type) {
 	case *game.Actor:
 		if !t.RemoveItemFromInventory(i) {
-			if i == t.Weapon || i == t.Equipment[i.WornBodyPart] {
+			if i == t.Weapon || i == t.WornItems[i.WornBodyPart] {
 				game.Log.Log(termui.ColorYellow, "You must take that off first.")
 			}
 			return nil
@@ -400,7 +400,7 @@ func (m *inventoryDialog) HandleEvent(s termui.TerminalDriver, e any) error {
 				break
 			}
 			if i == m.m.Player.Weapon ||
-				i == m.m.Player.Equipment[i.WornBodyPart] {
+				i == m.m.Player.WornItems[i.WornBodyPart] {
 				game.Log.Log(termui.ColorYellow, "You must take that off first.")
 				break
 			}
@@ -451,7 +451,7 @@ func (m *inventoryDialog) HandleEvent(s termui.TerminalDriver, e any) error {
 				}
 			} else {
 				// Equipment handling
-				if i == m.m.Player.Equipment[i.WornBodyPart] {
+				if i == m.m.Player.WornItems[i.WornBodyPart] {
 					// Unwear request
 					if !m.m.Player.UnWearItem(i) {
 						game.Log.Log(termui.ColorYellow, "Unable to take off %s.", i.Name)
@@ -463,7 +463,7 @@ func (m *inventoryDialog) HandleEvent(s termui.TerminalDriver, e any) error {
 					}
 				} else {
 					// Wear request
-					if m.m.Player.Equipment[i.WornBodyPart] != nil {
+					if m.m.Player.WornItems[i.WornBodyPart] != nil {
 						game.Log.Log(termui.ColorYellow, "You are already wearing something there.")
 					} else if s.removeSelectedItem(m.m) == nil {
 						game.Log.Log(termui.ColorYellow, "Unable to get %s from inventory.", i.Name)

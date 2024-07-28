@@ -22,7 +22,7 @@ type Player struct {
 
 // NewPlayer creates and returns a new Player struct.
 func NewPlayer(now time.Time) *Player {
-	a := NewActor("Player", now)
+	a := NewActor("Player", now, true)
 	a.IsPlayer = true
 	p := &Player{
 		Actor:   *a,
@@ -69,17 +69,18 @@ func (a *Player) Write(w io.Writer) {
 }
 
 // Attack has the player attack the target.
-func (a *Player) Attack(t *Actor, now time.Time) {
+func (a *Player) Attack(t *Actor, now time.Time) bool {
 	sc := 0.05
 	if a.Weapon != nil {
 		sc = a.Weapon.WeaponSwingStam
 	}
 	if a.Stamina < sc {
 		Log.Log(termui.ColorRed, "You are too fatigued.")
-		return
+		return false
 	}
-	t.Damage(a.MinDamage, a.MaxDamage, now, &a.Actor)
+	t.Damage(a.minDamage, a.maxDamage, now, &a.Actor)
 	a.Stamina -= sc
+	return true
 }
 
 // TookTurn is responsible for per-turn updates for the player.

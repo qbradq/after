@@ -112,7 +112,7 @@ type actorExpression struct {
 // Evaluate implements the evaluator interface.
 func (e *actorExpression) Evaluate(c *Chunk, p util.Point, now time.Time) {
 	if util.Random(0, e.y) < e.x {
-		a := NewActor(e.r, now)
+		a := NewActor(e.r, now, true)
 		a.Position = p
 		c.PlaceActorRelative(a)
 	}

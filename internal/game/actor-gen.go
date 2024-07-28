@@ -29,9 +29,8 @@ func (g *ActorGen) UnmarshalJSON(in []byte) error {
 	return nil
 }
 
-// Generate returns a pointer to the selected tile def after procedural
-// generation.
+// Generate returns a new Actor after generation.
 func (g ActorGen) Generate(t time.Time) *Actor {
 	r := g[util.Random(0, len(g))]
-	return NewActor(r, t)
+	return NewActor(r, t, true)
 }
