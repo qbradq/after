@@ -82,34 +82,14 @@ func (g *ChunkGen) AssignStaticInfo(c *game.Chunk) {
 
 // Generate handles all of the procedural generation for the chunk.
 func (g *ChunkGen) Generate(c *game.Chunk, m *game.CityMap) {
-	fn := func(p util.Point, f util.Facing) util.Point {
-		switch f {
-		case util.FacingNorth:
-			return p
-		case util.FacingEast:
-			return util.Point{
-				X: (game.ChunkHeight - 1) - p.Y,
-				Y: p.X,
-			}
-		case util.FacingSouth:
-			return util.Point{
-				X: (game.ChunkWidth - 1) - p.X,
-				Y: (game.ChunkHeight - 1) - p.Y,
-			}
-		default:
-			return util.Point{
-				X: p.Y,
-				Y: (game.ChunkWidth - 1) - p.X,
-			}
-		}
-	}
 	var sp util.Point
 	var dp util.Point
+	cb := util.NewRectWH(game.ChunkWidth, game.ChunkHeight)
 	for sp.Y = c.ChunkGenOffset.Y * game.ChunkHeight; sp.Y < (c.ChunkGenOffset.Y+1)*game.ChunkHeight; sp.Y++ {
 		dp.X = 0
 		for sp.X = c.ChunkGenOffset.X * game.ChunkWidth; sp.X < (c.ChunkGenOffset.X+1)*game.ChunkWidth; sp.X++ {
 			r := string(g.Map[sp.Y][sp.X])
-			rp := fn(dp, c.Facing)
+			rp := cb.RotatePoint(dp, c.Facing)
 			g.Tiles[r].Evaluate(c, rp, m.Now)
 			dp.X++
 		}

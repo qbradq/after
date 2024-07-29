@@ -13,6 +13,7 @@ const (
 	FacingEast
 	FacingSouth
 	FacingWest
+	FacingInvalid
 )
 
 // Offsets for each facing

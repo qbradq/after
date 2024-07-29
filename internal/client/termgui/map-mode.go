@@ -233,6 +233,43 @@ func (m *mapMode) drawMap(s termui.TerminalDriver, mtl util.Point, mb util.Rect)
 			})
 		}
 	}
+	// Draw vehicles
+	for _, v := range m.CityMap.VehiclesWithin(mb) {
+		var p util.Point
+		for p.Y = 0; p.Y < v.Bounds.Height(); p.Y++ {
+			for p.X = 0; p.X < v.Bounds.Width(); p.X++ {
+				l := v.Location(p)
+				if l == nil || len(l.Parts) < 1 {
+					continue
+				}
+				vp := v.Bounds.TL
+				sp := util.NewPoint((vp.X-mtl.X)+m.Bounds.TL.X, (vp.Y-mtl.Y)+m.Bounds.TL.Y).Add(p)
+				if !m.Bounds.Contains(sp) {
+					continue
+				}
+				i := l.Parts[len(l.Parts)-1]
+				vx := vp.X + p.X
+				vy := vp.Y + p.Y
+				idx = uint32((vy-mtl.Y)*m.Bounds.Width() + (vx - mtl.X))
+				if m.CityMap.Visibility.Contains(idx) {
+					ns := termui.StyleDefault.
+						Background(i.Bg).
+						Foreground(i.Fg)
+					s.SetCell(sp, termui.Glyph{
+						Rune:  rune(i.Rune[0]),
+						Style: ns,
+					})
+				} else if m.CityMap.Remembered.Contains(idx) {
+					ns := termui.StyleDefault.
+						Foreground(termui.ColorGray)
+					s.SetCell(sp, termui.Glyph{
+						Rune:  rune(i.Rune[0]),
+						Style: ns,
+					})
+				}
+			}
+		}
+	}
 	// Draw the player
 	a := m.CityMap.Player
 	p = a.Position

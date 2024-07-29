@@ -120,6 +120,20 @@ func LoadMods(ids []string) error {
 			return err
 		}
 	}
+	// Vehicle generators
+	for _, id := range ids {
+		if err := mods[id].loadVehicles(); err != nil {
+			return err
+		}
+	}
+	// Cache vehicle generator statements
+	for _, group := range game.VehicleGenGroups {
+		for _, v := range group.Variants {
+			if err := v.CacheGens(); err != nil {
+				return err
+			}
+		}
+	}
 	// Tiles
 	for _, id := range ids {
 		if err := mods[id].loadTiles(); err != nil {
@@ -419,6 +433,41 @@ func (m *Mod) loadScenarios() error {
 				return fmt.Errorf("duplicate scenario definition %s", k)
 			}
 			citygen.Scenarios[k] = def
+		}
+	}
+	return nil
+}
+
+// loadVehicles loads the mod's vehicle definitions.
+func (m *Mod) loadVehicles() error {
+	files, err := os.ReadDir(path.Join(m.Path, "vehicles"))
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return err
+		}
+		return nil
+	}
+	for _, f := range files {
+		d, err := os.ReadFile(path.Join(m.Path, "vehicles", f.Name()))
+		if err != nil {
+			return err
+		}
+		gens := []*game.VehicleGen{}
+		err = json.Unmarshal(d, &gens)
+		if err != nil {
+			return err
+		}
+		for _, gen := range gens {
+			var group *game.VehicleGenGroup
+			var found bool
+			group, found = game.VehicleGenGroups[gen.Group]
+			if !found {
+				group = game.NewVehicleGenGroup(gen.Group)
+				game.VehicleGenGroups[gen.Group] = group
+			}
+			if err := group.Add(gen); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

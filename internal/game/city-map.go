@@ -65,6 +65,8 @@ type CityMap struct {
 	aq                  actorQueue       // Queue of all actors within update range
 	itemsWithinCache    []*Item          // Return slice for ItemsWithin()
 	actorsWithinCache   []*Actor         // Return slice for ActorsWithin()
+	chunksWithinCache   []*Chunk         // Return slice for ChunksWithin()
+	vehiclesWithinCache []*Vehicle       // Return slice for VehiclesWithin()
 	updateBounds        util.Rect        // Bounds of the current update
 	loadBounds          util.Rect        // Load bounds of the current update
 }
@@ -173,6 +175,24 @@ func (m *CityMap) GetChunk(p util.Point) *Chunk {
 		return nil
 	}
 	return m.Chunks[(p.Y/ChunkHeight)*CityMapWidth+(p.X/ChunkWidth)]
+}
+
+// ChunksWithin returns all chunks within the given bounds. The return value
+// will be reused on subsequent calls to GetChunksWithin.
+func (m *CityMap) ChunksWithin(b util.Rect) []*Chunk {
+	m.chunksWithinCache = m.chunksWithinCache[:0]
+	cb := m.TileBounds.Overlap(b).Divide(ChunkWidth)
+	var p util.Point
+	for p.Y = cb.TL.Y; p.Y <= cb.BR.Y; p.Y++ {
+		for p.X = cb.TL.X; p.X <= cb.BR.X; p.X++ {
+			c := m.GetChunkFromMapPoint(p)
+			if c == nil {
+				continue
+			}
+			m.chunksWithinCache = append(m.chunksWithinCache, c)
+		}
+	}
+	return m.chunksWithinCache
 }
 
 // GetTile returns the tile at the given absolute tile point or nil if the point
@@ -405,6 +425,59 @@ func (m *CityMap) ItemsWithin(b util.Rect) []*Item {
 		}
 	}
 	return m.itemsWithinCache
+}
+
+// PlaceVehicle attempts to place the vehicle into the city.
+func (m *CityMap) PlaceVehicle(v *Vehicle) bool {
+	// Place the vehicle into the parent chunk
+	c := m.GetChunk(v.Bounds.TL)
+	if c == nil {
+		return false
+	}
+	if !c.PlaceVehicle(v) {
+		return false
+	}
+	// Flag impacted chunks' bitmaps
+	for _, c := range m.ChunksWithin(v.Bounds) {
+		c.bitmapsDirty = true
+	}
+	return true
+}
+
+// RemoveVehicle attempts to remove the vehicle from the city.
+func (m *CityMap) RemoveVehicle(v *Vehicle) bool {
+	// Remove vehicle from parent chunk
+	c := m.GetChunk(v.Bounds.TL)
+	if c == nil {
+		return false
+	}
+	if !c.RemoveVehicle(v) {
+		return false
+	}
+	// Flag impacted chunks' bitmaps
+	for _, c := range m.ChunksWithin(v.Bounds) {
+		c.bitmapsDirty = true
+	}
+	return true
+}
+
+// VehiclesWithin returns a list of all of the vehicles who's bounds overlap
+// the given bounds. The return value will be reused on future calls to
+// VehiclesWithin.
+func (m *CityMap) VehiclesWithin(b util.Rect) []*Vehicle {
+	m.vehiclesWithinCache = m.vehiclesWithinCache[:0]
+	b = m.TileBounds.Overlap(b.Grow(16))
+	for _, c := range m.ChunksWithin(b) {
+		for _, v := range c.Vehicles {
+			if c.Ref == 0 {
+				print("!\n")
+			}
+			if v.Bounds.Overlaps(b) {
+				m.vehiclesWithinCache = append(m.vehiclesWithinCache, v)
+			}
+		}
+	}
+	return m.vehiclesWithinCache
 }
 
 // PlaceActor adds the actor to the city at it's current location.

@@ -1,0 +1,24 @@
+[
+    {
+        "Group": "Street",
+        "Variant": "Car.1",
+        "Name": "Mini Car",
+        "Width": 4,
+        "Height": 3,
+        "Map": [
+            "^&:^",
+            "+@_+",
+            "|TT|"
+        ],
+        "Legend": {
+            "|": "SmallWheel;Taillight",
+            "&": "LightFrame;SmallEngine;VehicleBodyPanel",
+            ":": "LightFrame;SmallBattery;VehicleBodyPanel",
+            "^": "LightFrame;Headlight",
+            "+": "LightFrame;VehicleDoor",
+            "@": "LightFrame;VehicleSeat;VehicleControls",
+            "_": "LightFrame;VehicleSeat",
+            "T": "LightFrame;VehicleTrunk"
+        }
+    }
+]

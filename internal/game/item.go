@@ -53,6 +53,7 @@ type Item struct {
 	WeaponSwingStam float64           // Amount of stamina required to swing this weapon
 	Container       bool              // If true this item contains other items
 	Contents        []string          // Container content item statements if any
+	VehicleSolid    bool              // If true this part prevents actors from standing on the part
 
 	//
 	// Cache values

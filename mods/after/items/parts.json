@@ -1,0 +1,88 @@
+{
+    "LightFrame": {
+        "Name": "light frame",
+        "Rune": "#",
+        "Fg": "Gray",
+        "Bg": "Black"
+    },
+    "SmallWheel": {
+        "Name": "small wheel",
+        "Rune": "|",
+        "Fg": "Silver",
+        "Bg": "Black",
+        "VehicleSolid": true
+    },
+    "SmallEngine": {
+        "Name": "small engine",
+        "Rune": "&",
+        "Fg": "Silver",
+        "Bg": "Gray",
+        "VehicleSolid": true
+    },
+    "SmallBattery": {
+        "Name": "small battery",
+        "Rune": ":",
+        "Fg": "Silver",
+        "Bg": "White",
+        "VehicleSolid": true
+    },
+    "Headlight": {
+        "Name": "headlight",
+        "Rune": "^",
+        "Fg": "White",
+        "Bg": "Yellow",
+        "VehicleSolid": true
+    },
+    "Taillight": {
+        "Name": "Taillight",
+        "Rune": "-",
+        "Fg": "Yellow",
+        "Bg": "Red",
+        "VehicleSolid": true
+    },
+    "VehicleBodyPanel": {
+        "Name": "body panel",
+        "Rune": "#",
+        "Fg": "Blue",
+        "Bg": "Blue",
+        "VehicleSolid": true
+    },
+    "VehicleDoor": {
+        "Name": "door",
+        "Rune": "+",
+        "Fg": "Blue",
+        "Bg": "Black",
+        "VehicleSolid": true
+    },
+    "OpenVehicleDoor": {
+        "Name": "door",
+        "Rune": "-",
+        "Fg": "Blue",
+        "Bg": "Black"
+    },
+    "VehicleSeat": {
+        "Name": "seat",
+        "Rune": "_",
+        "Fg": "Gray",
+        "Bg": "Black"
+    },
+    "VehicleControls": {
+        "Name": "controls",
+        "Rune": "^",
+        "Fg": "White",
+        "Bg": "Black"
+    },
+    "VehicleTrunk": {
+        "Name": "trunk",
+        "Rune": "+",
+        "Fg": "Blue",
+        "Bg": "Black",
+        "VehicleSolid": true
+    },
+    "OpenVehicleTrunk": {
+        "Name": "trunk",
+        "Rune": "-",
+        "Fg": "Blue",
+        "Bg": "Black"
+    }
+}

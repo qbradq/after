@@ -12,6 +12,7 @@ type List struct {
 	Title      string                          // Title for the box, if any
 	Items      []string                        // Items of the list
 	Selected   func(TerminalDriver, int) error // The function that is called if the user selects an item
+	Closed     func(TerminalDriver) error      // The function that is called when the user closes the list
 	HideCursor bool                            // If true we will not highlight the cursor position
 }
 
@@ -59,8 +60,14 @@ func (m *List) HandleEvent(s TerminalDriver, e any) error {
 		case ' ':
 			fallthrough
 		case '\n':
-			return m.Selected(s, m.CursorPos)
+			if m.Selected != nil {
+				return m.Selected(s, m.CursorPos)
+			}
+			return ErrorQuit
 		case '\033':
+			if m.Closed != nil {
+				return m.Closed(s)
+			}
 			return ErrorQuit
 		}
 	}

@@ -8,13 +8,16 @@ import (
 
 // escapeMenu implements the system menu that appears when you press escape.
 type escapeMenu struct {
-	m    *gameMode   // Game mode back reference
-	list termui.List // Menu list
+	m       *gameMode   // Game mode back reference
+	list    termui.List // Menu list
+	debug   termui.List // Debug menu list
+	inDebug bool        // If true, display the debug menu
 }
 
 // newEscapeMenu returns a new EscapeMenu ready for use.
 func newEscapeMenu(m *gameMode) *escapeMenu {
-	ret := &escapeMenu{
+	var ret *escapeMenu
+	ret = &escapeMenu{
 		m: m,
 		list: termui.List{
 			Boxed: true,
@@ -22,9 +25,7 @@ func newEscapeMenu(m *gameMode) *escapeMenu {
 				"Resume",
 				"Force Save",
 				"Save and Quit",
-				"_hbar_",
-				"Teleport Menu",
-				"Log Chunk Info",
+				"Debug Menu",
 			},
 			Title: "Game Menu",
 			Selected: func(td termui.TerminalDriver, i int) error {
@@ -38,7 +39,25 @@ func newEscapeMenu(m *gameMode) *escapeMenu {
 					m.CityMap.FullSave()
 					m.quit = true
 					return termui.ErrorQuit
-				case 4:
+				case 3:
+					ret.inDebug = true
+					return nil
+				}
+				return termui.ErrorQuit
+			},
+		},
+		debug: termui.List{
+			Boxed: true,
+			Items: []string{
+				"Teleport to Chunk",
+				"Log Chunk Info",
+				"Generate Vehicle",
+				"Toggle Debug Display",
+			},
+			Title: "Game Menu",
+			Selected: func(td termui.TerminalDriver, i int) error {
+				switch i {
+				case 0:
 					termui.RunMode(td, &minimap{
 						CityMap:     m.CityMap,
 						Bounds:      util.NewRectWH(td.Size()),
@@ -65,7 +84,7 @@ func newEscapeMenu(m *gameMode) *escapeMenu {
 						},
 					})
 					return termui.ErrorQuit
-				case 5:
+				case 1:
 					c := m.CityMap.GetChunk(m.CityMap.Player.Position)
 					b, err := c.Facing.MarshalJSON()
 					if err != nil {
@@ -79,18 +98,30 @@ func newEscapeMenu(m *gameMode) *escapeMenu {
 						c.Generator.GetVariant(),
 						facing,
 					)
-				case 6:
+					return termui.ErrorQuit
+				case 2:
+					v := game.GenerateVehicle("Street", ret.m.CityMap.Now)
+					if v == nil {
+						game.Log.Log(termui.ColorRed, "Failed to generate vehicle.")
+						return termui.ErrorQuit
+					}
+					v.Bounds = v.Bounds.Move(ret.m.CityMap.Player.Position)
+					if !ret.m.CityMap.PlaceVehicle(v) {
+						game.Log.Log(termui.ColorRed, "Failed to place vehicle.")
+						return termui.ErrorQuit
+					}
+					return termui.ErrorQuit
+				case 3:
 					m.debug = !m.debug
 					return termui.ErrorQuit
 				}
 				return nil
 			},
+			Closed: func(td termui.TerminalDriver) error {
+				ret.inDebug = false
+				return termui.ErrorQuit
+			},
 		},
-	}
-	if m.debug {
-		ret.list.Items = append(ret.list.Items, "Disable Debug Display")
-	} else {
-		ret.list.Items = append(ret.list.Items, "Enable Debug Display")
 	}
 	return ret
 }
@@ -105,11 +136,15 @@ func (m *escapeMenu) HandleEvent(s termui.TerminalDriver, e any) error {
 	case *termui.EventQuit:
 		return termui.ErrorQuit
 	}
+	if m.inDebug {
+		return m.debug.HandleEvent(s, e)
+	}
 	return m.list.HandleEvent(s, e)
 }
 
 // Draw implements the termui.Mode interface.
 func (m *escapeMenu) Draw(s termui.TerminalDriver) {
+	// Main menu
 	w, h := s.Size()
 	maxW := 0
 	for _, i := range m.list.Items {
@@ -120,4 +155,17 @@ func (m *escapeMenu) Draw(s termui.TerminalDriver) {
 	}
 	m.list.Bounds = util.NewRectWH(w, h).CenterRect(2+maxW, 2+len(m.list.Items))
 	m.list.Draw(s)
+	if !m.inDebug {
+		return
+	}
+	// Debug menu
+	maxW = 0
+	for _, i := range m.debug.Items {
+		l := len(i)
+		if l > maxW {
+			maxW = l
+		}
+	}
+	m.debug.Bounds = util.NewRectWH(w, h).CenterRect(2+maxW, 2+len(m.debug.Items))
+	m.debug.Draw(s)
 }

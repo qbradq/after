@@ -45,10 +45,11 @@ type Chunk struct {
 	Facing         util.Facing // Facing of the chunk during generation
 	Flags          ChunkFlags  // Flags
 	// Persistent values
-	Tiles   []*TileDef    // Tile matrix
-	Items   []*Item       // All items within the chunk
-	Actors  []*Actor      // All actors within the chunk
-	HasSeen bitmap.Bitmap // Bitmap of all spaces that have been previously viewed by the player
+	Tiles    []*TileDef    // Tile matrix
+	Items    []*Item       // All items within the chunk
+	Actors   []*Actor      // All actors within the chunk
+	Vehicles []*Vehicle    // All vehicles who's Northwest corner are in this chunk
+	HasSeen  bitmap.Bitmap // Bitmap of all spaces that have been previously viewed by the player
 	// Reconstituted values
 	Position          util.Point   // Position of the chunk on the city map in chunks
 	Ref               uint32       // Reference index for the chunk
@@ -100,7 +101,11 @@ func (c *Chunk) Write(w io.Writer) {
 	for _, a := range c.Actors {             // Actors
 		a.Write(w)
 	}
-	c.HasSeen.WriteTo(w)
+	util.PutUint16(w, uint16(len(c.Vehicles))) // Number of vehicles
+	for _, v := range c.Vehicles {             // Vehicles
+		v.Write(w)
+	}
+	c.HasSeen.WriteTo(w) // Remembered bitmap
 }
 
 // Unload frees chunk-level persistent memory
@@ -108,6 +113,7 @@ func (c *Chunk) Unload() {
 	c.Tiles = nil
 	c.Items = nil
 	c.Actors = nil
+	c.Vehicles = nil
 	c.HasSeen = nil
 	c.Loaded = time.Time{}
 }
@@ -128,7 +134,11 @@ func (c *Chunk) Read(r io.Reader) {
 	for i := 0; i < n; i++ {   // Actors
 		c.Actors = append(c.Actors, NewActorFromReader(r))
 	}
-	c.HasSeen.ReadFrom(r)
+	n = int(util.GetUint16(r)) // Number of vehicles
+	for i := 0; i < n; i++ {   // Vehicles
+		c.Vehicles = append(c.Vehicles, NewVehicleFromReader(r))
+	}
+	c.HasSeen.ReadFrom(r) // Remembered bitmap
 }
 
 // RebuildBitmaps must be called after chunk load or generation in order to
@@ -251,6 +261,42 @@ func (c *Chunk) RemoveItem(i *Item) bool {
 	if i.BlocksVis || i.BlocksWalk || !i.Climbable {
 		c.bitmapsDirty = true
 	}
+	return true
+}
+
+// PlaceVehicle adds the vehicle to this chunk's list of managed vehicles.
+func (c *Chunk) PlaceVehicle(v *Vehicle) bool {
+	if !c.Bounds.Contains(v.Bounds.TL) {
+		return false
+	}
+	for _, o := range c.Vehicles {
+		if v == o {
+			return false
+		}
+	}
+	c.Vehicles = append(c.Vehicles, v)
+	return true
+}
+
+// RemoveVehicle removes the vehicle from this chunk's list of managed vehicles.
+func (c *Chunk) RemoveVehicle(v *Vehicle) bool {
+	if !c.Bounds.Contains(v.Bounds.TL) {
+		return false
+	}
+	idx := -1
+	for n, o := range c.Vehicles {
+		if o == v {
+			idx = n
+			break
+		}
+	}
+	if idx < 0 {
+		return false
+	}
+	// Remove from slice while maintaining order
+	copy(c.Vehicles[idx:], c.Vehicles[idx+1:])
+	c.Vehicles[len(c.Vehicles)-1] = nil
+	c.Vehicles = c.Vehicles[:len(c.Vehicles)-1]
 	return true
 }
 
