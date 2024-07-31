@@ -18,7 +18,57 @@
             "+": "LightFrame;VehicleDoor",
             "@": "LightFrame;VehicleSeat;VehicleControls",
             "_": "LightFrame;VehicleSeat",
-            "T": "LightFrame;VehicleTrunk"
+            "T": "LightFrame;VehicleTrunk",
+            "#": "LightFrame;VehicleBodyPanel"
+        }
+    },
+    {
+        "Group": "Street",
+        "Variant": "Car.2",
+        "Name": "Mini Coup",
+        "Width": 4,
+        "Height": 4,
+        "Map": [
+            "^&:^",
+            "+@_+",
+            "#__#",
+            "|TT|"
+        ],
+        "Legend": {
+            "|": "SmallWheel;Taillight",
+            "&": "LightFrame;SmallEngine;VehicleBodyPanel",
+            ":": "LightFrame;SmallBattery;VehicleBodyPanel",
+            "^": "LightFrame;Headlight",
+            "+": "LightFrame;VehicleDoor",
+            "@": "LightFrame;VehicleSeat;VehicleControls",
+            "_": "LightFrame;VehicleSeat",
+            "T": "LightFrame;VehicleTrunk",
+            "#": "LightFrame;VehicleBodyPanel"
+        }
+    },
+    {
+        "Group": "Street",
+        "Variant": "Car.3",
+        "Name": "Sports Coup",
+        "Width": 4,
+        "Height": 5,
+        "Map": [
+            "^##^",
+            "#&:#",
+            "+@_+",
+            "#__#",
+            "|TT|"
+        ],
+        "Legend": {
+            "|": "SmallWheel;Taillight",
+            "&": "LightFrame;SmallEngine;VehicleBodyPanel",
+            ":": "LightFrame;SmallBattery;VehicleBodyPanel",
+            "^": "LightFrame;Headlight",
+            "+": "LightFrame;VehicleDoor",
+            "@": "LightFrame;VehicleSeat;VehicleControls",
+            "_": "LightFrame;VehicleSeat",
+            "T": "LightFrame;VehicleTrunk",
+            "#": "LightFrame;VehicleBodyPanel"
         }
     }
 ]

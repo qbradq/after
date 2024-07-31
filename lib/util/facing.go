@@ -57,3 +57,18 @@ func (f *Facing) UnmarshalJSON(in []byte) error {
 	}
 	return nil
 }
+
+// Rotate rotates the facing to the given facing, assuming the original facing
+// was North.
+func (f Facing) Rotate(a Facing) Facing {
+	switch a {
+	case FacingNorth:
+		return f
+	case FacingEast:
+		return (f + 1).Bound()
+	case FacingSouth:
+		return (f + 2).Bound()
+	default:
+		return (f + 3).Bound()
+	}
+}

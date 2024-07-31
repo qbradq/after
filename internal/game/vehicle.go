@@ -39,9 +39,9 @@ func NewVehicleFromReader(r io.Reader) *Vehicle {
 	p := util.GetPoint(r) // Position
 	s := util.GetPoint(r) // Size
 	v := newVehicle(s)
-	v.Facing = util.Facing(util.GetByte(r)) // Facing
-	v.Bounds = util.NewRectXYWH(p.X, p.Y, s.X, s.Y).RotateInPlace(v.Facing)
-	for idx := 0; idx < v.Bounds.Area(); idx++ {
+	f := util.Facing(util.GetByte(r)) // Facing
+	v.UpdateBoundsForPosition(p, f)
+	for idx := 0; idx < v.Size.X*v.Size.Y; idx++ {
 		nParts := int(util.GetByte(r))            // Number of parts
 		for iPart := 0; iPart < nParts; iPart++ { // Parts
 			v.Locations[idx].Parts = append(v.Locations[idx].Parts, NewItemFromReader(r))
@@ -125,4 +125,12 @@ func (v *Vehicle) Location(rp util.Point) *VehicleLocation {
 	}
 	lp := v.Bounds.ReverseRotatePoint(rp, v.Facing)
 	return &v.Locations[lp.Y*v.Size.X+lp.X]
+}
+
+// UpdateBoundsForPosition updates the vehicle based on the given position and
+// facing.
+func (v *Vehicle) UpdateBoundsForPosition(p util.Point, f util.Facing) {
+	v.Facing = f
+	v.Bounds = util.NewRectXYWH(p.X, p.Y, v.Size.X, v.Size.Y)
+	v.Bounds = v.Bounds.RotateInPlace(v.Facing)
 }

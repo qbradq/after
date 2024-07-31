@@ -226,8 +226,8 @@ func (m *CityMap) EnsureLoaded(r util.Rect) {
 	now := time.Now()
 	for p.Y = r.TL.Y; p.Y <= r.BR.Y; p.Y++ {
 		for p.X = r.TL.X; p.X <= r.BR.X; p.X++ {
-			r := chunkRefForPoint(p)
-			c := m.Chunks[r]
+			ref := chunkRefForPoint(p)
+			c := m.Chunks[ref]
 			m.LoadChunk(c, now)
 		}
 	}
@@ -469,9 +469,6 @@ func (m *CityMap) VehiclesWithin(b util.Rect) []*Vehicle {
 	b = m.TileBounds.Overlap(b.Grow(16))
 	for _, c := range m.ChunksWithin(b) {
 		for _, v := range c.Vehicles {
-			if c.Ref == 0 {
-				print("!\n")
-			}
 			if v.Bounds.Overlaps(b) {
 				m.vehiclesWithinCache = append(m.vehiclesWithinCache, v)
 			}

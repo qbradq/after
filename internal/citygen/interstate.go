@@ -289,9 +289,10 @@ func interstate() *game.CityMap {
 			place(m, ChunkGenGroups["House"].Get(), l.p, l.f, false)
 		}
 	}
-	// Test chunk
+	// Test chunks
 	p = iip
 	p.X--
-	place(m, ChunkGenGroups["Test"].Get(), p, util.FacingSouth, true)
+	place(m, ChunkGenGroups["CombatTest"].Get(), p, util.FacingSouth, true)
+	place(m, ChunkGenGroups["VehicleGenTest"].Get(), util.Point{}, util.FacingWest, true)
 	return m
 }

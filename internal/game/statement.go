@@ -13,7 +13,7 @@ import (
 // Evaluator evaluates a single expression executing its generation function.
 type Evaluator interface {
 	// Evaluate evaluates a single expression executing its function.
-	Evaluate(*Chunk, util.Point, time.Time)
+	Evaluate(*Chunk, util.Point, *CityMap)
 }
 
 // ItemsCreator generates new items based on the expression.
@@ -29,7 +29,7 @@ type tileExpression struct {
 }
 
 // Evaluate implements the evaluator interface.
-func (e *tileExpression) Evaluate(c *Chunk, p util.Point, now time.Time) {
+func (e *tileExpression) Evaluate(c *Chunk, p util.Point, cm *CityMap) {
 	c.Tiles[p.Y*ChunkWidth+p.X] = TileDefs[e.r]
 }
 
@@ -39,7 +39,7 @@ type tileGenExpression struct {
 }
 
 // Evaluate implements the evaluator interface.
-func (e *tileGenExpression) Evaluate(c *Chunk, p util.Point, now time.Time) {
+func (e *tileGenExpression) Evaluate(c *Chunk, p util.Point, cm *CityMap) {
 	c.Tiles[p.Y*ChunkWidth+p.X] = e.r.Generate()
 }
 
@@ -51,8 +51,8 @@ type itemExpression struct {
 }
 
 // Evaluate implements the evaluator interface.
-func (e *itemExpression) Evaluate(c *Chunk, p util.Point, now time.Time) {
-	for _, i := range e.CreateItems(now) {
+func (e *itemExpression) Evaluate(c *Chunk, p util.Point, cm *CityMap) {
+	for _, i := range e.CreateItems(cm.Now) {
 		i.Position = p
 		c.PlaceItemRelative(i)
 	}
@@ -81,8 +81,8 @@ type itemGenExpression struct {
 }
 
 // Evaluate implements the evaluator interface.
-func (e *itemGenExpression) Evaluate(c *Chunk, p util.Point, now time.Time) {
-	for _, i := range e.CreateItems(now) {
+func (e *itemGenExpression) Evaluate(c *Chunk, p util.Point, cm *CityMap) {
+	for _, i := range e.CreateItems(cm.Now) {
 		i.Position = p
 		c.PlaceItemRelative(i)
 	}
@@ -110,9 +110,9 @@ type actorExpression struct {
 }
 
 // Evaluate implements the evaluator interface.
-func (e *actorExpression) Evaluate(c *Chunk, p util.Point, now time.Time) {
+func (e *actorExpression) Evaluate(c *Chunk, p util.Point, cm *CityMap) {
 	if util.Random(0, e.y) < e.x {
-		a := NewActor(e.r, now, true)
+		a := NewActor(e.r, cm.Now, true)
 		a.Position = p
 		c.PlaceActorRelative(a)
 	}
@@ -126,47 +126,136 @@ type actorGenExpression struct {
 }
 
 // Evaluate implements the evaluator interface.
-func (e *actorGenExpression) Evaluate(c *Chunk, p util.Point, now time.Time) {
+func (e *actorGenExpression) Evaluate(c *Chunk, p util.Point, cm *CityMap) {
 	if util.Random(0, e.y) >= e.x {
 		return
 	}
-	a := e.r.Generate(now)
+	a := e.r.Generate(cm.Now)
 	a.Position = p
 	c.PlaceActorRelative(a)
 }
 
 // vehicleGenExpression lays down a vehicle with a given chance based on the
 // named vehicle group.
-// type vehicleGenExpression struct {
-// 	g    *VehicleGenGroup // Vehicle group to pull variants from
-// 	x, y int              // rng parameters
-// }
+type vehicleGenExpression struct {
+	g    *VehicleGenGroup // Vehicle group to pull variants from
+	f    util.Facing      // Output vehicle facing
+	w, h int              // Vehicle spawn area dimensions
+	x, y int              // rng parameters
+}
 
 // Evaluate implements the evaluator interface.
-// func (e *vehicleGenExpression) Evaluate(c *Chunk, p util.Point, now time.Time) {
-// 	if util.Random(0, e.y) >= e.x {
-// 		return
-// 	}
-// 	gen := e.g.Get()
-// }
+func (e *vehicleGenExpression) Evaluate(c *Chunk, p util.Point, cm *CityMap) {
+	if util.Random(0, e.y) >= e.x {
+		return
+	}
+	var gb util.Rect
+	cb := util.NewRectWH(ChunkWidth, ChunkHeight)
+	sb := cb.RotateRect(util.NewRectXYWH(p.X, p.Y, e.w, e.h), c.Facing)
+	// Try up to 8 times to select a variant that will fit within the bounds.
+	var gen *VehicleGen
+	for i := 0; i < 8; i++ {
+		gen = e.g.Get()
+		gb = cb.RotateRect(util.NewRectXYWH(p.X, p.Y, gen.Width, gen.Height), c.Facing)
+		if sb.ContainsRect(gb) {
+			break
+		}
+		gen = nil
+	}
+	if gen == nil {
+		return
+	}
+	// Randomly move the spawn location within the spawn bounds
+	gb = sb.RandomSubRect(gb.Width(), gb.Height())
+	v := gen.Generate(cm.Now)
+	v.UpdateBoundsForPosition(gb.TL.Add(c.Bounds.TL), e.f.Rotate(c.Facing))
+	c.Vehicles = append(c.Vehicles, v)
+}
 
 // GenStatement is a list of expressions to run on a single position in the
-// chunk at generation time. The text format of an expression is as follows:
-// exp[;exp]... Where:
-// exp = (tile_exp|item_exp)|(item_exp@XinY) Where:
-// tile_name is the name of a tile or tile generator
-// item_name is the name of an item or item generator
-// Y is the bounded maximum of the half-open range [0-Y)
-// X is the value of the random roll [0-Y) below which the item will appear
-type GenStatement []Evaluator
+// chunk at generation time.
+type GenStatement struct {
+	Tile    Evaluator
+	Vehicle Evaluator
+	Actor   Evaluator
+	Items   []Evaluator
+}
 
 func (s *GenStatement) UnmarshalJSON(in []byte) error {
 	es, err := parseStatement(in)
 	if err != nil {
 		return err
 	}
-	*s = append(*s, es...)
-	return s.Validate()
+	for _, e := range es {
+		switch e.(type) {
+		case *tileExpression:
+			if s.Tile != nil {
+				return errors.New("multiple tile expressions given")
+			}
+			s.Tile = e
+		case *tileGenExpression:
+			if s.Tile != nil {
+				return errors.New("multiple tile expressions given")
+			}
+			s.Tile = e
+		case *actorExpression:
+			if s.Actor != nil {
+				return errors.New("multiple actor expressions given")
+			}
+			s.Actor = e
+		case *actorGenExpression:
+			if s.Actor != nil {
+				return errors.New("multiple actor expressions given")
+			}
+			s.Actor = e
+		case *vehicleGenExpression:
+			if s.Vehicle != nil {
+				return errors.New("multiple vehicle expressions given")
+			}
+			s.Vehicle = e
+		default:
+			s.Items = append(s.Items, e)
+		}
+	}
+	if s.Tile == nil {
+		return errors.New("no tile given in expression")
+	}
+	return nil
+}
+
+// parseVehicleExpression parses a vehicle expression string into its parts.
+func parseVehicleExpression(s string) (f util.Facing, w, h int, err error) {
+	parts := strings.Split(s, "x")
+	if len(parts) != 2 || len(parts[0]) < 1 || len(parts[1]) < 1 {
+		return util.FacingInvalid, 0, 0, errors.New("bad vehicle expression: " + s)
+	}
+	fs := parts[0][0]
+	ws := parts[0][1:]
+	hs := parts[1]
+	switch fs {
+	case 'N':
+		f = util.FacingNorth
+	case 'E':
+		f = util.FacingEast
+	case 'S':
+		f = util.FacingSouth
+	case 'W':
+		f = util.FacingWest
+	default:
+		return util.FacingInvalid, 0, 0, errors.New("bad facing code in vehicle expression: " + s)
+	}
+	var v int64
+	v, err = strconv.ParseInt(ws, 0, 32)
+	if err != nil {
+		return
+	}
+	w = int(v)
+	v, err = strconv.ParseInt(hs, 0, 32)
+	if err != nil {
+		return
+	}
+	h = int(v)
+	return
 }
 
 // parseStatement parses a series of generator expressions from an input string
@@ -194,7 +283,27 @@ func parseStatement(in []byte) ([]Evaluator, error) {
 		parts = strings.Split(parts[0], "@")
 		switch len(parts) {
 		case 1:
-			if gen, found := ActorGens[parts[0]]; found {
+			if gnp := strings.Split(parts[0], "^"); len(gnp) == 2 {
+				if group, found := VehicleGenGroups[gnp[0]]; found {
+					if n > 1 {
+						return nil, fmt.Errorf("'*' symbol not allowed in vehicle expressions")
+					}
+					f, w, h, err := parseVehicleExpression(gnp[1])
+					if err != nil {
+						return nil, err
+					}
+					ret = append(ret, &vehicleGenExpression{
+						g: group,
+						f: f,
+						w: w,
+						h: h,
+						x: 1,
+						y: 1,
+					})
+				} else {
+					return nil, fmt.Errorf("vehicle group %s not found", gnp[0])
+				}
+			} else if gen, found := ActorGens[parts[0]]; found {
 				if n > 1 {
 					return nil, fmt.Errorf("'*' symbol not allowed in actor or tile expressions")
 				}
@@ -253,7 +362,27 @@ func parseStatement(in []byte) ([]Evaluator, error) {
 			if err != nil {
 				return nil, err
 			}
-			if gen, found := ActorGens[parts[0]]; found {
+			if gnp := strings.Split(parts[0], "^"); len(gnp) == 2 {
+				if group, found := VehicleGenGroups[gnp[0]]; found {
+					if n > 1 {
+						return nil, fmt.Errorf("'*' symbol not allowed in vehicle expressions")
+					}
+					f, w, h, err := parseVehicleExpression(gnp[1])
+					if err != nil {
+						return nil, err
+					}
+					ret = append(ret, &vehicleGenExpression{
+						g: group,
+						f: f,
+						w: w,
+						h: h,
+						x: int(x),
+						y: int(y),
+					})
+				} else {
+					return nil, fmt.Errorf("vehicle group %s not found", gnp[0])
+				}
+			} else if gen, found := ActorGens[parts[0]]; found {
 				if n > 1 {
 					return nil, fmt.Errorf("'*' symbol not allowed in actor or tile expressions")
 				}
@@ -293,60 +422,6 @@ func parseStatement(in []byte) ([]Evaluator, error) {
 		}
 	}
 	return ret, nil
-}
-
-// validateExpressionIntegrity returns an error if the given statement contains
-// invalid parameters for any expression.
-func validateExpressionIntegrity(s []Evaluator) error {
-	for _, exp := range s {
-		switch e := exp.(type) {
-		case *actorExpression:
-			if e.x < 1 || e.y < 1 {
-				return errors.New("generator statement actor expressions must use positive whole numbers")
-			}
-		case *actorGenExpression:
-			if e.x < 1 || e.y < 1 {
-				return errors.New("generator statement actor expressions must use positive whole numbers")
-			}
-		case *itemExpression:
-			if e.x < 1 || e.y < 1 || e.n < 1 {
-				return errors.New("generator statement item expressions must use positive whole numbers")
-			}
-		case *itemGenExpression:
-			if e.x < 1 || e.y < 1 || e.n < 1 {
-				return errors.New("generator statement item expressions must use positive whole numbers")
-			}
-		}
-	}
-	return nil
-}
-
-// Validate validates the generator statement.
-func (s *GenStatement) Validate() error {
-	if err := validateExpressionIntegrity(*s); err != nil {
-		return err
-	}
-	// Make sure we have exactly one tile expression in the statement
-	tilesFound := 0
-	for _, exp := range *s {
-		switch exp.(type) {
-		case *tileExpression:
-			tilesFound++
-		case *tileGenExpression:
-			tilesFound++
-		}
-	}
-	if tilesFound != 1 {
-		return fmt.Errorf("generator statements must contain exactly 1 tile or tile generator")
-	}
-	return nil
-}
-
-// Evaluate evaluates each expression in the statement in order.
-func (s GenStatement) Evaluate(c *Chunk, p util.Point, t time.Time) {
-	for _, exp := range s {
-		exp.Evaluate(c, p, t)
-	}
 }
 
 // ItemStatement is a generation statement that is only allowed to produce

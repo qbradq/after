@@ -69,6 +69,7 @@ func UnloadAllMods() {
 	citygen.Scenarios = map[string]*citygen.Scenario{}
 	game.ItemDefs = map[string]*game.Item{}
 	game.ActorDefs = map[string]*game.Actor{}
+	game.VehicleGenGroups = map[string]*game.VehicleGenGroup{}
 }
 
 // LoadMods loads all of the listed mods.

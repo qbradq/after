@@ -231,7 +231,8 @@ func (c *Chunk) PlaceItem(i *Item, force bool) bool {
 		c.BlocksWalk.Set(c.relOfs(i.Position))
 	}
 	if !i.Climbable {
-		c.BlocksClimb.Set(c.relOfs(i.Position))
+		ref := c.relOfs(i.Position)
+		c.BlocksClimb.Set(ref)
 	}
 	c.Items = append(c.Items, i)
 	return true

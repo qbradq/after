@@ -85,12 +85,61 @@ func (g *ChunkGen) Generate(c *game.Chunk, m *game.CityMap) {
 	var sp util.Point
 	var dp util.Point
 	cb := util.NewRectWH(game.ChunkWidth, game.ChunkHeight)
+	// Generate tile matrix
 	for sp.Y = c.ChunkGenOffset.Y * game.ChunkHeight; sp.Y < (c.ChunkGenOffset.Y+1)*game.ChunkHeight; sp.Y++ {
 		dp.X = 0
 		for sp.X = c.ChunkGenOffset.X * game.ChunkWidth; sp.X < (c.ChunkGenOffset.X+1)*game.ChunkWidth; sp.X++ {
 			r := string(g.Map[sp.Y][sp.X])
-			rp := cb.RotatePoint(dp, c.Facing)
-			g.Tiles[r].Evaluate(c, rp, m.Now)
+			rp := cb.RotatePointRelative(dp, c.Facing)
+			g.Tiles[r].Tile.Evaluate(c, rp, m)
+			dp.X++
+		}
+		dp.Y++
+	}
+	// Generate vehicles
+	dp = util.Point{}
+	for sp.Y = c.ChunkGenOffset.Y * game.ChunkHeight; sp.Y < (c.ChunkGenOffset.Y+1)*game.ChunkHeight; sp.Y++ {
+		dp.X = 0
+		for sp.X = c.ChunkGenOffset.X * game.ChunkWidth; sp.X < (c.ChunkGenOffset.X+1)*game.ChunkWidth; sp.X++ {
+			r := string(g.Map[sp.Y][sp.X])
+			gen := g.Tiles[r].Vehicle
+			if gen == nil {
+				dp.X++
+				continue
+			}
+			rp := cb.RotatePointRelative(dp, c.Facing)
+			gen.Evaluate(c, rp, m)
+			dp.X++
+		}
+		dp.Y++
+	}
+	// Generate items
+	dp = util.Point{}
+	for sp.Y = c.ChunkGenOffset.Y * game.ChunkHeight; sp.Y < (c.ChunkGenOffset.Y+1)*game.ChunkHeight; sp.Y++ {
+		dp.X = 0
+		for sp.X = c.ChunkGenOffset.X * game.ChunkWidth; sp.X < (c.ChunkGenOffset.X+1)*game.ChunkWidth; sp.X++ {
+			r := string(g.Map[sp.Y][sp.X])
+			rp := cb.RotatePointRelative(dp, c.Facing)
+			for _, gen := range g.Tiles[r].Items {
+				gen.Evaluate(c, rp, m)
+			}
+			dp.X++
+		}
+		dp.Y++
+	}
+	// Generate actors
+	dp = util.Point{}
+	for sp.Y = c.ChunkGenOffset.Y * game.ChunkHeight; sp.Y < (c.ChunkGenOffset.Y+1)*game.ChunkHeight; sp.Y++ {
+		dp.X = 0
+		for sp.X = c.ChunkGenOffset.X * game.ChunkWidth; sp.X < (c.ChunkGenOffset.X+1)*game.ChunkWidth; sp.X++ {
+			r := string(g.Map[sp.Y][sp.X])
+			gen := g.Tiles[r].Actor
+			if gen == nil {
+				dp.X++
+				continue
+			}
+			rp := cb.RotatePointRelative(dp, c.Facing)
+			gen.Evaluate(c, rp, m)
 			dp.X++
 		}
 		dp.Y++

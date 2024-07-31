@@ -1,6 +1,6 @@
 [
     {
-        "Group": "Test",
+        "Group": "CombatTest",
         "Variant": "Base.1",
         "Name": "test chunk",
         "MiniMap": ["H"],
@@ -33,6 +33,40 @@
             "+": "DoorFrame;Door",
             "Z": "Floor;Zombie",
             "z": "Floor;ZombieChild"
+        }
+    },
+    {
+        "Group": "VehicleGenTest",
+        "Variant": "Base.1",
+        "Name": "test chunk",
+        "MiniMap": ["H"],
+        "Fg": "Purple",
+        "Bg": "Black",
+        "Width": 1,
+        "Height": 1,
+        "Map": [
+            "#...............",
+            "................",
+            "................",
+            "................",
+            "................",
+            "................",
+            "......==========",
+            "......=^.......=",
+            "......=........=",
+            "......=........=",
+            "......=........=",
+            "......=........=",
+            "......=........=",
+            "......=........=",
+            "......=........=",
+            "......=========="
+        ],
+        "Tiles": {
+            "#": "Wall",
+            ".": "Pavement",
+            "=": "YellowPavement",
+            "^": "Pavement;Street^E8x8"
         }
     }
 ]

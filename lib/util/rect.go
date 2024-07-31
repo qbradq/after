@@ -74,6 +74,41 @@ func NewRectFromExtents(cp Point, left, right, up, down int) Rect {
 	}
 }
 
+// NewRectFromPoints creates a new Rect that contains all of the given points.
+func NewRectFromPoints(ps ...Point) Rect {
+	if len(ps) < 2 {
+		return Rect{}
+	}
+	left := ps[0].X
+	right := ps[0].X
+	top := ps[0].Y
+	bottom := ps[0].Y
+	for _, p := range ps {
+		if p.X < left {
+			left = p.X
+		}
+		if p.X > right {
+			right = p.X
+		}
+		if p.Y < top {
+			top = p.Y
+		}
+		if p.Y > bottom {
+			bottom = p.Y
+		}
+	}
+	return Rect{
+		TL: Point{
+			X: left,
+			Y: top,
+		},
+		BR: Point{
+			X: right,
+			Y: bottom,
+		},
+	}
+}
+
 // Width returns the width of the rect.
 func (r Rect) Width() int { return (r.BR.X - r.TL.X) + 1 }
 
@@ -158,9 +193,35 @@ func (r Rect) Move(o Point) Rect {
 	}
 }
 
+// Move moves the rect relative to the current position without modifying the
+// width or height.
+func (r Rect) MoveRelative(o Point) Rect {
+	return Rect{
+		TL: r.TL.Add(o),
+		BR: r.BR.Add(o),
+	}
+}
+
 // Contains returns true if the point is contained within the rect.
 func (r Rect) Contains(p Point) bool {
 	return p.X >= r.TL.X && p.X <= r.BR.X && p.Y >= r.TL.Y && p.Y <= r.BR.Y
+}
+
+// ContainsRect returns true if r fully contains b.
+func (r Rect) ContainsRect(b Rect) bool {
+	if b.TL.X < r.TL.X {
+		return false
+	}
+	if b.BR.X > r.BR.X {
+		return false
+	}
+	if b.TL.Y < r.TL.Y {
+		return false
+	}
+	if b.BR.Y > r.BR.Y {
+		return false
+	}
+	return true
 }
 
 // CenterRect returns the center a rect from the center of this rect with the
@@ -217,7 +278,6 @@ func (r Rect) Contain(b Rect) Rect {
 
 // Overlaps returns true if r and a overlap.
 func (r Rect) Overlaps(a Rect) bool {
-	// return a.BR.X < r.TL.X && a.TL.X > r.BR.X && a.BR.Y < r.TL.Y && a.TL.Y > r.BR.Y
 	if r.BR.X < a.TL.X ||
 		r.TL.X > a.BR.X ||
 		r.BR.Y < a.TL.Y ||
@@ -272,7 +332,8 @@ func (r Rect) Rotate(cp Point, f Facing) Rect {
 	}
 }
 
-// RotateInPlace rotates the rect to the given facing about the top-left corner.
+// RotateInPlace rotates the rect to the given facing keeping the top-left
+// corner in place.
 func (r Rect) RotateInPlace(f Facing) Rect {
 	x := r.TL.X
 	y := r.TL.Y
@@ -280,19 +341,19 @@ func (r Rect) RotateInPlace(f Facing) Rect {
 	w := r.Width()
 	switch f {
 	case FacingNorth:
+		fallthrough
+	case FacingSouth:
 		return r
 	case FacingEast:
-		return NewRectXYWH(x-(h-1), y, h, w)
-	case FacingSouth:
-		return NewRectXYWH(x+(w-1), y+(h-1), w, h)
+		fallthrough
 	default:
-		return NewRectXYWH(x, y-(h-1), h, w)
+		return NewRectXYWH(x, y, h, w)
 	}
 }
 
-// RotatePoint rotates the given relative point within the rect to translate
-// from the relative position at facing North to the facing given.
-func (r Rect) RotatePoint(p Point, f Facing) Point {
+// RotatePointRelative rotates the given relative point within the rect to
+// translate from the relative position at facing North to the facing given.
+func (r Rect) RotatePointRelative(p Point, f Facing) Point {
 	w := r.Width() - 1
 	h := r.Height() - 1
 	switch f {
@@ -340,4 +401,30 @@ func (r Rect) ReverseRotatePoint(p Point, f Facing) Point {
 			Y: p.X,
 		}
 	}
+}
+
+// RandomSubRect returns a random sub rectangle completely contained within
+// this rectangle but in a random position. If the bounds given are larger than
+// the bounds of this rect the result is undefined.
+func (r Rect) RandomSubRect(w, h int) Rect {
+	x := r.TL.X + Random(0, r.Width()-w)
+	y := r.TL.Y + Random(0, r.Height()-h)
+	return Rect{
+		TL: Point{
+			X: x,
+			Y: y,
+		},
+		BR: Point{
+			X: x + (w - 1),
+			Y: y + (h - 1),
+		},
+	}
+}
+
+// RotateRect rotates the given rect within this rect assuming the given rect
+// is in a North facing.
+func (r Rect) RotateRect(a Rect, f Facing) Rect {
+	p1 := r.RotatePointRelative(a.TL, f)
+	p2 := r.RotatePointRelative(a.BR, f)
+	return NewRectFromPoints(p1, p2)
 }

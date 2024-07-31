@@ -1,8 +1,22 @@
 {
-    "Test": {
-        "Name": "Test Scenario",
+    "CombatTest": {
+        "Name": "Combat Test Scenario",
         "Description": "This is a test scenario to facilitate development. You will spawn inside a large room containing a few zombies with basic clothing and supplies.",
-        "StartingChunkType": "Test",
+        "StartingChunkType": "CombatTest",
+        "Equipment": [
+            "Crowbar",
+            "Shirts",
+            "Pants",
+            "Shoes",
+            "Hats@1n6",
+            "Gloves@1n16",
+            "Soap"
+        ]
+    },
+    "VehicleGenTest": {
+        "Name": "Vehicle Generator Test Scenario",
+        "Description": "This is a test scenario to facilitate development. You will spawn in the top-left corner of the map with a single vehicle spawner.",
+        "StartingChunkType": "VehicleGenTest",
         "Equipment": [
             "Crowbar",
             "Shirts",
