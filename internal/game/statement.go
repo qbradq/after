@@ -114,7 +114,7 @@ func (e *actorExpression) Evaluate(c *Chunk, p util.Point, cm *CityMap) {
 	if util.Random(0, e.y) < e.x {
 		a := NewActor(e.r, cm.Now, true)
 		a.Position = p
-		c.PlaceActorRelative(a)
+		c.PlaceActorRelative(a, cm)
 	}
 }
 
@@ -132,7 +132,7 @@ func (e *actorGenExpression) Evaluate(c *Chunk, p util.Point, cm *CityMap) {
 	}
 	a := e.r.Generate(cm.Now)
 	a.Position = p
-	c.PlaceActorRelative(a)
+	c.PlaceActorRelative(a, cm)
 }
 
 // vehicleGenExpression lays down a vehicle with a given chance based on the

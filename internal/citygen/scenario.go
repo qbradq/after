@@ -55,7 +55,7 @@ func (s *Scenario) Execute(m *game.CityMap) {
 	m.LoadChunk(c, m.Now)
 	for i := 0; i < 512; i++ {
 		p := util.RandomPoint(c.Bounds)
-		ws, cs := c.CanStep(&m.Player.Actor, p)
+		ws, cs := c.CanStep(&m.Player.Actor, p, m)
 		if ws || cs {
 			m.Player.Position = p
 			return

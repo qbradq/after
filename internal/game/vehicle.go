@@ -12,6 +12,45 @@ import (
 // of a vehicle.
 type VehicleLocation struct {
 	Parts []*Item // Items at the location, from bottom to top
+	Solid bool    // If true at least one part at this location is solid
+}
+
+// UpdateFlags updates the location's flags given the current contents of the
+// parts list.
+func (l *VehicleLocation) UpdateFlags() {
+	l.Solid = false
+	for _, p := range l.Parts {
+		if p.VehicleSolid {
+			l.Solid = true
+		}
+	}
+}
+
+// Add adds a part to this location.
+func (l *VehicleLocation) Add(i *Item) bool {
+	l.Parts = append(l.Parts, i)
+	l.UpdateFlags()
+	return true
+}
+
+// Remove removes a part from this location.
+func (l *VehicleLocation) Remove(i *Item) bool {
+	idx := -1
+	for n, p := range l.Parts {
+		if p == i {
+			idx = n
+			break
+		}
+	}
+	if idx < 0 {
+		return false
+	}
+	// Remove from slice while maintaining order
+	copy(l.Parts[idx:], l.Parts[idx+1:])
+	l.Parts[len(l.Parts)-1] = nil
+	l.Parts = l.Parts[:len(l.Parts)-1]
+	l.UpdateFlags()
+	return true
 }
 
 // Vehicle contains all of the parts and functionality of a vehicle.
@@ -87,7 +126,7 @@ func (v *Vehicle) Attach(i *Item, p util.Point) bool {
 		return false
 	}
 	idx := p.Y*v.Size.X + p.X
-	v.Locations[idx].Parts = append(v.Locations[idx].Parts, i)
+	v.Locations[idx].Add(i)
 	return true
 }
 
@@ -97,29 +136,27 @@ func (v *Vehicle) Remove(i *Item) bool {
 		return false
 	}
 	for _, l := range v.Locations {
-
-		idx := -1
-		for n, p := range l.Parts {
-			if p == i {
-				idx = n
-				break
-			}
+		if l.Remove(i) {
+			return true
 		}
-		if idx < 0 {
-			continue
-		}
-		// Remove from slice while maintaining order
-		copy(l.Parts[idx:], l.Parts[idx+1:])
-		l.Parts[len(l.Parts)-1] = nil
-		l.Parts = l.Parts[:len(l.Parts)-1]
-		return true
 	}
 	return false
 }
 
-// Location returns a pointer to the VehicleLocation for the given relative
-// position and the current facing.
-func (v *Vehicle) Location(rp util.Point) *VehicleLocation {
+// GetLocationRelative returns a pointer to the VehicleLocation for the given
+// relative position and the current facing.
+func (v *Vehicle) GetLocationRelative(rp util.Point) *VehicleLocation {
+	if rp.X < 0 || rp.Y < 0 || rp.X >= v.Bounds.Width() || rp.Y >= v.Bounds.Height() {
+		return nil
+	}
+	lp := v.Bounds.ReverseRotatePoint(rp, v.Facing)
+	return &v.Locations[lp.Y*v.Size.X+lp.X]
+}
+
+// GetLocationAbsolute returns a pointer to the VehicleLocation for the given
+// absolute map position and the current facing.
+func (v *Vehicle) GetLocationAbsolute(ap util.Point) *VehicleLocation {
+	rp := ap.Sub(v.Bounds.TL)
 	if rp.X < 0 || rp.Y < 0 || rp.X >= v.Bounds.Width() || rp.Y >= v.Bounds.Height() {
 		return nil
 	}

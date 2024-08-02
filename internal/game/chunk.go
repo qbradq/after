@@ -79,6 +79,7 @@ func NewChunk(x, y int, r uint32) *Chunk {
 		MinimapRune:       "!",
 		MinimapForeground: termui.ColorWhite,
 		MinimapBackground: termui.ColorRed,
+		bitmapsDirty:      true,
 	}
 	return c
 }
@@ -143,7 +144,14 @@ func (c *Chunk) Read(r io.Reader) {
 
 // RebuildBitmaps must be called after chunk load or generation in order to
 // rebuild the walk and vis bitmap caches. The HasSeen bitmap is persistent.
-func (c *Chunk) RebuildBitmaps() {
+func (c *Chunk) RebuildBitmaps(cm *CityMap) {
+	// If the bitmaps are not dirty, or this chunk is not in memory, bail.
+	var tz time.Time
+	if !c.bitmapsDirty ||
+		c.Loaded == tz ||
+		!cm.chunksGenerated.Contains(c.Ref) {
+		return
+	}
 	// Clear bitmaps
 	c.BlocksVis.Clear()
 	c.BlocksWalk.Clear()
@@ -169,6 +177,21 @@ func (c *Chunk) RebuildBitmaps() {
 			c.BlocksWalk.Set(c.relOfs(i.Position))
 			if !i.Climbable {
 				c.BlocksClimb.Set(c.relOfs(i.Position))
+			}
+		}
+	}
+	// Consider vehicles
+	for _, v := range cm.VehiclesWithin(c.Bounds) {
+		vb := v.Bounds.Overlap(cm.Bounds)
+		var vp util.Point
+		for vp.Y = vb.TL.Y; vp.Y <= vb.BR.Y; vp.Y++ {
+			for vp.X = vb.TL.X; vp.X <= vb.BR.X; vp.X++ {
+				c.BlocksClimb.Set(c.relOfs(vp))
+				rp := vp.Sub(vb.TL)
+				l := v.GetLocationRelative(rp)
+				if l.Solid {
+					c.BlocksWalk.Set(c.relOfs(vp))
+				}
 			}
 		}
 	}
@@ -304,10 +327,10 @@ func (c *Chunk) RemoveVehicle(v *Vehicle) bool {
 // PlaceActorRelative adds the actor to the chunk and adjusts the position from
 // chunk-relative to absolute. This function always allows standing on climbable
 // locations.
-func (c *Chunk) PlaceActorRelative(a *Actor) {
+func (c *Chunk) PlaceActorRelative(a *Actor, cm *CityMap) {
 	a.Position.X += c.Bounds.TL.X
 	a.Position.Y += c.Bounds.TL.Y
-	c.PlaceActor(a, true)
+	c.PlaceActor(a, true, cm)
 }
 
 // PlaceActor places the actor within the chunk. This is a no-op if the
@@ -316,8 +339,8 @@ func (c *Chunk) PlaceActorRelative(a *Actor) {
 // is true if the actor can step on the location. The second return value is
 // true only if the first return value is false and the location allowed
 // climbing.
-func (c *Chunk) PlaceActor(a *Actor, climbing bool) (bool, bool) {
-	cw, cc := c.CanStep(a, a.Position)
+func (c *Chunk) PlaceActor(a *Actor, climbing bool, cm *CityMap) (bool, bool) {
+	cw, cc := c.CanStep(a, a.Position, cm)
 	if !cw {
 		if cc && climbing {
 			c.Actors = append(c.Actors, a)
@@ -358,13 +381,11 @@ func (c *Chunk) RemoveActor(a *Actor) {
 // CanStep returns true if the location is valid for an actor to step. The
 // second return value is true only if the first return value is false and the
 // location allows climbing.
-func (c *Chunk) CanStep(a *Actor, p util.Point) (bool, bool) {
+func (c *Chunk) CanStep(a *Actor, p util.Point, cm *CityMap) (bool, bool) {
 	if !c.Bounds.Contains(p) {
 		return false, false
 	}
-	if c.bitmapsDirty {
-		c.RebuildBitmaps()
-	}
+	c.RebuildBitmaps(cm)
 	if c.BlocksWalk.Contains(c.relOfs(p)) {
 		return false, !c.BlocksClimb.Contains(c.relOfs(p))
 	}

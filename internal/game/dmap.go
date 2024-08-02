@@ -90,7 +90,7 @@ func (m *DMap) Calculate(cm *CityMap) {
 			for p.X = m.Bounds.TL.X; p.X <= m.Bounds.BR.X; p.X++ {
 				c := cm.GetChunk(p)
 				if c.bitmapsDirty {
-					c.RebuildBitmaps()
+					c.RebuildBitmaps(cm)
 				}
 				blocks := c.BlocksWalk.Contains(c.relOfs(p))
 				if blocks {

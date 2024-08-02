@@ -52,13 +52,19 @@
         "Rune": "+",
         "Fg": "Blue",
         "Bg": "Black",
-        "VehicleSolid": true
+        "VehicleSolid": true,
+        "Events": {
+            "Use": "OpenVehicleDoor"
+        }
     },
     "OpenVehicleDoor": {
         "Name": "door",
         "Rune": "-",
         "Fg": "Blue",
-        "Bg": "Black"
+        "Bg": "Black",
+        "Events": {
+            "Use": "CloseVehicleDoor"
+        }
     },
     "VehicleSeat": {
         "Name": "seat",
@@ -77,12 +83,18 @@
         "Rune": "+",
         "Fg": "Blue",
         "Bg": "Black",
-        "VehicleSolid": true
+        "VehicleSolid": true,
+        "Events": {
+            "Use": "OpenVehicleDoor"
+        }
     },
     "OpenVehicleTrunk": {
         "Name": "trunk",
         "Rune": "-",
         "Fg": "Blue",
-        "Bg": "Black"
+        "Bg": "Black",
+        "Events": {
+            "Use": "CloseVehicleDoor"
+        }
     }
 }

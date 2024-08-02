@@ -243,7 +243,7 @@ func (m *CityMap) LoadChunk(c *Chunk, now time.Time) {
 	// Bail if we are already loaded
 	if c.Tiles != nil {
 		if c.bitmapsDirty {
-			c.RebuildBitmaps()
+			c.RebuildBitmaps(m)
 		}
 		return
 	}
@@ -258,7 +258,7 @@ func (m *CityMap) LoadChunk(c *Chunk, now time.Time) {
 		m.chunksGenerated.Set(c.Ref)
 		m.cgDirty = true
 		c.Generator.Generate(c, m)
-		c.RebuildBitmaps()
+		c.RebuildBitmaps(m)
 		w := bytes.NewBuffer(nil)
 		c.Write(w)
 		SaveValue(fmt.Sprintf("Chunk-%d", c.Ref), w.Bytes())
@@ -268,7 +268,7 @@ func (m *CityMap) LoadChunk(c *Chunk, now time.Time) {
 	n := fmt.Sprintf("Chunk-%d", c.Ref)
 	buf := LoadValue(n)
 	c.Read(buf)
-	c.RebuildBitmaps()
+	c.RebuildBitmaps(m)
 }
 
 // purgeOldChunks purges chunks in least-recently-used first order down to the
@@ -468,6 +468,12 @@ func (m *CityMap) VehiclesWithin(b util.Rect) []*Vehicle {
 	m.vehiclesWithinCache = m.vehiclesWithinCache[:0]
 	b = m.TileBounds.Overlap(b.Grow(16))
 	for _, c := range m.ChunksWithin(b) {
+		// Skip chunks that are not yet generated or in memory
+		var tz time.Time
+		if !m.chunksGenerated.Contains(c.Ref) ||
+			c.Loaded == tz {
+			continue
+		}
 		for _, v := range c.Vehicles {
 			if v.Bounds.Overlaps(b) {
 				m.vehiclesWithinCache = append(m.vehiclesWithinCache, v)
@@ -477,9 +483,22 @@ func (m *CityMap) VehiclesWithin(b util.Rect) []*Vehicle {
 	return m.vehiclesWithinCache
 }
 
+// VehicleAt returns the vehicle at the given location, or nil.
+func (m *CityMap) VehicleAt(p util.Point) *Vehicle {
+	b := util.NewRectFromRadius(p, 16)
+	for _, c := range m.ChunksWithin(b) {
+		for _, v := range c.Vehicles {
+			if v.Bounds.Contains(p) {
+				return v
+			}
+		}
+	}
+	return nil
+}
+
 // PlaceActor adds the actor to the city at it's current location.
 func (m *CityMap) PlaceActor(a *Actor, climbing bool) {
-	m.GetChunk(a.Position).PlaceActor(a, climbing)
+	m.GetChunk(a.Position).PlaceActor(a, climbing, m)
 	if m.updateBounds.Contains(a.Position) {
 		// Chunk is within the current update set so we'll have to manually push
 		// them onto the action queue
@@ -554,10 +573,10 @@ func (m *CityMap) StepActor(a *Actor, climbing bool, d util.Direction) (bool, bo
 	nc := m.GetChunk(np)
 	oc.RemoveActor(a)
 	a.Position = np
-	ws, cs := nc.PlaceActor(a, climbing)
+	ws, cs := nc.PlaceActor(a, climbing, m)
 	if !ws && !cs {
 		a.Position = op
-		oc.PlaceActor(a, true)
+		oc.PlaceActor(a, true, m)
 		return false, false
 	}
 	return ws, cs
@@ -574,7 +593,7 @@ func (m *CityMap) StepPlayer(climbing bool, d util.Direction) bool {
 		return false
 	}
 	nc := m.GetChunk(np)
-	ws, cs := nc.CanStep(&m.Player.Actor, np)
+	ws, cs := nc.CanStep(&m.Player.Actor, np, m)
 	if !ws && !cs {
 		return false
 	}
@@ -610,7 +629,7 @@ func (m *CityMap) PlayerCanClimb(d util.Direction) bool {
 		return false
 	}
 	nc := m.GetChunk(np)
-	_, cs := nc.CanStep(&m.Player.Actor, np)
+	_, cs := nc.CanStep(&m.Player.Actor, np, m)
 	return cs
 }
 
@@ -974,5 +993,13 @@ func (m *CityMap) PlayerTookTurn(d time.Duration, update func()) {
 	// End conditions check
 	if m.Player.Dead {
 		Log.Log(termui.ColorRed, "YOU ARE DEAD! Press Escape to return to the main menu.")
+	}
+}
+
+// FlagBitmapsForVehicle sets bitmaps dirty for all chunks occupied by the given
+// vehicle.
+func (m *CityMap) FlagBitmapsForVehicle(v *Vehicle) {
+	for _, c := range m.ChunksWithin(v.Bounds) {
+		c.bitmapsDirty = true
 	}
 }

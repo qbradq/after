@@ -238,7 +238,7 @@ func (m *mapMode) drawMap(s termui.TerminalDriver, mtl util.Point, mb util.Rect)
 		var p util.Point
 		for p.Y = 0; p.Y < v.Bounds.Height(); p.Y++ {
 			for p.X = 0; p.X < v.Bounds.Width(); p.X++ {
-				l := v.Location(p)
+				l := v.GetLocationRelative(p)
 				if l == nil || len(l.Parts) < 1 {
 					continue
 				}

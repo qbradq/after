@@ -272,6 +272,31 @@ func (m *gameMode) handleBump(dir util.Direction, s termui.TerminalDriver) error
 		m.modeStack = append(m.modeStack, m.confirmDialog)
 		return nil
 	}
+	// Vehicle handling
+	v := m.CityMap.VehicleAt(np)
+	if v != nil {
+		// We were blocked by a vehicle, see if there is a part to use
+		l := v.GetLocationAbsolute(np)
+		for _, p := range l.Parts {
+			if _, found := p.Events["Use"]; !found {
+				continue
+			}
+			err, used := events.ExecuteVehicleEvent("Use", v, l, p, np, &m.CityMap.Player.Actor, m.CityMap)
+			if err != nil {
+				return err
+			}
+			if used {
+				m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second)*m.CityMap.Player.ActSpeed()), func() { m.Draw(s) })
+			}
+			// If we reached this point we have successfully used a part.
+			s.FlushEvents()
+			return nil
+		}
+		// If we reach this point we have been blocked and there is a vehicle
+		// in the way. Don't try to use items that might be under the vehicle,
+		// just quit.
+		return nil
+	}
 	// Try to use fixed items
 	items := m.CityMap.ItemsAt(np)
 	for _, i := range items {
@@ -288,9 +313,9 @@ func (m *gameMode) handleBump(dir util.Direction, s termui.TerminalDriver) error
 		if used {
 			m.CityMap.PlayerTookTurn(time.Duration(float64(time.Second)*m.CityMap.Player.ActSpeed()), func() { m.Draw(s) })
 		}
-		s.FlushEvents()
 		// If we reached this point we have successfully used a fixed item.
-		break
+		s.FlushEvents()
+		return nil
 	}
 	return nil
 }

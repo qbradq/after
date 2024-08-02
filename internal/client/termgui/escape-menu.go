@@ -72,7 +72,7 @@ func newEscapeMenu(m *gameMode) *escapeMenu {
 								dp := p
 								dp.X += util.Random(0, game.ChunkWidth)
 								dp.Y += util.Random(0, game.ChunkHeight)
-								ws, cs := c.CanStep(&m.CityMap.Player.Actor, dp)
+								ws, cs := c.CanStep(&m.CityMap.Player.Actor, dp, m.CityMap)
 								if ws || cs {
 									m.CityMap.Player.Position = dp
 									m.logMode.Log(termui.ColorLime, "Teleported to %dx%d.", dp.X, dp.Y)
