@@ -11,8 +11,9 @@ import (
 // VehicleLocation encapsulates all of the parts and functionality of one area
 // of a vehicle.
 type VehicleLocation struct {
-	Parts []*Item // Items at the location, from bottom to top
-	Solid bool    // If true at least one part at this location is solid
+	Parts []*Item      // Items at the location, from bottom to top
+	Glyph termui.Glyph // Visual representation, if any
+	Solid bool         // If true at least one part at this location is solid
 }
 
 // UpdateFlags updates the location's flags given the current contents of the
@@ -29,6 +30,10 @@ func (l *VehicleLocation) UpdateFlags() {
 // Add adds a part to this location.
 func (l *VehicleLocation) Add(i *Item) bool {
 	l.Parts = append(l.Parts, i)
+	l.Glyph = termui.Glyph{
+		Rune:  rune(i.Rune[0]),
+		Style: termui.StyleDefault.Foreground(i.Fg).Background(i.Bg),
+	}
 	l.UpdateFlags()
 	return true
 }
@@ -50,6 +55,13 @@ func (l *VehicleLocation) Remove(i *Item) bool {
 	l.Parts[len(l.Parts)-1] = nil
 	l.Parts = l.Parts[:len(l.Parts)-1]
 	l.UpdateFlags()
+	if len(l.Parts) > 0 {
+		i := l.Parts[0]
+		l.Glyph = termui.Glyph{
+			Rune:  rune(i.Rune[0]),
+			Style: termui.StyleDefault.Foreground(i.Fg).Background(i.Bg),
+		}
+	}
 	return true
 }
 

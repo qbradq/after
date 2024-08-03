@@ -1,8 +1,6 @@
 package termgui
 
 import (
-	"strconv"
-
 	"github.com/qbradq/after/internal/ai"
 	"github.com/qbradq/after/internal/game"
 	"github.com/qbradq/after/lib/termui"
@@ -247,39 +245,29 @@ func (m *mapMode) drawMap(s termui.TerminalDriver, mtl util.Point, mb util.Rect)
 				if !m.Bounds.Contains(sp) {
 					continue
 				}
-				i := l.Parts[len(l.Parts)-1]
 				vx := vp.X + p.X
 				vy := vp.Y + p.Y
 				idx = uint32((vy-mtl.Y)*m.Bounds.Width() + (vx - mtl.X))
 				if m.CityMap.Visibility.Contains(idx) {
-					ns := termui.StyleDefault.
-						Background(i.Bg).
-						Foreground(i.Fg)
-					s.SetCell(sp, termui.Glyph{
-						Rune:  rune(i.Rune[0]),
-						Style: ns,
-					})
+					s.SetCell(sp, l.Glyph)
 				} else if m.CityMap.Remembered.Contains(idx) {
-					ns := termui.StyleDefault.
-						Foreground(termui.ColorGray)
-					s.SetCell(sp, termui.Glyph{
-						Rune:  rune(i.Rune[0]),
-						Style: ns,
-					})
+					g := l.Glyph
+					g.Style = g.Style.Foreground(termui.ColorGray).Background(termui.ColorBlack)
+					s.SetCell(sp, g)
 				}
 			}
 		}
 	}
 	// Draw the player
-	a := m.CityMap.Player
-	p = a.Position
+	player := m.CityMap.Player
+	p = player.Position
 	sp := util.NewPoint((p.X-mtl.X)+m.Bounds.TL.X, (p.Y-mtl.Y)+m.Bounds.TL.Y)
 	if m.Bounds.Contains(sp) {
 		ns := termui.StyleDefault.
-			Background(a.Bg).
-			Foreground(a.Fg)
+			Background(player.Bg).
+			Foreground(player.Fg)
 		s.SetCell(sp, termui.Glyph{
-			Rune:  rune(a.Rune[0]),
+			Rune:  rune(player.Rune[0]),
 			Style: ns,
 		})
 	}
@@ -291,115 +279,109 @@ func (m *mapMode) drawMap(s termui.TerminalDriver, mtl util.Point, mb util.Rect)
 	if m.Bounds.Contains(sp) {
 		drawCursor(s, sp, m.Bounds, m.CursorStyle)
 	}
-	// Draw info box if needed
-	if m.DrawInfo {
-		idx = uint32((m.CursorPos.Y-mtl.Y)*m.Bounds.Width() + (m.CursorPos.X - mtl.X))
-		if m.CityMap.Visibility.Contains(idx) {
-			t := m.CityMap.GetTile(m.CursorPos)
-			a := m.CityMap.ActorAt(m.CursorPos)
-			items := m.CityMap.ItemsAt(m.CursorPos)
-			h := 1 + len(items)
-			w := len(t.Name)
-			if a != nil && len(a.Name) > w {
-				w = len(a.Name)
-			}
-			if a != nil {
-				h++
-			}
-			for _, i := range items {
-				nl := len(i.Name)
-				if i.Amount > 1 {
-					nl += 2 + len(strconv.FormatInt(int64(i.Amount), 10))
-				}
-				if nl > w {
-					w = nl
-				}
-			}
-			if len(items) == 0 {
-				h++
-				if w < len("Nothing") {
-					w = len("Nothing")
-				}
-			}
-			dx := sp.X + 2
-			if m.CursorPos.X > m.Center.X {
-				dx = sp.X - (3 + w)
-			}
-			r := util.NewRectXYWH(dx, sp.Y-1, w+3, h+2)
-			r = m.Bounds.Contain(r)
-			termui.DrawBox(s, r, termui.CurrentTheme.Normal)
-			r.TL.X++
-			r.TL.Y++
-			r.BR.X--
-			r.BR.Y--
-			termui.DrawFill(s, r, termui.Glyph{
-				Rune:  ' ',
-				Style: termui.CurrentTheme.Normal,
-			})
-			termui.DrawStringLeft(s, r, t.Name, termui.CurrentTheme.Normal)
-			r.TL.Y++
-			if a != nil {
-				termui.DrawStringLeft(s, r, a.Name, termui.CurrentTheme.Normal.Foreground(termui.ColorLime))
-				r.TL.Y++
-			}
-			for _, i := range items {
-				n := " " + i.Name
-				if i.Container {
-					if len(i.Inventory) > 0 {
-						n = "+" + i.Name
-					} else {
-						n = "-" + i.Name
-					}
-				}
-				if i.Amount > 1 {
-					n = n + " x" + strconv.FormatInt(int64(i.Amount), 10)
-				}
-				termui.DrawStringLeft(s, r, n, termui.CurrentTheme.Normal.Foreground(termui.ColorAqua))
-				r.TL.Y++
-			}
-			if len(items) == 0 {
-				termui.DrawStringCenter(s, r, "Nothing", termui.CurrentTheme.Normal.Foreground(termui.ColorGray))
-			}
-		} else if m.CityMap.Remembered.Contains(idx) {
-			t := m.CityMap.GetTile(m.CursorPos)
-			h := 2
-			w := len("Remembered")
-			if len(t.Name) > w {
-				w = len(t.Name)
-			}
-			dx := sp.X + 2
-			if m.CursorPos.X > m.Center.X {
-				dx = sp.X - (3 + w)
-			}
-			r := util.NewRectXYWH(dx, sp.Y-1, w+2, h+2)
-			r = m.Bounds.Contain(r)
-			termui.DrawBox(s, r, termui.CurrentTheme.Normal)
-			r.TL.X++
-			r.TL.Y++
-			r.BR.X--
-			r.BR.Y--
-			termui.DrawFill(s, r, termui.Glyph{
-				Rune:  ' ',
-				Style: termui.CurrentTheme.Normal,
-			})
-			termui.DrawStringLeft(s, r, t.Name, termui.CurrentTheme.Normal)
-			r.TL.Y++
-			termui.DrawStringCenter(s, r, "Remembered", termui.CurrentTheme.Normal.Foreground(termui.ColorGray))
-		} else {
-			h := 1
-			w := len("Unseen")
-			dx := sp.X + 2
-			if m.CursorPos.X > m.Center.X {
-				dx = sp.X - (3 + w)
-			}
-			r := util.NewRectXYWH(dx, sp.Y-1, w+2, h+2)
-			r = m.Bounds.Contain(r)
-			termui.DrawBox(s, r, termui.CurrentTheme.Normal)
-			r.TL.X++
-			r.TL.Y++
-			r.BR.X--
-			r.BR.Y--
-			termui.DrawStringLeft(s, r, "Unseen", termui.CurrentTheme.Normal)
+	// Info box handling
+	if !m.DrawInfo {
+		return
+	}
+	idx = uint32((m.CursorPos.Y-mtl.Y)*m.Bounds.Width() + (m.CursorPos.X - mtl.X))
+	t := m.CityMap.GetTile(m.CursorPos)
+	a := m.CityMap.ActorAt(m.CursorPos)
+	v := m.CityMap.VehicleAt(m.CursorPos)
+	var l *game.VehicleLocation
+	if v != nil {
+		l = v.GetLocationAbsolute(m.CursorPos)
+	}
+	items := m.CityMap.ItemsAt(m.CursorPos)
+	vis := m.CityMap.Visibility.Contains(idx)
+	rem := m.CityMap.Remembered.Contains(idx)
+	var box mapInfoBox
+	if vis {
+		box.title = "Seen"
+		box.add(t.Name, termui.ColorLime)
+		for _, i := range items {
+			box.add(" "+i.UIDisplayName(), termui.ColorSilver)
 		}
+		if len(items) < 1 {
+			box.add("  Nothing", termui.ColorGray)
+		}
+		if a != nil {
+			box.add(a.Name, termui.ColorFuchsia)
+		}
+		if v != nil {
+			box.add(v.Name, termui.ColorAqua)
+			if l != nil {
+				for _, p := range l.Parts {
+					box.add(" "+p.UIDisplayName(), termui.ColorBlue)
+				}
+			}
+		}
+	} else if rem {
+		box.title = "Remembered"
+		box.add(t.Name, termui.ColorGray)
+	} else {
+		box.title = "Unseen"
+	}
+	box.draw(s, sp, mb)
+}
+
+// mapInfoLine represents the information on one line of the info box.
+type mapInfoLine struct {
+	t string       // Text to display
+	c termui.Color // Color to use to display the line
+}
+
+// mapInfoBox manages the little information window in the inspection mode.
+type mapInfoBox struct {
+	title string        // Title of the box
+	lines []mapInfoLine // Lines of the box
+}
+
+// add adds a line to the info box.
+func (b *mapInfoBox) add(t string, c termui.Color) {
+	b.lines = append(b.lines, mapInfoLine{
+		t: t,
+		c: c,
+	})
+}
+
+// calculateBounds calculates the bounds of the box given the current contents.
+func (b *mapInfoBox) calculateBounds(p util.Point) util.Rect {
+	h := len(b.lines)
+	if h == 0 {
+		h++
+	}
+	h += 2
+	w := len(b.title) + 4
+	for _, l := range b.lines {
+		lw := len(l.t) + 2
+		if w < lw {
+			w = lw
+		}
+	}
+	return util.NewRectXYWH(p.X, p.Y, w, h)
+}
+
+// draw draws the map info box at the given top-left point.
+func (b *mapInfoBox) draw(s termui.TerminalDriver, sp util.Point, mb util.Rect) {
+	bb := b.calculateBounds(sp)
+	x := sp.X + 2
+	if x+bb.Width() > mb.BR.X {
+		x = (sp.X - 2) - bb.Width()
+	}
+	bb = bb.Move(util.NewPoint(x, sp.Y))
+	bb = mb.Contain(bb)
+	termui.DrawBox(s, bb, termui.CurrentTheme.Normal)
+	termui.DrawStringCenter(s, bb, b.title, termui.CurrentTheme.Normal)
+	bb = bb.Shrink(1)
+	termui.DrawFill(s, bb, termui.Glyph{
+		Rune:  ' ',
+		Style: termui.CurrentTheme.Normal,
+	})
+	for _, l := range b.lines {
+		termui.DrawStringLeft(s, bb, l.t, termui.CurrentTheme.Normal.Foreground(l.c))
+		bb.TL.Y++
+	}
+	if len(b.lines) == 0 {
+		termui.DrawStringCenter(s, bb, "???", termui.CurrentTheme.Normal.Foreground(termui.ColorGray))
 	}
 }
