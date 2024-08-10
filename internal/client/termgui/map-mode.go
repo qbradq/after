@@ -321,7 +321,7 @@ func (m *mapMode) drawMap(s termui.TerminalDriver, mtl util.Point, mb util.Rect)
 	} else {
 		box.title = "Unseen"
 	}
-	box.draw(s, sp, mb)
+	box.draw(s, sp, m.Bounds)
 }
 
 // mapInfoLine represents the information on one line of the info box.

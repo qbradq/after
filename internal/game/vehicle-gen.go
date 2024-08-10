@@ -12,14 +12,16 @@ import (
 // VehicleGen encapsulates all of the parts and top-level functionality to
 // generate a vehicle.
 type VehicleGen struct {
-	Group    string            // Group that this vehicle generator belongs to
-	Variant  string            // Generator variant name
-	Name     string            // Name of the generated vehicle
-	Width    int               // Width of the layout in parts
-	Height   int               // Height of the layout in parts
-	Map      []string          // The generator map
-	Legend   map[string]string // Legend translating layer characters to parts
-	genCache []ItemStatement   // Cache of parsed generator statements
+	Group        string            // Group that this vehicle generator belongs to
+	Variant      string            // Generator variant name
+	Name         string            // Name of the generated vehicle
+	Width        int               // Width of the layout in parts
+	Height       int               // Height of the layout in parts
+	Acceleration float64           // Forward acceleration in scale miles per hour per second
+	TopSpeed     float64           // Top speed in scale miles per hour
+	Map          []string          // The generator map
+	Legend       map[string]string // Legend translating layer characters to parts
+	genCache     []ItemStatement   // Cache of parsed generator statements
 }
 
 // VehicleGenGroup represents a group of vehicle generators.
@@ -93,6 +95,8 @@ func (g *VehicleGen) Generate(now time.Time) *Vehicle {
 	// Basic generation
 	ret := newVehicle(util.NewPoint(g.Width, g.Height))
 	ret.Name = g.Name
+	ret.Acceleration = g.Acceleration
+	ret.TopSpeed = g.TopSpeed
 	// Parts generation
 	var p util.Point
 	for p.Y = 0; p.Y < g.Height; p.Y++ {

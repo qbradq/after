@@ -39,18 +39,29 @@ const (
 // Chunk represents the smallest unit of city planning and contains the tiles,
 // items and actors within its bounds.
 type Chunk struct {
+	//
 	// Values persisted at the CityMap level
+	//
+
 	Generator      ChunkGen    // The chunk generator responsible for procedural generation
 	ChunkGenOffset util.Point  // Offset from the top-left corner of the chunk generator
 	Facing         util.Facing // Facing of the chunk during generation
 	Flags          ChunkFlags  // Flags
+
+	//
 	// Persistent values
+	//
+
 	Tiles    []*TileDef    // Tile matrix
 	Items    []*Item       // All items within the chunk
 	Actors   []*Actor      // All actors within the chunk
 	Vehicles []*Vehicle    // All vehicles who's Northwest corner are in this chunk
 	HasSeen  bitmap.Bitmap // Bitmap of all spaces that have been previously viewed by the player
+
+	//
 	// Reconstituted values
+	//
+
 	Position          util.Point   // Position of the chunk on the city map in chunks
 	Ref               uint32       // Reference index for the chunk
 	Bounds            util.Rect    // Bounds of the chunk
@@ -58,7 +69,11 @@ type Chunk struct {
 	MinimapRune       string       // Rune to display on the minimap
 	MinimapForeground termui.Color // Foreground color of the rune on the minimap
 	MinimapBackground termui.Color // Background color of the rune on the minimap
+
+	//
 	// Working values
+	//
+
 	Loaded       time.Time     // Time this chunk was loaded, the zero value means it is not in memory
 	BlocksWalk   bitmap.Bitmap // Bitmap of all spaces that are blocked for walking
 	BlocksVis    bitmap.Bitmap // Bitmap of all spaces that are blocked for visibility
@@ -182,15 +197,19 @@ func (c *Chunk) RebuildBitmaps(cm *CityMap) {
 	}
 	// Consider vehicles
 	for _, v := range cm.VehiclesWithin(c.Bounds) {
-		vb := v.Bounds.Overlap(cm.Bounds)
-		var vp util.Point
-		for vp.Y = vb.TL.Y; vp.Y <= vb.BR.Y; vp.Y++ {
-			for vp.X = vb.TL.X; vp.X <= vb.BR.X; vp.X++ {
-				c.BlocksClimb.Set(c.relOfs(vp))
-				rp := vp.Sub(vb.TL)
-				l := v.GetLocationRelative(rp)
+		var p util.Point
+		for p.Y = v.Bounds.TL.Y; p.Y <= v.Bounds.BR.Y; p.Y++ {
+			for p.X = v.Bounds.TL.X; p.X <= v.Bounds.BR.X; p.X++ {
+				if !c.Bounds.Contains(p) {
+					continue
+				}
+				c.BlocksClimb.Set(c.relOfs(p))
+				l := v.GetLocationAbsolute(p)
+				if l == nil {
+					continue
+				}
 				if l.Solid {
-					c.BlocksWalk.Set(c.relOfs(vp))
+					c.BlocksWalk.Set(c.relOfs(p))
 				}
 			}
 		}

@@ -46,3 +46,23 @@ func (d Direction) RotateClockwise(n int) Direction {
 func (d Direction) RotateCounterclockwise(n int) Direction {
 	return Direction((int(d) - n)) % 8
 }
+
+// Facing returns the equivalent facing for this direction.
+func (d Direction) Facing() Facing {
+	switch d {
+	case DirectionNorth:
+		fallthrough
+	case DirectionNorthEast:
+		return FacingNorth
+	case DirectionEast:
+		fallthrough
+	case DirectionSouthEast:
+		return FacingEast
+	case DirectionSouth:
+		fallthrough
+	case DirectionSouthWest:
+		return FacingSouth
+	default:
+		return FacingWest
+	}
+}

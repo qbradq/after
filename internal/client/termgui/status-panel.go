@@ -1,6 +1,7 @@
 package termgui
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/qbradq/after/internal/game"
@@ -24,15 +25,8 @@ func (m *statusPanel) HandleEvent(s termui.TerminalDriver, e any) error {
 	return nil
 }
 
-// Draw implements the termui.Mode interface.
-func (m *statusPanel) Draw(s termui.TerminalDriver) {
-	b := util.NewRectWH(17, 23).Add(m.Position)
-	//
-	// Player states
-	//
-	db := b
-	termui.DrawBox(s, db, termui.CurrentTheme.Normal)
-	db = db.Shrink(1)
+// DrawPlayerStatus draws the player status within the given bounds.
+func (m *statusPanel) DrawPlayerStatus(s termui.TerminalDriver, db util.Rect) {
 	termui.DrawStringCenter(s, db, m.CityMap.Player.Name, termui.CurrentTheme.Normal.Foreground(termui.ColorAqua))
 	db.TL.Y++
 	// Overall status display
@@ -62,6 +56,38 @@ func (m *statusPanel) Draw(s termui.TerminalDriver) {
 		sss = sss.Foreground(termui.ColorRed)
 	}
 	termui.DrawStringCenter(s, db, ss, sss)
+
+}
+
+// DrawVehicleStatus draws the controlled vehicle's status within the given
+// bounds.
+func (m *statusPanel) DrawVehicleStatus(s termui.TerminalDriver, db util.Rect) {
+	v := m.CityMap.VehicleAt(m.CityMap.Player.Position)
+	if v == nil {
+		return
+	}
+	termui.DrawStringCenter(s, db, v.Name, termui.CurrentTheme.Normal.Foreground(termui.ColorAqua))
+	db.TL.Y++
+	termui.DrawStringLeft(s, db, "Speed", termui.CurrentTheme.Normal)
+	tb := db
+	tb.TL.X += 6
+	termui.DrawStringLeft(s, tb, strconv.FormatInt(int64(v.Speed), 10), termui.CurrentTheme.Normal)
+}
+
+// Draw implements the termui.Mode interface.
+func (m *statusPanel) Draw(s termui.TerminalDriver) {
+	b := util.NewRectWH(17, 23).Add(m.Position)
+	//
+	// Player states
+	//
+	db := b
+	termui.DrawBox(s, db, termui.CurrentTheme.Normal)
+	db = db.Shrink(1)
+	if m.CityMap.Player.InControl {
+		m.DrawVehicleStatus(s, db)
+	} else {
+		m.DrawPlayerStatus(s, db)
+	}
 	//
 	// Body status display
 	//

@@ -407,8 +407,16 @@ func (r Rect) ReverseRotatePoint(p Point, f Facing) Point {
 // this rectangle but in a random position. If the bounds given are larger than
 // the bounds of this rect the result is undefined.
 func (r Rect) RandomSubRect(w, h int) Rect {
-	x := r.TL.X + Random(0, r.Width()-w)
-	y := r.TL.Y + Random(0, r.Height()-h)
+	dx := r.Width() - w
+	dy := r.Height() - h
+	x := r.TL.X
+	y := r.TL.Y
+	if dx > 0 {
+		x += Random(0, dx)
+	}
+	if dy > 0 {
+		y += Random(0, dy)
+	}
 	return Rect{
 		TL: Point{
 			X: x,

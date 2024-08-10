@@ -5,7 +5,7 @@ import (
 	"container/heap"
 	"fmt"
 	"io"
-	"sort"
+	"slices"
 	"time"
 
 	"github.com/kelindar/bitmap"
@@ -21,9 +21,6 @@ const (
 	chunkUpdateRadius         int = 4    // Number of chunks away from the player to update actors
 	chunkLoadRadius           int = 5    // Number of chunks away from the player to keep chunks hot-loaded
 )
-
-// Return slice for GetActors
-var gaRet []*Actor
 
 // CityMap represents the entire world of the game in terms of which chunks go
 // where.
@@ -63,6 +60,7 @@ type CityMap struct {
 	usNewCache          []int            // Cache of chunk indexes of newly added chunks to the update set
 	usOldCache          []int            // Cache of chunk indexes of newly removed chunks to the update set
 	aq                  actorQueue       // Queue of all actors within update range
+	gaRet               []*Actor         // Return slice for GetActors
 	itemsWithinCache    []*Item          // Return slice for ItemsWithin()
 	actorsWithinCache   []*Actor         // Return slice for ActorsWithin()
 	chunksWithinCache   []*Chunk         // Return slice for ChunksWithin()
@@ -198,10 +196,10 @@ func (m *CityMap) ChunksWithin(b util.Rect) []*Chunk {
 // GetTile returns the tile at the given absolute tile point or nil if the point
 // is out of bounds.
 func (m *CityMap) GetTile(p util.Point) *TileDef {
-	if !m.loadBounds.Contains(p) {
+	c := m.Chunks[(p.Y/ChunkHeight)*CityMapWidth+(p.X/ChunkWidth)]
+	if c.Loaded.IsZero() {
 		return nil
 	}
-	c := m.Chunks[(p.Y/ChunkHeight)*CityMapWidth+(p.X/ChunkWidth)]
 	t := c.Tiles[(p.Y%ChunkHeight)*ChunkWidth+(p.X%ChunkWidth)]
 	return t
 }
@@ -242,9 +240,6 @@ func (m *CityMap) LoadChunk(c *Chunk, now time.Time) {
 	c.Loaded = now
 	// Bail if we are already loaded
 	if c.Tiles != nil {
-		if c.bitmapsDirty {
-			c.RebuildBitmaps(m)
-		}
 		return
 	}
 	// There is no possibility of error after this point so go ahead
@@ -258,7 +253,7 @@ func (m *CityMap) LoadChunk(c *Chunk, now time.Time) {
 		m.chunksGenerated.Set(c.Ref)
 		m.cgDirty = true
 		c.Generator.Generate(c, m)
-		c.RebuildBitmaps(m)
+		c.bitmapsDirty = true
 		w := bytes.NewBuffer(nil)
 		c.Write(w)
 		SaveValue(fmt.Sprintf("Chunk-%d", c.Ref), w.Bytes())
@@ -268,7 +263,7 @@ func (m *CityMap) LoadChunk(c *Chunk, now time.Time) {
 	n := fmt.Sprintf("Chunk-%d", c.Ref)
 	buf := LoadValue(n)
 	c.Read(buf)
-	c.RebuildBitmaps(m)
+	c.bitmapsDirty = true
 }
 
 // purgeOldChunks purges chunks in least-recently-used first order down to the
@@ -284,8 +279,13 @@ func (m *CityMap) purgeOldChunks() {
 	m.inMemoryChunks.Range(func(x uint32) {
 		cRefs = append(cRefs, x)
 	})
-	sort.Slice(cRefs, func(i, j int) bool {
-		return cRefs[i] < cRefs[j]
+	slices.SortFunc[[]uint32](cRefs, func(a, b uint32) int {
+		if m.Chunks[a].Loaded.Before(m.Chunks[b].Loaded) {
+			return -1
+		} else if m.Chunks[a].Loaded.After(m.Chunks[b].Loaded) {
+			return 1
+		}
+		return 0
 	})
 	// Persist and unload the oldest chunks until we reach the purge target
 	buffers := map[uint32][]byte{}
@@ -366,7 +366,7 @@ func chunkRefForPoint(p util.Point) uint32 {
 // GetActors returns a slice of all of the actors within the given bounds. The
 // returned slice is reused by subsequent calls to GetActors().
 func (m *CityMap) GetActors(b util.Rect) []*Actor {
-	gaRet = gaRet[:0]
+	m.gaRet = m.gaRet[:0]
 	cb := b.Divide(ChunkWidth)
 	cb = m.Bounds.Overlap(cb)
 	var p util.Point
@@ -375,12 +375,12 @@ func (m *CityMap) GetActors(b util.Rect) []*Actor {
 			c := m.GetChunkFromMapPoint(p)
 			for _, a := range c.Actors {
 				if b.Contains(a.Position) {
-					gaRet = append(gaRet, a)
+					m.gaRet = append(m.gaRet, a)
 				}
 			}
 		}
 	}
-	return gaRet
+	return m.gaRet
 }
 
 // PlaceItem adds the item to the city at it's current location.
@@ -466,8 +466,8 @@ func (m *CityMap) RemoveVehicle(v *Vehicle) bool {
 // VehiclesWithin.
 func (m *CityMap) VehiclesWithin(b util.Rect) []*Vehicle {
 	m.vehiclesWithinCache = m.vehiclesWithinCache[:0]
-	b = m.TileBounds.Overlap(b.Grow(16))
-	for _, c := range m.ChunksWithin(b) {
+	qb := m.TileBounds.Overlap(b.Grow(16))
+	for _, c := range m.ChunksWithin(qb) {
 		// Skip chunks that are not yet generated or in memory
 		var tz time.Time
 		if !m.chunksGenerated.Contains(c.Ref) ||
@@ -751,7 +751,7 @@ func (m *CityMap) Update(p util.Point, d time.Duration, update func()) {
 	// Updates of one minute or longer will use the wait handler automatically
 	if d < time.Minute {
 		m.updatePrepSets(p)
-		m.updateShort()
+		m.updateShort(d)
 		m.updateItemsAndPostProcessing(d)
 	} else {
 		m.Wait(d, update)
@@ -815,7 +815,9 @@ func (m *CityMap) updatePrepSets(p util.Point) {
 	}
 }
 
-func (m *CityMap) updateShort() {
+// updateShort updates short-term updates for actors and vehicles.
+func (m *CityMap) updateShort(d time.Duration) {
+	// Process actor queue
 	if len(m.aq) > 0 {
 		for {
 			a := heap.Pop(&m.aq).(*Actor)
@@ -831,6 +833,10 @@ func (m *CityMap) updateShort() {
 			a.AIModel.PeriodicUpdate(a, m, d)
 			heap.Push(&m.aq, a)
 		}
+	}
+	// Update all vehicles within the update radius
+	for _, v := range m.VehiclesWithin(m.updateBounds) {
+		v.Update(d, m)
 	}
 }
 
@@ -849,7 +855,7 @@ func (m *CityMap) Wait(d time.Duration, update func()) {
 		if sd < ud {
 			ud = sd
 		}
-		m.updateShort()
+		m.updateShort(ud)
 		if update != nil {
 			update()
 		}
@@ -1002,4 +1008,65 @@ func (m *CityMap) FlagBitmapsForVehicle(v *Vehicle) {
 	for _, c := range m.ChunksWithin(v.Bounds) {
 		c.bitmapsDirty = true
 	}
+}
+
+// VehicleFits returns true if the vehicle fits within the given bounds.
+func (m *CityMap) VehicleFits(v *Vehicle, nb util.Rect) bool {
+	if nb.Area() != m.TileBounds.Overlap(nb).Area() {
+		// Not totally within the map
+		return false
+	}
+	// Consider tile matrix
+	var p util.Point
+	for p.Y = nb.TL.Y; p.Y <= nb.BR.Y; p.Y++ {
+		for p.X = nb.TL.X; p.X <= nb.BR.X; p.X++ {
+			t := m.GetTile(p)
+			if t.BlocksWalk {
+				return false
+			}
+		}
+	}
+	// Consider items
+	for _, c := range m.ChunksWithin(nb) {
+		for _, i := range c.Items {
+			if nb.Contains(i.Position) && i.BlocksWalk {
+				return false
+			}
+		}
+	}
+	// Consider vehicles
+	for _, ov := range m.VehiclesWithin(nb) {
+		if v == ov {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+// MoveVehicle attempts to move the vehicle with the given offset.
+func (m *CityMap) MoveVehicle(v *Vehicle, ofs util.Point) bool {
+	// Try to move the vehicle
+	ob := v.Bounds
+	nb := v.Bounds.MoveRelative(ofs)
+	if !m.VehicleFits(v, nb) {
+		return false
+	}
+	oc := m.GetChunk(v.Bounds.TL)
+	nc := m.GetChunk(nb.TL)
+	if !oc.RemoveVehicle(v) {
+		return false
+	}
+	v.Bounds = nb
+	if !nc.PlaceVehicle(v) {
+		v.Bounds = ob
+		oc.PlaceVehicle(v)
+		return false
+	}
+	// Move the player if they are within the vehicle
+	if ob.Contains(m.Player.Position) {
+		m.Player.Position = m.Player.Position.Add(ofs)
+	}
+	m.FlagBitmapsForVehicle(v)
+	return true
 }

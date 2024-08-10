@@ -34,7 +34,7 @@
         "VehicleSolid": true
     },
     "Taillight": {
-        "Name": "Taillight",
+        "Name": "taillight",
         "Rune": "-",
         "Fg": "Yellow",
         "Bg": "Red",

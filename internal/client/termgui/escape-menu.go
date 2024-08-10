@@ -105,14 +105,24 @@ func newEscapeMenu(m *gameMode) *escapeMenu {
 						game.Log.Log(termui.ColorRed, "Failed to generate vehicle.")
 						return termui.ErrorQuit
 					}
-					v.Bounds = v.Bounds.Move(ret.m.CityMap.Player.Position)
+					v.UpdateBoundsForPosition(ret.m.CityMap.Player.Position, util.FacingNorth)
 					if !ret.m.CityMap.PlaceVehicle(v) {
 						game.Log.Log(termui.ColorRed, "Failed to place vehicle.")
 						return termui.ErrorQuit
 					}
+					ret.m.CityMap.FlagBitmapsForVehicle(v)
+					ret.m.logMode.Log(termui.ColorFuchsia, "New vehicle bounds: %v", v.Bounds)
+					ret.m.CityMap.Update(ret.m.CityMap.Player.Position, 0, nil)
 					return termui.ErrorQuit
 				case 3:
 					m.debug = !m.debug
+					return termui.ErrorQuit
+				case 4:
+					if cpuProfile == nil {
+						beginCPUProfile()
+					} else {
+						endCPUProfile()
+					}
 					return termui.ErrorQuit
 				}
 				return nil
@@ -122,6 +132,11 @@ func newEscapeMenu(m *gameMode) *escapeMenu {
 				return termui.ErrorQuit
 			},
 		},
+	}
+	if cpuProfile == nil {
+		ret.debug.Items = append(ret.debug.Items, "Begin CPU Profile")
+	} else {
+		ret.debug.Items = append(ret.debug.Items, "End CPU Profile")
 	}
 	return ret
 }

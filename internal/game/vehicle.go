@@ -2,6 +2,7 @@ package game
 
 import (
 	"io"
+	"math"
 	"time"
 
 	"github.com/qbradq/after/lib/termui"
@@ -65,13 +66,43 @@ func (l *VehicleLocation) Remove(i *Item) bool {
 	return true
 }
 
+// AccelerationState represents the state of the vehicle's acceleration.
+type AccelerationState uint8
+
+const (
+	AccelerationStateIdle         AccelerationState = 0 // Not accelerating or decelerating
+	AccelerationStateAccelerating AccelerationState = 1 // Gaining speed
+	AccelerationStateDecelerating AccelerationState = 2 // Slowing down / reversing
+)
+
+// TurningState represents the state of the vehicle's turning controls.
+type TurningState uint8
+
+const (
+	TurningStateNone  TurningState = 0 // Not turning
+	TurningStateRight TurningState = 1 // Turning to the right
+	TurningStateLeft  TurningState = 2 // Turning to the left
+)
+
 // Vehicle contains all of the parts and functionality of a vehicle.
 type Vehicle struct {
-	Name      string            // Name of the vehicle
-	Size      util.Point        // Width and height of the vehicle
-	Bounds    util.Rect         // Current bounds in the city
-	Facing    util.Facing       // Current facing
-	Locations []VehicleLocation // All of the locations of the vehicle
+	Name         string            // Name of the vehicle
+	Size         util.Point        // Width and height of the vehicle
+	Bounds       util.Rect         // Current bounds in the city
+	Facing       util.Facing       // Current facing
+	Locations    []VehicleLocation // All of the locations of the vehicle
+	Speed        float64           // Forward speed in scale miles per hour
+	TopSpeed     float64           // Top speed in scale miles per hour
+	Acceleration float64           // Forward acceleration in scale miles per hour per second
+	Heading      util.Direction    // Direction of movement
+	stp          float64           // Sub-tile position
+
+	//
+	// Non-persistent values
+	//
+
+	AccelerationState AccelerationState // Acceleration state
+	TurningState      TurningState      // Turning state
 }
 
 // newVehicle returns a new vehicle with the given parameters.
@@ -92,6 +123,9 @@ func NewVehicleFromReader(r io.Reader) *Vehicle {
 	v := newVehicle(s)
 	f := util.Facing(util.GetByte(r)) // Facing
 	v.UpdateBoundsForPosition(p, f)
+	v.Speed = util.GetFloat(r)                  // Forward speed
+	v.Heading = util.Direction(util.GetByte(r)) // Movement heading
+	v.stp = util.GetFloat(r)                    // Sub-tile position
 	for idx := 0; idx < v.Size.X*v.Size.Y; idx++ {
 		nParts := int(util.GetByte(r))            // Number of parts
 		for iPart := 0; iPart < nParts; iPart++ { // Parts
@@ -106,20 +140,20 @@ func GenerateVehicle(gn string, now time.Time) *Vehicle {
 	g, found := VehicleGenGroups[gn]
 	if !found {
 		Log.Log(termui.ColorRed, "Vehicle group %s not found.", gn)
+		return nil
 	}
 	return g.Get().Generate(now)
 }
 
 // Write writes the vehicle to the writer.
 func (v *Vehicle) Write(w io.Writer) {
-	util.PutUint32(w, 0)          // Version
-	util.PutPoint(w, v.Bounds.TL) // Position
-	if v.Facing == util.FacingEast || v.Facing == util.FacingWest {
-		util.PutPoint(w, util.NewPoint(v.Size.Y, v.Size.X))
-	} else {
-		util.PutPoint(w, util.NewPoint(v.Size.X, v.Size.Y))
-	}
-	util.PutByte(w, byte(v.Facing)) // Facing
+	util.PutUint32(w, 0)             // Version
+	util.PutPoint(w, v.Bounds.TL)    // Position
+	util.PutPoint(w, v.Size)         // North-facing dimensions
+	util.PutByte(w, byte(v.Facing))  // Facing
+	util.PutFloat(w, v.Speed)        // Forward speed
+	util.PutByte(w, byte(v.Heading)) // Movement heading
+	util.PutFloat(w, v.stp)          // Sub-tile position
 	for _, l := range v.Locations {
 		util.PutByte(w, byte(len(l.Parts))) // Number of parts at this location
 		for _, p := range l.Parts {         // Parts
@@ -180,6 +214,82 @@ func (v *Vehicle) GetLocationAbsolute(ap util.Point) *VehicleLocation {
 // facing.
 func (v *Vehicle) UpdateBoundsForPosition(p util.Point, f util.Facing) {
 	v.Facing = f
-	v.Bounds = util.NewRectXYWH(p.X, p.Y, v.Size.X, v.Size.Y)
-	v.Bounds = v.Bounds.RotateInPlace(v.Facing)
+	v.Heading = f.Direction()
+	v.Bounds = v.Bounds.Move(p)
+	v.Bounds = v.boundsForFacing(f)
+}
+
+// boundsForFacing returns the correct vehicle bounds for the given facing.
+func (v *Vehicle) boundsForFacing(f util.Facing) util.Rect {
+	return util.NewRectXYWH(v.Bounds.TL.X, v.Bounds.TL.Y, v.Size.X, v.Size.Y).RotateInPlace(f)
+}
+
+// Update handles short term updates for vehicles.
+func (v *Vehicle) Update(d time.Duration, cm *CityMap) {
+	// Handle acceleration and deceleration
+	switch v.AccelerationState {
+	case AccelerationStateAccelerating:
+		v.Speed += (float64(d) / float64(time.Second)) * v.Acceleration
+		if v.Speed > v.TopSpeed {
+			v.Speed = v.TopSpeed
+		}
+	case AccelerationStateDecelerating:
+		m := v.Acceleration * 2
+		if v.Speed <= 0 {
+			m = v.Acceleration / 4
+		}
+		v.Speed -= (float64(d) / float64(time.Second)) * m
+		if v.Speed < -v.TopSpeed/4 {
+			v.Speed = -v.TopSpeed / 4
+		}
+	case AccelerationStateIdle:
+		if v.Speed > 0 {
+			v.Speed -= float64(d) / float64(time.Second*2)
+			if v.Speed < 0 {
+				v.Speed = 0
+			}
+		} else if v.Speed < 0 {
+			v.Speed += float64(d) / float64(time.Second*2)
+			if v.Speed > 0 {
+				v.Speed = 0
+			}
+		}
+	}
+	// Handle turning
+	doTurn := false
+	oh := v.Heading
+	switch v.TurningState {
+	case TurningStateRight:
+		v.Heading++
+		doTurn = true
+	case TurningStateLeft:
+		v.Heading--
+		doTurn = true
+	}
+	if doTurn {
+		v.Heading = v.Heading.Bound()
+		if !v.Heading.IsDiagonal() {
+			nf := v.Heading.Facing()
+			nb := v.boundsForFacing(nf)
+			if cm.VehicleFits(v, nb) {
+				v.UpdateBoundsForPosition(v.Bounds.TL, nf)
+			} else {
+				v.Heading = oh
+			}
+		}
+	}
+	// Handle movement
+	mt := math.Abs(v.Speed) * (float64(d) / float64(time.Hour)) // Miles traveled
+	v.stp += mt * 1760 / 4                                      // Tiles traveled
+	ofs := util.DirectionOffsets[v.Heading.Bound()]
+	if v.Speed < 0 {
+		ofs = ofs.Multiply(-1)
+	}
+	for ; v.stp >= 1; v.stp -= 1 {
+		if !cm.MoveVehicle(v, ofs) {
+			v.stp = 0
+			v.Speed = 0
+			return
+		}
+	}
 }

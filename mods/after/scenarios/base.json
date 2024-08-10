@@ -27,6 +27,20 @@
             "Soap"
         ]
     },
+    "Interstate": {
+        "Name": "Interstate Start",
+        "Description": "You find yourself walking down the interstate highway through the aftermath.",
+        "StartingChunkType": "InterstateIntersection",
+        "Equipment": [
+            "Crowbar",
+            "Shirts",
+            "Pants",
+            "Shoes",
+            "Hats@1n6",
+            "Gloves@1n16",
+            "Soap"
+        ]
+    },
     "SafeAtHome": {
         "Name": "Safe at Home",
         "Description": "You hunkered down and stayed quite for weeks now hiding in your home from the aftermath. At least you are safe for now.",

@@ -3,6 +3,8 @@
         "Group": "Street",
         "Variant": "Car.1",
         "Name": "Mini Car",
+        "Acceleration": 3,
+        "TopSpeed": 35,
         "Width": 4,
         "Height": 3,
         "Map": [
@@ -26,6 +28,8 @@
         "Group": "Street",
         "Variant": "Car.2",
         "Name": "Mini Coup",
+        "Acceleration": 3.5,
+        "TopSpeed": 60,
         "Width": 4,
         "Height": 4,
         "Map": [
@@ -50,6 +54,8 @@
         "Group": "Street",
         "Variant": "Car.3",
         "Name": "Sports Coup",
+        "Acceleration": 10,
+        "TopSpeed": 120,
         "Width": 4,
         "Height": 5,
         "Map": [

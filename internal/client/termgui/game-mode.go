@@ -63,6 +63,7 @@ func (m *gameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 	dir := util.DirectionInvalid
 	switch ev := e.(type) {
 	case *termui.EventKey:
+		// Handle key presses
 		switch ev.Key {
 		case 'u': // Walk North East
 			dir = util.DirectionNorthEast
@@ -81,7 +82,7 @@ func (m *gameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 		case 'k': // Walk North
 			dir = util.DirectionNorth
 		case '.': // Wait one second
-			m.CityMap.PlayerTookTurn(time.Second, func() { m.Draw(s) })
+			m.CityMap.PlayerTookTurn(time.Second, nil)
 			s.FlushEvents()
 			return nil
 		case 'x': // eXamine surroundings
@@ -224,6 +225,32 @@ func (m *gameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 			}
 			m.CityMap.Player.Running = !m.CityMap.Player.Running
 			return nil
+		case '^': // Take control of vehicle
+			ic := !m.CityMap.Player.InControl
+			if !ic {
+				m.CityMap.Player.InControl = false
+				m.logMode.Log(termui.ColorLime, "You let go of the vehicle controls.")
+				return nil
+			}
+			v := m.CityMap.VehicleAt(m.CityMap.Player.Position)
+			if v == nil {
+				m.logMode.Log(termui.ColorYellow, "You are not within a vehicle.")
+				return nil
+			}
+			l := v.GetLocationAbsolute(m.CityMap.Player.Position)
+			if l == nil {
+				m.logMode.Log(termui.ColorYellow, "You are not within a vehicle.")
+				return nil
+			}
+			for _, p := range l.Parts {
+				if p.TemplateID == "VehicleControls" {
+					m.CityMap.Player.InControl = true
+					m.logMode.Log(termui.ColorLime, "You take control of the vehicle.")
+					return nil
+				}
+			}
+			m.logMode.Log(termui.ColorLime, "There are no vehicle controls here.")
+			return nil
 		case '\033': // Escape menu
 			m.modeStack = append(m.modeStack, newEscapeMenu(m))
 			return nil
@@ -239,6 +266,32 @@ func (m *gameMode) handleEventInternal(s termui.TerminalDriver, e any) error {
 	}
 	dir = dir.Bound()
 	if dir != util.DirectionInvalid {
+		if m.CityMap.Player.InControl {
+			v := m.CityMap.VehicleAt(m.CityMap.Player.Position)
+			if v == nil {
+				return nil
+			}
+			switch dir {
+			case util.DirectionNorth:
+				v.AccelerationState = game.AccelerationStateAccelerating
+				m.CityMap.PlayerTookTurn(time.Second, nil)
+				v.AccelerationState = game.AccelerationStateIdle
+			case util.DirectionSouth:
+				v.AccelerationState = game.AccelerationStateDecelerating
+				m.CityMap.PlayerTookTurn(time.Second, nil)
+				v.AccelerationState = game.AccelerationStateIdle
+			case util.DirectionEast:
+				v.TurningState = game.TurningStateRight
+				m.CityMap.PlayerTookTurn(time.Second, nil)
+				v.TurningState = game.TurningStateNone
+			case util.DirectionWest:
+				v.TurningState = game.TurningStateLeft
+				m.CityMap.PlayerTookTurn(time.Second, nil)
+				v.TurningState = game.TurningStateNone
+			}
+			s.FlushEvents()
+			return nil
+		}
 		if !m.CityMap.StepPlayer(false, dir) {
 			if err := m.handleBump(dir, s); err != nil {
 				return err

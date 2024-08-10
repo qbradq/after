@@ -11,13 +11,14 @@ import (
 // Player implements the player's special actor.
 type Player struct {
 	Actor
-	Stamina float64 // Stamina value from zero (exhausted) to one (well rested)
-	Hunger  float64 // Hunger value from zero (starving) to one (stuffed)
-	Thirst  float64 // Thirst value from zero (dehydrated to death) to one (slaked)
-	Joy     float64 // Happiness value from zero (suicidal) to one (manic), 0.5 is normal
-	Mind    float64 // Sanity value from zero (insane) to one (well adjusted), 0.5 is normal
-	Sleep   float64 // Sleepiness value from zero (falling asleep standing up) to one (unable to go back to sleep)
-	Running bool    // If true the player is running and consuming stamina
+	Stamina   float64 // Stamina value from zero (exhausted) to one (well rested)
+	Hunger    float64 // Hunger value from zero (starving) to one (stuffed)
+	Thirst    float64 // Thirst value from zero (dehydrated to death) to one (slaked)
+	Joy       float64 // Happiness value from zero (suicidal) to one (manic), 0.5 is normal
+	Mind      float64 // Sanity value from zero (insane) to one (well adjusted), 0.5 is normal
+	Sleep     float64 // Sleepiness value from zero (falling asleep standing up) to one (unable to go back to sleep)
+	Running   bool    // If true the player is running and consuming stamina
+	InControl bool    // If true the player is controlling the vehicle at their current location
 }
 
 // NewPlayer creates and returns a new Player struct.
@@ -43,14 +44,15 @@ func NewPlayerFromReader(r io.Reader) *Player {
 	a.IsPlayer = true
 	a.Name = util.GetString(r)
 	p := &Player{
-		Actor:   *a,
-		Stamina: util.GetFloat(r),
-		Hunger:  util.GetFloat(r),
-		Thirst:  util.GetFloat(r),
-		Joy:     util.GetFloat(r),
-		Mind:    util.GetFloat(r),
-		Sleep:   util.GetFloat(r),
-		Running: util.GetBool(r),
+		Actor:     *a,
+		Stamina:   util.GetFloat(r),
+		Hunger:    util.GetFloat(r),
+		Thirst:    util.GetFloat(r),
+		Joy:       util.GetFloat(r),
+		Mind:      util.GetFloat(r),
+		Sleep:     util.GetFloat(r),
+		Running:   util.GetBool(r),
+		InControl: util.GetBool(r),
 	}
 	return p
 }
@@ -58,14 +60,15 @@ func NewPlayerFromReader(r io.Reader) *Player {
 // Write writes the player to the writer.
 func (a *Player) Write(w io.Writer) {
 	a.Actor.Write(w)
-	util.PutString(w, a.Name)   // Persist the player's name
-	util.PutFloat(w, a.Stamina) // Stamina
-	util.PutFloat(w, a.Hunger)  // Hunger
-	util.PutFloat(w, a.Thirst)  // Thirst
-	util.PutFloat(w, a.Joy)     // Happiness
-	util.PutFloat(w, a.Mind)    // Sanity
-	util.PutFloat(w, a.Sleep)   // Sleepiness
-	util.PutBool(w, a.Running)  // Running
+	util.PutString(w, a.Name)    // Persist the player's name
+	util.PutFloat(w, a.Stamina)  // Stamina
+	util.PutFloat(w, a.Hunger)   // Hunger
+	util.PutFloat(w, a.Thirst)   // Thirst
+	util.PutFloat(w, a.Joy)      // Happiness
+	util.PutFloat(w, a.Mind)     // Sanity
+	util.PutFloat(w, a.Sleep)    // Sleepiness
+	util.PutBool(w, a.Running)   // Running
+	util.PutBool(w, a.InControl) // Vehicle control flag
 }
 
 // Attack has the player attack the target.

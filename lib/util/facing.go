@@ -72,3 +72,17 @@ func (f Facing) Rotate(a Facing) Facing {
 		return (f + 3).Bound()
 	}
 }
+
+// Direction returns the equivalent Direction value.
+func (f Facing) Direction() Direction {
+	switch f {
+	case FacingNorth:
+		return DirectionNorth
+	case FacingEast:
+		return DirectionEast
+	case FacingSouth:
+		return DirectionSouth
+	default:
+		return DirectionWest
+	}
+}
