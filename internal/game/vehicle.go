@@ -115,26 +115,6 @@ func newVehicle(size util.Point) *Vehicle {
 	return ret
 }
 
-// NewVehicleFromReader reads a vehicle from a reader.
-func NewVehicleFromReader(r io.Reader) *Vehicle {
-	util.GetUint32(r)     // Version
-	p := util.GetPoint(r) // Position
-	s := util.GetPoint(r) // Size
-	v := newVehicle(s)
-	f := util.Facing(util.GetByte(r)) // Facing
-	v.UpdateBoundsForPosition(p, f)
-	v.Speed = util.GetFloat(r)                  // Forward speed
-	v.Heading = util.Direction(util.GetByte(r)) // Movement heading
-	v.stp = util.GetFloat(r)                    // Sub-tile position
-	for idx := 0; idx < v.Size.X*v.Size.Y; idx++ {
-		nParts := int(util.GetByte(r))            // Number of parts
-		for iPart := 0; iPart < nParts; iPart++ { // Parts
-			v.Locations[idx].Parts = append(v.Locations[idx].Parts, NewItemFromReader(r))
-		}
-	}
-	return v
-}
-
 // GenerateVehicle generates a new vehicle from the named group.
 func GenerateVehicle(gn string, now time.Time) *Vehicle {
 	g, found := VehicleGenGroups[gn]
@@ -145,13 +125,48 @@ func GenerateVehicle(gn string, now time.Time) *Vehicle {
 	return g.Get().Generate(now)
 }
 
+// NewVehicleFromReader reads a vehicle from a reader.
+func NewVehicleFromReader(r io.Reader) *Vehicle {
+	// Top-level information
+	util.GetUint32(r)                       // Version
+	p := util.GetPoint(r)                   // Position
+	s := util.GetPoint(r)                   // Size
+	v := newVehicle(s)                      // Create base vehicle
+	v.Name = util.GetString(r)              // Name
+	v.Facing = util.Facing(util.GetByte(r)) // Facing
+	// Correct vehicle bounds from facing and size
+	if v.Facing == util.FacingEast || v.Facing == util.FacingWest {
+		v.Bounds = util.NewRectWH(s.Y, s.X)
+	} else {
+		v.Bounds = util.NewRectWH(s.X, s.Y)
+	}
+	v.Bounds = v.Bounds.Move(p)
+	// Movement related
+	v.Speed = util.GetFloat(r)                  // Forward speed
+	v.TopSpeed = util.GetFloat(r)               // Top speed
+	v.Acceleration = util.GetFloat(r)           // Acceleration
+	v.Heading = util.Direction(util.GetByte(r)) // Movement heading
+	v.stp = util.GetFloat(r)                    // Sub-tile position
+	// Locations and parts
+	for idx := 0; idx < v.Size.X*v.Size.Y; idx++ {
+		nParts := int(util.GetByte(r))            // Number of parts
+		for iPart := 0; iPart < nParts; iPart++ { // Parts
+			v.Locations[idx].Add(NewItemFromReader(r))
+		}
+	}
+	return v
+}
+
 // Write writes the vehicle to the writer.
 func (v *Vehicle) Write(w io.Writer) {
 	util.PutUint32(w, 0)             // Version
 	util.PutPoint(w, v.Bounds.TL)    // Position
 	util.PutPoint(w, v.Size)         // North-facing dimensions
+	util.PutString(w, v.Name)        // Name
 	util.PutByte(w, byte(v.Facing))  // Facing
 	util.PutFloat(w, v.Speed)        // Forward speed
+	util.PutFloat(w, v.TopSpeed)     // Top forward speed
+	util.PutFloat(w, v.Acceleration) // Acceleration
 	util.PutByte(w, byte(v.Heading)) // Movement heading
 	util.PutFloat(w, v.stp)          // Sub-tile position
 	for _, l := range v.Locations {
@@ -210,18 +225,47 @@ func (v *Vehicle) GetLocationAbsolute(ap util.Point) *VehicleLocation {
 	return &v.Locations[lp.Y*v.Size.X+lp.X]
 }
 
-// UpdateBoundsForPosition updates the vehicle based on the given position and
-// facing.
-func (v *Vehicle) UpdateBoundsForPosition(p util.Point, f util.Facing) {
-	v.Facing = f
-	v.Heading = f.Direction()
-	v.Bounds = v.Bounds.Move(p)
-	v.Bounds = v.boundsForFacing(f)
-}
-
-// boundsForFacing returns the correct vehicle bounds for the given facing.
-func (v *Vehicle) boundsForFacing(f util.Facing) util.Rect {
-	return util.NewRectXYWH(v.Bounds.TL.X, v.Bounds.TL.Y, v.Size.X, v.Size.Y).RotateInPlace(f)
+// doTurn handles vehicle turning attempts.
+func (v *Vehicle) doTurn(left bool, cm *CityMap) {
+	of := v.Facing
+	oh := v.Heading
+	// Handle turning
+	if left {
+		v.Heading--
+	} else {
+		v.Heading++
+	}
+	v.Heading = v.Heading.Bound()
+	if v.Heading.IsDiagonal() {
+		return
+	}
+	// Handle facing changes
+	v.Facing = v.Heading.Facing()
+	if v.Facing == of {
+		return
+	}
+	fd := util.FacingEast
+	if left {
+		fd = util.FacingWest
+	}
+	nb := v.Bounds.RotateInPlace(fd)
+	// Vehicle placement
+	if !cm.VehicleFits(v, nb) {
+		v.Facing = of
+		v.Heading = oh
+		return
+	}
+	// Rotate player if within the vehicle
+	if v.Bounds.Contains(cm.Player.Position) {
+		rp := cm.Player.Position.Sub(v.Bounds.TL)
+		if left {
+			rp.X, rp.Y = rp.Y, (v.Bounds.Width()-1)-rp.X
+		} else {
+			rp.X, rp.Y = (v.Bounds.Height()-1)-rp.Y, rp.X
+		}
+		cm.Player.Position = rp.Add(nb.TL)
+	}
+	v.Bounds = nb
 }
 
 // Update handles short term updates for vehicles.
@@ -255,32 +299,18 @@ func (v *Vehicle) Update(d time.Duration, cm *CityMap) {
 			}
 		}
 	}
-	// Handle turning
-	doTurn := false
-	oh := v.Heading
-	switch v.TurningState {
-	case TurningStateRight:
-		v.Heading++
-		doTurn = true
-	case TurningStateLeft:
-		v.Heading--
-		doTurn = true
-	}
-	if doTurn {
-		v.Heading = v.Heading.Bound()
-		if !v.Heading.IsDiagonal() {
-			nf := v.Heading.Facing()
-			nb := v.boundsForFacing(nf)
-			if cm.VehicleFits(v, nb) {
-				v.UpdateBoundsForPosition(v.Bounds.TL, nf)
-			} else {
-				v.Heading = oh
-			}
-		}
-	}
-	// Handle movement
 	mt := math.Abs(v.Speed) * (float64(d) / float64(time.Hour)) // Miles traveled
 	v.stp += mt * 1760 / 4                                      // Tiles traveled
+	// Handle turning
+	// if v.stp >= 1 {
+	switch v.TurningState {
+	case TurningStateRight:
+		v.doTurn(false, cm)
+	case TurningStateLeft:
+		v.doTurn(true, cm)
+	}
+	// }
+	// Handle movement
 	ofs := util.DirectionOffsets[v.Heading.Bound()]
 	if v.Speed < 0 {
 		ofs = ofs.Multiply(-1)

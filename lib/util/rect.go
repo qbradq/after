@@ -332,23 +332,34 @@ func (r Rect) Rotate(cp Point, f Facing) Rect {
 	}
 }
 
-// RotateInPlace rotates the rect to the given facing keeping the top-left
-// corner in place.
+// RotateInPlace rotates the rect to the given facing keeping the center tile
+// in place when possible.
 func (r Rect) RotateInPlace(f Facing) Rect {
-	x := r.TL.X
-	y := r.TL.Y
-	h := r.Height()
-	w := r.Width()
+	even := func(n int) bool { return n%2 == 0 }
+	cp := r.Center()
+	left, right, up, down := r.Extents(cp)
+	o := Point{}
 	switch f {
 	case FacingNorth:
-		fallthrough
-	case FacingSouth:
 		return r
 	case FacingEast:
-		fallthrough
+		r = NewRectFromExtents(cp, down, up, left, right)
+		if !even(up - down) {
+			if even(up) {
+				o.X--
+			}
+		}
+	case FacingSouth:
+		r = NewRectFromExtents(cp, right, left, down, up)
 	default:
-		return NewRectXYWH(x, y, h, w)
+		r = NewRectFromExtents(cp, up, down, right, left)
+		if !even(left - right) {
+			if even(left) {
+				o.Y--
+			}
+		}
 	}
+	return r.MoveRelative(o)
 }
 
 // RotatePointRelative rotates the given relative point within the rect to

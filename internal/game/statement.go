@@ -166,9 +166,10 @@ func (e *vehicleGenExpression) Evaluate(c *Chunk, p util.Point, cm *CityMap) {
 		return
 	}
 	// Randomly move the spawn location within the spawn bounds
-	gb = sb.RandomSubRect(gb.Width(), gb.Height())
 	v := gen.Generate(cm.Now)
-	v.UpdateBoundsForPosition(gb.TL.Add(c.Bounds.TL), e.f.Rotate(c.Facing))
+	v.Facing = e.f.Rotate(c.Facing)
+	gb = sb.RandomSubRect(gb.Width(), gb.Height())
+	v.Bounds = v.Bounds.Move(c.Bounds.TL.Add(gb.TL))
 	c.Vehicles = append(c.Vehicles, v)
 }
 

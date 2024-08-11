@@ -105,7 +105,9 @@ func newEscapeMenu(m *gameMode) *escapeMenu {
 						game.Log.Log(termui.ColorRed, "Failed to generate vehicle.")
 						return termui.ErrorQuit
 					}
-					v.UpdateBoundsForPosition(ret.m.CityMap.Player.Position, util.FacingNorth)
+					v.Facing = util.FacingNorth
+					v.Heading = v.Facing.Direction()
+					v.Bounds = util.NewRectWH(v.Size.X, v.Size.Y).Move(ret.m.CityMap.Player.Position)
 					if !ret.m.CityMap.PlaceVehicle(v) {
 						game.Log.Log(termui.ColorRed, "Failed to place vehicle.")
 						return termui.ErrorQuit
