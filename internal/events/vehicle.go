@@ -36,7 +36,7 @@ func openVehicleDoor(v *game.Vehicle, l *game.VehicleLocation, i *game.Item, pp 
 					l.Remove(p)
 					np := game.NewItem("Open"+p.TemplateID, m.Now, false)
 					l.Add(np)
-					m.FlagBitmapsForVehicle(v)
+					m.FlagBitmapsForVehicle(v, v.Bounds)
 				}
 			}
 		},
@@ -71,7 +71,7 @@ func closeVehicleDoor(v *game.Vehicle, l *game.VehicleLocation, i *game.Item, pp
 					np := game.NewItem(s, m.Now, false)
 					np.Position = p.Position
 					l.Add(np)
-					m.FlagBitmapsForVehicle(v)
+					m.FlagBitmapsForVehicle(v, v.Bounds)
 				}
 			}
 		},

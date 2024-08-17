@@ -41,7 +41,7 @@ func NewRectWH(w, h int) Rect {
 func NewRectXYWH(x, y, w, h int) Rect {
 	return Rect{
 		TL: Point{X: x, Y: y},
-		BR: Point{X: x + w - 1, Y: y + h - 1},
+		BR: Point{X: x + (w - 1), Y: y + (h - 1)},
 	}
 }
 
@@ -106,6 +106,23 @@ func NewRectFromPoints(ps ...Point) Rect {
 			X: right,
 			Y: bottom,
 		},
+	}
+}
+
+// NewRectFromFacing creates a new rect starting at point p with width w and
+// height h and extends from that point as appropriate for facing f.
+func NewRectFromFacing(p Point, w, h int, f Facing) Rect {
+	w--
+	h--
+	switch f {
+	case FacingNorth:
+		return NewRectFromExtents(p, 0, w, 0, h)
+	case FacingEast:
+		return NewRectFromExtents(p, h, 0, 0, w)
+	case FacingSouth:
+		return NewRectFromExtents(p, w, 0, h, 0)
+	default:
+		return NewRectFromExtents(p, 0, h, w, 0)
 	}
 }
 
@@ -180,6 +197,11 @@ func (r Rect) Grow(n int) Rect {
 			Y: r.BR.Y + n,
 		},
 	}
+}
+
+// ContainingRect returns the rect that contains both r and a.
+func (r Rect) ContainingRect(a Rect) Rect {
+	return NewRectFromPoints(r.TL, r.BR, a.TL, a.BR)
 }
 
 // Move moves the rect without modifying the width or height.

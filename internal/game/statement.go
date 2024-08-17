@@ -149,14 +149,18 @@ func (e *vehicleGenExpression) Evaluate(c *Chunk, p util.Point, cm *CityMap) {
 	if util.Random(0, e.y) >= e.x {
 		return
 	}
-	var gb util.Rect
-	cb := util.NewRectWH(ChunkWidth, ChunkHeight)
-	sb := cb.RotateRect(util.NewRectXYWH(p.X, p.Y, e.w, e.h), c.Facing)
+	sb := util.NewRectFromFacing(p, e.w, e.h, c.Facing)
 	// Try up to 8 times to select a variant that will fit within the bounds.
+	var gb util.Rect
 	var gen *VehicleGen
 	for i := 0; i < 8; i++ {
 		gen = e.g.Get()
-		gb = cb.RotateRect(util.NewRectXYWH(p.X, p.Y, gen.Width, gen.Height), c.Facing)
+		nf := e.f.Rotate(c.Facing)
+		if nf == util.FacingEast || nf == util.FacingWest {
+			gb = util.NewRectXYWH(sb.TL.X, sb.TL.Y, gen.Height, gen.Width)
+		} else {
+			gb = util.NewRectXYWH(sb.TL.X, sb.TL.Y, gen.Width, gen.Height)
+		}
 		if sb.ContainsRect(gb) {
 			break
 		}
@@ -168,8 +172,9 @@ func (e *vehicleGenExpression) Evaluate(c *Chunk, p util.Point, cm *CityMap) {
 	// Randomly move the spawn location within the spawn bounds
 	v := gen.Generate(cm.Now)
 	v.Facing = e.f.Rotate(c.Facing)
+	v.Heading = v.Facing.Direction()
 	gb = sb.RandomSubRect(gb.Width(), gb.Height())
-	v.Bounds = v.Bounds.Move(c.Bounds.TL.Add(gb.TL))
+	v.Bounds = gb.MoveRelative(c.Bounds.TL)
 	c.Vehicles = append(c.Vehicles, v)
 }
 

@@ -43,7 +43,7 @@
             "3": "Floor;BathroomCounter",
             "|": "ChainFence",
             "/": "Pavement;ChainFenceGate",
-            "^": "Pavement;Street^S4x6@1n2",
+            "^": "Pavement;Street^S4x6@1n8",
             "X": "Pavement;Zombie@1n10",
             "Z": "Floor;Zombie@1n10",
             "z": "Floor;Zombie@1n20"
@@ -111,8 +111,8 @@
             "+": "DoorFrame;Door",
             "1": "DoorFrame;GlassDoor",
             "2": "Floor;Toilet",
-            "^": "Pavement;Street^S4x6@1n2",
-            "&": "Pavement;Street^S6x6@1n2",
+            "^": "Pavement;Street^S4x6@1n16",
+            "&": "Pavement;Street^S6x6@1n8",
             "X": "Gravel;Zombie@1n10",
             "Z": "Floor;Zombie@1n10",
             "z": "Floor;Zombie@1n20"

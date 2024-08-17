@@ -217,12 +217,10 @@ func (v *Vehicle) GetLocationRelative(rp util.Point) *VehicleLocation {
 // GetLocationAbsolute returns a pointer to the VehicleLocation for the given
 // absolute map position and the current facing.
 func (v *Vehicle) GetLocationAbsolute(ap util.Point) *VehicleLocation {
-	rp := ap.Sub(v.Bounds.TL)
-	if rp.X < 0 || rp.Y < 0 || rp.X >= v.Bounds.Width() || rp.Y >= v.Bounds.Height() {
+	if !v.Bounds.Contains(ap) {
 		return nil
 	}
-	lp := v.Bounds.ReverseRotatePoint(rp, v.Facing)
-	return &v.Locations[lp.Y*v.Size.X+lp.X]
+	return v.GetLocationRelative(ap.Sub(v.Bounds.TL))
 }
 
 // doTurn handles vehicle turning attempts.
@@ -302,14 +300,14 @@ func (v *Vehicle) Update(d time.Duration, cm *CityMap) {
 	mt := math.Abs(v.Speed) * (float64(d) / float64(time.Hour)) // Miles traveled
 	v.stp += mt * 1760 / 4                                      // Tiles traveled
 	// Handle turning
-	// if v.stp >= 1 {
-	switch v.TurningState {
-	case TurningStateRight:
-		v.doTurn(false, cm)
-	case TurningStateLeft:
-		v.doTurn(true, cm)
+	if v.stp >= 1 {
+		switch v.TurningState {
+		case TurningStateRight:
+			v.doTurn(false, cm)
+		case TurningStateLeft:
+			v.doTurn(true, cm)
+		}
 	}
-	// }
 	// Handle movement
 	ofs := util.DirectionOffsets[v.Heading.Bound()]
 	if v.Speed < 0 {

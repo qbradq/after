@@ -118,6 +118,27 @@
             "Use": "CloseDoor"
         }
     },
+    "ScreenDoor": {
+        "Name": "screen door",
+        "Rune": "+",
+        "Fg": "Silver",
+        "Bg": "Black",
+        "BlocksWalk": true,
+        "Fixed": true,
+        "Events": {
+            "Use": "OpenDoor"
+        }
+    },
+    "OpenScreenDoor": {
+        "Name": "open screen door",
+        "Rune": "-",
+        "Fg": "Silver",
+        "Bg": "Black",
+        "Fixed": true,
+        "Events": {
+            "Use": "CloseDoor"
+        }
+    },
     "GarageDoor": {
         "Name": "garage door",
         "Rune": "+",

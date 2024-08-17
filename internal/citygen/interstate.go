@@ -293,10 +293,20 @@ func interstate() *game.CityMap {
 	p = iip
 	p.X--
 	place(m, ChunkGenGroups["CombatTest"].Get(), p, util.FacingSouth, true)
-	for p.Y = 0; p.Y < 8; p.Y++ {
-		for p.X = 0; p.X < 8; p.X++ {
-			place(m, ChunkGenGroups["VehicleGenTest"].Get(), p, util.FacingNorth, true)
+	// for p.Y = 0; p.Y < 8; p.Y++ {
+	// 	for p.X = 0; p.X < 8; p.X++ {
+	// 		f := util.Facing(util.Random(0, 4))
+	// 		place(m, ChunkGenGroups["VehicleGenTest"].Get(), p, f, true)
+	// 	}
+	// }
+	// place(m, ChunkGenGroups["VehicleGenTest"].Get(), util.Point{}, util.FacingEast, true)
+	f := util.FacingNorth
+	for p.Y = 0; p.Y < 4; p.Y++ {
+		for p.X = 0; p.X < 4; p.X++ {
+			vn := []string{"N", "E", "S", "W"}[p.X]
+			place(m, ChunkGenGroups["VehicleGenTest"].GetVariant(vn), p, f, true)
 		}
+		f = (f + 1).Bound()
 	}
 	return m
 }

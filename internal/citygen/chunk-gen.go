@@ -47,6 +47,11 @@ func (g *ChunkGenGroup) Get() *ChunkGen {
 	return g.VariantList[util.Random(0, len(g.VariantList))]
 }
 
+// GetVariant returns a pointer to the named variant or nil.
+func (g *ChunkGenGroup) GetVariant(n string) *ChunkGen {
+	return g.Variants[n]
+}
+
 // Global chunk generators index
 var ChunkGenGroups = map[string]*ChunkGenGroup{}
 

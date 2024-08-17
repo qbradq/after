@@ -31,7 +31,7 @@ func RandomBool() bool {
 // RandomValue returns a random value from the slice.
 func RandomValue[T any](s []T) T {
 	var zero T
-	if s == nil || len(s) == 0 {
+	if len(s) == 0 {
 		return zero
 	}
 	return s[Random(0, len(s))]

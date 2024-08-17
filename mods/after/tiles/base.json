@@ -48,6 +48,22 @@
         "BlocksStack": true,
         "Climbable": true
     },
+    "GlassWall": {
+        "Name": "glass wall",
+        "Rune": "#",
+        "Fg": "Aqua",
+        "Bg": "Black",
+        "BlocksWalk": true,
+        "BlocksStack": true
+    },
+    "ScreenWall": {
+        "Name": "screen wall",
+        "Rune": "#",
+        "Fg": "Silver",
+        "Bg": "Black",
+        "BlocksWalk": true,
+        "BlocksStack": true
+    },
     "Grass": {
         "Name": "grass",
         "Rune": ".",
@@ -65,6 +81,19 @@
         "Rune": ".",
         "Fg": "White",
         "Bg": "Black"
+    },
+    "ShallowWater": {
+        "Name": "shallow water",
+        "Rune": "~",
+        "Fg": "Aqua",
+        "Bg": "Blue"
+    },
+    "DeepWater": {
+        "Name": "shallow water",
+        "Rune": "~",
+        "Fg": "Blue",
+        "Bg": "Navy",
+        "BlocksWalk": true
     },
     "Brush": {
         "Name": "brush",

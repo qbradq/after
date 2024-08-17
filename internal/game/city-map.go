@@ -1004,8 +1004,9 @@ func (m *CityMap) PlayerTookTurn(d time.Duration, update func()) {
 
 // FlagBitmapsForVehicle sets bitmaps dirty for all chunks occupied by the given
 // vehicle.
-func (m *CityMap) FlagBitmapsForVehicle(v *Vehicle) {
-	for _, c := range m.ChunksWithin(v.Bounds) {
+func (m *CityMap) FlagBitmapsForVehicle(v *Vehicle, nb util.Rect) {
+	b := v.Bounds.ContainingRect(nb)
+	for _, c := range m.ChunksWithin(b) {
 		c.bitmapsDirty = true
 	}
 }
@@ -1067,6 +1068,6 @@ func (m *CityMap) MoveVehicle(v *Vehicle, ofs util.Point) bool {
 	if ob.Contains(m.Player.Position) {
 		m.Player.Position = m.Player.Position.Add(ofs)
 	}
-	m.FlagBitmapsForVehicle(v)
+	m.FlagBitmapsForVehicle(v, nb)
 	return true
 }

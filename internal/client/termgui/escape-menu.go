@@ -112,7 +112,7 @@ func newEscapeMenu(m *gameMode) *escapeMenu {
 						game.Log.Log(termui.ColorRed, "Failed to place vehicle.")
 						return termui.ErrorQuit
 					}
-					ret.m.CityMap.FlagBitmapsForVehicle(v)
+					ret.m.CityMap.FlagBitmapsForVehicle(v, v.Bounds)
 					ret.m.logMode.Log(termui.ColorFuchsia, "New vehicle bounds: %v", v.Bounds)
 					ret.m.CityMap.Update(ret.m.CityMap.Player.Position, 0, nil)
 					return termui.ErrorQuit
