@@ -15,7 +15,7 @@
     },
     "VehicleGenTest": {
         "Name": "Vehicle Generator Test Scenario",
-        "Description": "This is a test scenario to facilitate development. You will spawn in the top-left corner of the map with a single vehicle spawner.",
+        "Description": "This is a test scenario to facilitate development. You will spawn in the top-left corner of the map with some test vehicle spawners that test all possible vehicle orientations.",
         "StartingChunkType": "VehicleGenTest",
         "Equipment": [
             "Crowbar",
@@ -43,7 +43,7 @@
     },
     "SafeAtHome": {
         "Name": "Safe at Home",
-        "Description": "You hunkered down and stayed quite for weeks now hiding in your home from the aftermath. At least you are safe for now.",
+        "Description": "You've hunkered down and stayed quite for weeks now hiding in your home from the aftermath. At least you are safe for now.",
         "StartingChunkType": "House",
         "Equipment": [
             "Crowbar",
